@@ -1,0 +1,31 @@
+{
+  "name": "daycare-number-elimination",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "EXPO_NO_TELEMETRY=1 expo start",
+    "build:web": "expo export --platform web",
+    "lint": "expo lint"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^14.1.0",
+    "@react-native-async-storage/async-storage": "^2.1.0",
+    "expo": "^53.0.20",
+    "expo-haptics": "^13.1.0",
+    "expo-router": "^4.0.17",
+    "expo-status-bar": "~2.1.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-native": "0.76.5",
+    "react-native-gesture-handler": "~2.20.2",
+    "react-native-reanimated": "~3.16.1",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.0.0",
+    "react-native-web": "^0.19.12",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2"
+  }
+}

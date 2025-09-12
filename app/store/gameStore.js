@@ -1,6 +1,34 @@
 import { create } from 'zustand';
 import { StorageUtils } from '../utils/StorageUtils';
-import { apiClient } from '../services/api';
+import { generateBoard, generateChallengeBoard } from '../utils/LocalBoardGenerator';
+import { getLevelName } from '../utils/LocalLevels';
+
+const IQ_TITLES = {
+  0: 'Newborn Dreamer',
+  40: 'Tiny Adventurer',
+  55: 'Learning Hatchling',
+  65: 'Little Explorer',
+  70: 'Slow but Steady',
+  85: 'Hardworking Student',
+  100: 'Everyday Scholar',
+  115: 'Rising Star',
+  130: 'Puzzle Master',
+  145: 'Cosmic Genius',
+};
+
+function getIQTitle(iq) {
+  const thresholds = Object.keys(IQ_TITLES)
+    .map(Number)
+    .sort((a, b) => b - a);
+  
+  for (let threshold of thresholds) {
+    if (iq >= threshold) {
+      return IQ_TITLES[threshold];
+    }
+  }
+  
+  return IQ_TITLES[0];
+}
 
 export const useGameStore = create((set, get) => ({
   // User state
@@ -20,6 +48,8 @@ export const useGameStore = create((set, get) => ({
     try {
       let userData = await StorageUtils.getUserData();
       const settings = await StorageUtils.getSettings();
+      const progress = await StorageUtils.getProgress();
+      const challenge = await StorageUtils.getChallenge();
       
       if (!userData) {
         // Create new user
@@ -32,40 +62,22 @@ export const useGameStore = create((set, get) => ({
         await StorageUtils.setUserData(userData);
       }
 
-      // Sync with backend
-      try {
-        const syncResult = await apiClient.syncUser(userData);
-        if (syncResult.user) {
-          userData = { ...userData, ...syncResult.user };
-          await StorageUtils.setUserData(userData);
-        }
-      } catch (error) {
-        console.warn('Failed to sync user with backend:', error);
-      }
-
-      set({ user: userData, settings, isLoading: false });
-      get().loadUserProgress();
+      set({ 
+        user: userData, 
+        settings, 
+        progress, 
+        challenge, 
+        isLoading: false 
+      });
     } catch (error) {
       set({ error: error.message, isLoading: false });
-    }
-  },
-
-  loadUserProgress: async () => {
-    const { user } = get();
-    if (!user) return;
-
-    try {
-      // Progress is loaded via user sync, but we can fetch fresh data here
-      set({ isLoading: false });
-    } catch (error) {
-      console.warn('Failed to load user progress:', error);
     }
   },
 
   loadBoard: async (level) => {
     set({ isLoading: true });
     try {
-      const board = await apiClient.getLevelBoard(level);
+      const board = generateBoard(level);
       set({ currentBoard: board, isLoading: false });
       return board;
     } catch (error) {
@@ -77,7 +89,7 @@ export const useGameStore = create((set, get) => ({
   loadChallengeBoard: async () => {
     set({ isLoading: true });
     try {
-      const board = await apiClient.getChallengeBoard();
+      const board = generateChallengeBoard();
       set({ currentBoard: board, isLoading: false });
       return board;
     } catch (error) {
@@ -87,21 +99,19 @@ export const useGameStore = create((set, get) => ({
   },
 
   completeLevel: async (level, usedChange = false) => {
-    const { user } = get();
-    if (!user) return;
+    const { progress } = get();
 
     try {
-      const result = await apiClient.settleProgress(
-        user.uid, 
-        level, 
-        1 // +1 change item for completing level
-      );
+      const newProgress = {
+        currentLevel: level + 1,
+        bestLevel: Math.max(progress.bestLevel, level),
+        changeItems: progress.changeItems + 1, // +1 change item for completing level
+      };
       
-      if (result.progress) {
-        set({ progress: result.progress });
-      }
+      await StorageUtils.setProgress(newProgress);
+      set({ progress: newProgress });
       
-      return result;
+      return { updated: true, progress: newProgress };
     } catch (error) {
       console.warn('Failed to complete level:', error);
       throw error;
@@ -109,17 +119,23 @@ export const useGameStore = create((set, get) => ({
   },
 
   completeChallenge: async (iq) => {
-    const { user } = get();
-    if (!user) return;
+    const { challenge } = get();
 
     try {
-      const result = await apiClient.settleChallenge(user.uid, iq);
+      const iqTitle = getIQTitle(iq);
+      const newBestIQ = Math.max(challenge.bestIQ, iq);
+      const newBestTitle = newBestIQ > challenge.bestIQ ? iqTitle : challenge.bestIQTitle;
       
-      if (result.challenge) {
-        set({ challenge: result.challenge });
-      }
+      const newChallenge = {
+        bestIQ: newBestIQ,
+        bestIQTitle: newBestTitle,
+        lastIQ: iq,
+      };
       
-      return result;
+      await StorageUtils.setChallenge(newChallenge);
+      set({ challenge: newChallenge });
+      
+      return { updated: true, challenge: newChallenge };
     } catch (error) {
       console.warn('Failed to complete challenge:', error);
       throw error;
@@ -127,20 +143,19 @@ export const useGameStore = create((set, get) => ({
   },
 
   useChangeItem: async () => {
-    const { user } = get();
-    if (!user) return false;
+    const { progress } = get();
+    if (progress.changeItems <= 0) return false;
 
     try {
-      const result = await apiClient.useItem(user.uid, 'change');
+      const newProgress = {
+        ...progress,
+        changeItems: progress.changeItems - 1,
+      };
       
-      if (result.changeItems !== undefined) {
-        set((state) => ({
-          progress: { ...state.progress, changeItems: result.changeItems }
-        }));
-        return true;
-      }
+      await StorageUtils.setProgress(newProgress);
+      set({ progress: newProgress });
       
-      return false;
+      return true;
     } catch (error) {
       console.warn('Failed to use change item:', error);
       return false;

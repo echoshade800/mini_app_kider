@@ -14,6 +14,7 @@ import { useGameStore } from '../store/gameStore';
 import { TopBar } from '../components/TopBar';
 import { GameBoard } from '../components/GameBoard';
 import { SettingsModal } from '../components/SettingsModal';
+import { getLevelName as getLocalLevelName } from '../utils/LocalLevels';
 
 export default function LevelScreen() {
   const { id } = useLocalSearchParams();
@@ -105,15 +106,14 @@ export default function LevelScreen() {
 
   const getLevelName = () => {
     if (level <= 200) {
-      return `Level ${level}`;
+      return getLocalLevelName(level);
     }
     return `Level 200+${level - 200}`;
   };
 
   const getStageName = () => {
     if (level <= 200) {
-      // This should come from API, but showing placeholder for now
-      return 'Adventure Stage';
+      return 'School Life Journey';
     }
     return `The Last Horizon+${level - 200}`;
   };

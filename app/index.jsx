@@ -49,15 +49,16 @@ export default function HomeScreen() {
 
   const getLevelName = (level) => {
     if (level <= 200) {
-      return `Level ${level}`;
+      // Import getLevelName from utils
+      const { getLevelName: getLocalLevelName } = require('./utils/LocalLevels');
+      return getLocalLevelName(level);
     }
     return `Level 200+${level - 200}`;
   };
 
   const getStageName = (level) => {
     if (level <= 200) {
-      // This would typically come from the API, but for display we'll show a placeholder
-      return level > 0 ? 'Adventure Awaits' : 'Start Your Journey';
+      return level > 0 ? 'School Life Journey' : 'Start Your Journey';
     }
     return `The Last Horizon+${level - 200}`;
   };

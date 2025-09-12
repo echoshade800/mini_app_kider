@@ -12,7 +12,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "expo": "~52.0.11",
+    "expo": "~54.0.0",
     "expo-router": "~4.0.17",
     "expo-status-bar": "~2.1.0",
     "react": "18.3.1",
@@ -30,4 +30,4 @@
     "@babel/core": "^7.25.2"
   },
   "private": true
-}
+    "node": ">=20.19.4"

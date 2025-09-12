@@ -1,189 +1,136 @@
+/**
+ * Game Store - Global state management using Zustand
+ * Purpose: Manage user data, game progress, settings, and app state
+ * Features: Local storage persistence, progress tracking, settings management
+ */
+
 import { create } from 'zustand';
-import { StorageUtils } from '../utils/StorageUtils';
-import { generateBoard, generateChallengeBoard } from '../utils/LocalBoardGenerator';
-import { getLevelName } from '../utils/LocalLevels';
-
-const IQ_TITLES = {
-  0: 'Newborn Dreamer',
-  40: 'Tiny Adventurer',
-  55: 'Learning Hatchling',
-  65: 'Little Explorer',
-  70: 'Slow but Steady',
-  85: 'Hardworking Student',
-  100: 'Everyday Scholar',
-  115: 'Rising Star',
-  130: 'Puzzle Master',
-  145: 'Cosmic Genius',
-};
-
-function getIQTitle(iq) {
-  const thresholds = Object.keys(IQ_TITLES)
-    .map(Number)
-    .sort((a, b) => b - a);
-  
-  for (let threshold of thresholds) {
-    if (iq >= threshold) {
-      return IQ_TITLES[threshold];
-    }
-  }
-  
-  return IQ_TITLES[0];
-}
+import StorageUtils from '../utils/StorageUtils';
 
 export const useGameStore = create((set, get) => ({
-  // User state
-  user: null,
-  progress: { currentLevel: 1, bestLevel: 0, changeItems: 0 },
-  challenge: { bestIQ: 0, bestIQTitle: '', lastIQ: 0 },
-  settings: { soundEnabled: true, hapticsEnabled: true },
-
-  // Game state
-  currentBoard: null,
+  // State
+  userData: null,
+  gameData: null,
+  settings: null,
   isLoading: false,
   error: null,
 
   // Actions
-  initializeUser: async () => {
+  initializeApp: async () => {
     set({ isLoading: true });
     try {
+      // Load user data
       let userData = await StorageUtils.getUserData();
-      const settings = await StorageUtils.getSettings();
-      const progress = await StorageUtils.getProgress();
-      const challenge = await StorageUtils.getChallenge();
-      
       if (!userData) {
-        // Create new user
+        // Create default user
         userData = {
-          uid: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          id: Date.now(),
+          uid: `user_${Date.now()}`,
+          userName: 'Player',
           email: null,
-          nickname: null,
-          meta: {},
+          avatar: null,
+          vipLevel: 0,
+          passId: null,
+          availableAmount: 0,
+          country: null,
+          city: null,
+          createTime: Date.now(),
         };
-        await StorageUtils.setUserData(userData);
+        await StorageUtils.saveUserData(userData);
+      }
+
+      // Load game data
+      let gameData = await StorageUtils.getData();
+      if (!gameData) {
+        // Initialize default game data
+        gameData = {
+          maxLevel: 0,
+          maxScore: 0,
+          changeItems: 0,
+          lastPlayedLevel: 1,
+        };
+        await StorageUtils.setData(gameData);
+      }
+
+      // Load settings
+      let settings = await StorageUtils.getSettings();
+      if (!settings) {
+        settings = {
+          soundEnabled: true,
+          hapticsEnabled: true,
+        };
+        await StorageUtils.setSettings(settings);
       }
 
       set({ 
-        user: userData, 
+        userData, 
+        gameData, 
         settings, 
-        progress, 
-        challenge, 
         isLoading: false 
       });
     } catch (error) {
-      set({ error: error.message, isLoading: false });
+      console.error('Failed to initialize app:', error);
+      set({ 
+        error: error.message, 
+        isLoading: false 
+      });
     }
   },
 
-  loadBoard: async (level) => {
-    set({ isLoading: true });
+  updateGameData: async (newData) => {
     try {
-      const board = generateBoard(level);
-      set({ currentBoard: board, isLoading: false });
-      return board;
+      const success = await StorageUtils.setData(newData);
+      if (success) {
+        const currentData = get().gameData || {};
+        const updatedData = { ...currentData, ...newData };
+        set({ gameData: updatedData });
+      }
     } catch (error) {
-      set({ error: error.message, isLoading: false });
-      throw error;
-    }
-  },
-
-  loadChallengeBoard: async () => {
-    set({ isLoading: true });
-    try {
-      const board = generateChallengeBoard();
-      set({ currentBoard: board, isLoading: false });
-      return board;
-    } catch (error) {
-      set({ error: error.message, isLoading: false });
-      throw error;
-    }
-  },
-
-  completeLevel: async (level, usedChange = false) => {
-    const { progress } = get();
-
-    try {
-      const newProgress = {
-        currentLevel: level + 1,
-        bestLevel: Math.max(progress.bestLevel, level),
-        changeItems: progress.changeItems + 1, // +1 change item for completing level
-      };
-      
-      await StorageUtils.setProgress(newProgress);
-      set({ progress: newProgress });
-      
-      return { updated: true, progress: newProgress };
-    } catch (error) {
-      console.warn('Failed to complete level:', error);
-      throw error;
-    }
-  },
-
-  completeChallenge: async (iq) => {
-    const { challenge } = get();
-
-    try {
-      const iqTitle = getIQTitle(iq);
-      const newBestIQ = Math.max(challenge.bestIQ, iq);
-      const newBestTitle = newBestIQ > challenge.bestIQ ? iqTitle : challenge.bestIQTitle;
-      
-      const newChallenge = {
-        bestIQ: newBestIQ,
-        bestIQTitle: newBestTitle,
-        lastIQ: iq,
-      };
-      
-      await StorageUtils.setChallenge(newChallenge);
-      set({ challenge: newChallenge });
-      
-      return { updated: true, challenge: newChallenge };
-    } catch (error) {
-      console.warn('Failed to complete challenge:', error);
-      throw error;
-    }
-  },
-
-  useChangeItem: async () => {
-    const { progress } = get();
-    if (progress.changeItems <= 0) return false;
-
-    try {
-      const newProgress = {
-        ...progress,
-        changeItems: progress.changeItems - 1,
-      };
-      
-      await StorageUtils.setProgress(newProgress);
-      set({ progress: newProgress });
-      
-      return true;
-    } catch (error) {
-      console.warn('Failed to use change item:', error);
-      return false;
+      console.error('Failed to update game data:', error);
+      set({ error: error.message });
     }
   },
 
   updateSettings: async (newSettings) => {
     try {
-      await StorageUtils.setSettings(newSettings);
-      set({ settings: newSettings });
+      const success = await StorageUtils.setSettings(newSettings);
+      if (success) {
+        const currentSettings = get().settings || {};
+        const updatedSettings = { ...currentSettings, ...newSettings };
+        set({ settings: updatedSettings });
+      }
     } catch (error) {
-      console.warn('Failed to update settings:', error);
+      console.error('Failed to update settings:', error);
+      set({ error: error.message });
     }
   },
 
-  resetData: async () => {
+  resetDemoData: async () => {
     try {
-      await StorageUtils.clearAll();
-      set({
-        user: null,
-        progress: { currentLevel: 1, bestLevel: 0, changeItems: 0 },
-        challenge: { bestIQ: 0, bestIQTitle: '', lastIQ: 0 },
-        settings: { soundEnabled: true, hapticsEnabled: true },
-        currentBoard: null,
-        error: null,
+      // Reset game data
+      const resetGameData = {
+        maxLevel: 0,
+        maxScore: 0,
+        changeItems: 0,
+        lastPlayedLevel: 1,
+      };
+      
+      // Reset settings
+      const resetSettings = {
+        soundEnabled: true,
+        hapticsEnabled: true,
+      };
+
+      await StorageUtils.setData(resetGameData);
+      await StorageUtils.setSettings(resetSettings);
+      
+      set({ 
+        gameData: resetGameData, 
+        settings: resetSettings 
       });
     } catch (error) {
-      console.warn('Failed to reset data:', error);
+      console.error('Failed to reset demo data:', error);
+      set({ error: error.message });
     }
   },
 

@@ -2,6 +2,11 @@
   "expo": {
     "slug": "daycare-number-elimination",
     "scheme": "daycare-number-elimination",
-    "sdkVersion": "54.0.0"
+    "sdkVersion": "54.0.0",
+    "packagerOpts": {
+      "host": "0.0.0.0",
+      "port": 8081
+    },
+    "platforms": ["ios", "android", "web"]
   }
 }

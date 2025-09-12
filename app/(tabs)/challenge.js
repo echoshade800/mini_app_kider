@@ -238,6 +238,7 @@ export default function ChallengeScreen() {
       </View>
 
       {/* Timer */}
+      <View style={styles.timerContainer}>
         <Text style={styles.timerText}>
           {formatTime(timeLeft)}
         </Text>

@@ -25,23 +25,12 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [staticBoard, setStaticBoard] = useState(null);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
-  // 对于挑战模式，保持棋盘静态直到消除
-  React.useEffect(() => {
-    if (board?.isChallenge && !staticBoard) {
-      setStaticBoard(board);
-    } else if (!board?.isChallenge) {
-      setStaticBoard(null);
-    }
-  }, [board]);
-
-  const currentBoard = staticBoard || board;
   if (!board || !board.tiles) {
     return (
       <View style={styles.loadingContainer}>
@@ -50,7 +39,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     );
   }
 
-  const { width, height, tiles } = currentBoard;
+  const { width, height, tiles } = board;
   
   // 计算实际有数字的区域边界
   const getActualBoardBounds = () => {
@@ -99,8 +88,8 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     Animated.spring(tileScale, {
       toValue: scale,
       useNativeDriver: true,
-      tension: 300,
-      friction: 10,
+      tension: 200,
+      friction: 8,
     }).start();
   };
 
@@ -129,13 +118,13 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
             endCol: startCol,
           });
           
-          // 立即缩放起始tile
-          scaleTile(startIndex, 1.2);
+          // 立即缩放起始tile，增强反应
+          scaleTile(startIndex, 1.3);
           setHoveredTiles(new Set([startIndex]));
           
           Animated.timing(selectionOpacity, {
-            toValue: 0.4,
-            duration: 100,
+            toValue: 0.5,
+            duration: 80,
             useNativeDriver: false,
           }).start();
         }
@@ -169,7 +158,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       // 缩放新悬停的tiles
       selectedTiles.forEach(tile => {
         if (!hoveredTiles.has(tile.index)) {
-          scaleTile(tile.index, 1.2);
+          scaleTile(tile.index, 1.3);
         }
       });
       
@@ -237,7 +226,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       }
       
-      // 计算爆炸中心位置
+      // 计算选择框中心位置作为爆炸点
       const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
@@ -246,19 +235,19 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
-      // 爆炸动画
+      // 增强爆炸动画效果
       explosionScale.setValue(0);
       explosionOpacity.setValue(1);
       
       Animated.parallel([
         Animated.timing(explosionScale, {
-          toValue: 2,
-          duration: 600,
+          toValue: 2.5,
+          duration: 800,
           useNativeDriver: true,
         }),
         Animated.timing(explosionOpacity, {
           toValue: 0,
-          duration: 600,
+          duration: 800,
           useNativeDriver: true,
         }),
       ]).start(() => {
@@ -268,13 +257,13 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       // 选择框动画
       Animated.sequence([
         Animated.timing(selectionOpacity, {
-          toValue: 0.8,
-          duration: 200,
+          toValue: 0.9,
+          duration: 150,
           useNativeDriver: false,
         }),
         Animated.timing(selectionOpacity, {
           toValue: 0,
-          duration: 400,
+          duration: 300,
           useNativeDriver: false,
         }),
       ]).start(() => {
@@ -290,13 +279,13 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       
       Animated.sequence([
         Animated.timing(selectionOpacity, {
-          toValue: 0.5,
+          toValue: 0.6,
           duration: 150,
           useNativeDriver: false,
         }),
         Animated.timing(selectionOpacity, {
           toValue: 0,
-          duration: 400,
+          duration: 300,
           useNativeDriver: false,
         }),
       ]).start(() => {
@@ -357,21 +346,21 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       isSuccess: sum === 10,
       style: {
         position: 'absolute',
-        left: left - 20,
-        top: top - 20,
-        width: 40,
-        height: 40,
+        left: left - 25,
+        top: top - 25,
+        width: 50,
+        height: 50,
         backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',
-        borderRadius: 20,
+        borderRadius: 25,
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 2,
+        borderWidth: 3,
         borderColor: sum === 10 ? '#FFA000' : '#1976D2',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
+        elevation: 8,
       }
     };
   };
@@ -462,8 +451,8 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
             style={[
               styles.explosion,
               {
-                left: explosionAnimation.x - 30,
-                top: explosionAnimation.y - 30,
+                left: explosionAnimation.x - 40,
+                top: explosionAnimation.y - 40,
                 transform: [{ scale: explosionScale }],
                 opacity: explosionOpacity,
               }
@@ -472,16 +461,16 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
             <View style={styles.explosionCenter}>
               <Text style={styles.explosionText}>10</Text>
             </View>
-            {/* 爆炸粒子效果 */}
-            {[...Array(8)].map((_, i) => (
+            {/* 增强爆炸粒子效果 */}
+            {[...Array(12)].map((_, i) => (
               <View
                 key={i}
                 style={[
                   styles.explosionParticle,
                   {
                     transform: [
-                      { rotate: `${i * 45}deg` },
-                      { translateY: -20 }
+                      { rotate: `${i * 30}deg` },
+                      { translateY: -25 }
                     ]
                   }
                 ]}
@@ -545,42 +534,42 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   sumText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   explosion: {
     position: 'absolute',
-    width: 60,
-    height: 60,
+    width: 80,
+    height: 80,
     alignItems: 'center',
     justifyContent: 'center',
   },
   explosionCenter: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     backgroundColor: '#FFD700',
-    borderRadius: 20,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: '#FFA000',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 10,
   },
   explosionText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
   },
   explosionParticle: {
     position: 'absolute',
-    width: 6,
-    height: 6,
+    width: 8,
+    height: 8,
     backgroundColor: '#FF6B35',
-    borderRadius: 3,
+    borderRadius: 4,
   },
 });

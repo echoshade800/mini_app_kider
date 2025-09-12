@@ -103,8 +103,6 @@ export default function ChallengeScreen() {
     // Use high difficulty (level 130+)
     const challengeLevel = 130 + Math.floor(Math.random() * 20);
     const board = generateBoard(challengeLevel);
-    // 确保挑战模式中棋盘保持稳定，不会自动变化
-    board.isChallenge = true;
     setCurrentBoard(board);
   };
 

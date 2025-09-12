@@ -215,26 +215,6 @@ export default function LevelDetailsScreen() {
         </View>
       </View>
 
-      {/* Level Info */}
-      <View style={styles.infoContainer}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Group:</Text>
-          <Text style={styles.infoValue}>{levelInfo.group}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Board Size:</Text>
-          <Text style={styles.infoValue}>{levelInfo.boardSize}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Difficulty:</Text>
-          <Text style={[
-            styles.infoValue, 
-            { color: levelInfo.difficulty.color }
-          ]}>
-            {levelInfo.difficulty.label}
-          </Text>
-        </View>
-      </View>
 
       {/* Game Board */}
       <GameBoard 
@@ -383,33 +363,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 4,
     fontWeight: '600',
-  },
-  infoContainer: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginVertical: 12,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
   },
   bottomActionsContainer: {
     position: 'absolute',

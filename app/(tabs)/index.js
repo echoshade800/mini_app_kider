@@ -5,14 +5,15 @@
  */
 
 import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  SafeAreaView,
   Modal
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';

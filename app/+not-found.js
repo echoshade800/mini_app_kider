@@ -4,7 +4,7 @@
  */
 
 import { Link, Stack } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function NotFoundScreen() {

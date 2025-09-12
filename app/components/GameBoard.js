@@ -19,6 +19,7 @@ import { useGameStore } from '../store/gameStore';
 const { width: screenWidth } = Dimensions.get('window');
 const BOARD_PADDING = 20;
 const BOARD_WIDTH = screenWidth - BOARD_PADDING * 2;
+const TILE_MARGIN = 8;
 
 export function GameBoard({ board, onTilesClear, disabled = false }) {
   const { settings } = useGameStore();
@@ -100,35 +101,43 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     onPanResponderGrant: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
       
-      const relativeX = locationX;
-      const relativeY = locationY;
+      // 转换为相对于棋盘的坐标
+      const relativeX = locationX - TILE_MARGIN;
+      const relativeY = locationY - TILE_MARGIN;
       
       const startCol = Math.floor(relativeX / cellSize) + bounds.minCol;
       const startRow = Math.floor(relativeY / cellSize) + bounds.minRow;
       
-      // 检查是否在有效范围内且有数字
-      if (startCol >= bounds.minCol && startCol <= bounds.maxCol && 
-          startRow >= bounds.minRow && startRow <= bounds.maxRow) {
-        const startIndex = startRow * width + startCol;
-        if (tiles[startIndex] > 0) {
-          setSelection({
-            startRow,
-            startCol,
-            endRow: startRow,
-            endCol: startCol,
-          });
-          
-          // 立即缩放起始tile
-          scaleTile(startIndex, 1.2);
-          setHoveredTiles(new Set([startIndex]));
-          
-          Animated.timing(selectionOpacity, {
-            toValue: 0.4,
-            duration: 100,
-            useNativeDriver: false,
-          }).start();
-        }
-      }
+      // 允许从任意位置开始画框，不限制必须点击在数字方块上
+      setSelection({
+        startRow: Math.max(bounds.minRow, Math.min(bounds.maxRow, startRow)),
+        startCol: Math.max(bounds.minCol, Math.min(bounds.maxCol, startCol)),
+        endRow: Math.max(bounds.minRow, Math.min(bounds.maxRow, startRow)),
+        endCol: Math.max(bounds.minCol, Math.min(bounds.maxCol, startCol)),
+      });
+      
+      // 获取初始选择的方块并缩放
+      const initialSelection = {
+        startRow: Math.max(bounds.minRow, Math.min(bounds.maxRow, startRow)),
+        startCol: Math.max(bounds.minCol, Math.min(bounds.maxCol, startCol)),
+        endRow: Math.max(bounds.minRow, Math.min(bounds.maxRow, startRow)),
+        endCol: Math.max(bounds.minCol, Math.min(bounds.maxCol, startCol)),
+      };
+      
+      const initialTiles = getSelectedTilesForSelection(initialSelection);
+      const initialHoveredSet = new Set(initialTiles.map(tile => tile.index));
+      
+      initialTiles.forEach(tile => {
+        scaleTile(tile.index, 1.3);
+      });
+      
+      setHoveredTiles(initialHoveredSet);
+      
+      Animated.timing(selectionOpacity, {
+        toValue: 0.5,
+        duration: 80,
+        useNativeDriver: false,
+      }).start();
     },
 
     onPanResponderMove: (evt) => {
@@ -500,7 +509,7 @@ const styles = StyleSheet.create({
   },
   board: {
     backgroundColor: '#2E7D32',
-    padding: TILE_MARGIN,
+    padding: 8,
     borderRadius: 12,
     borderWidth: 4,
     borderColor: '#8D6E63',

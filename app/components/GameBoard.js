@@ -19,7 +19,7 @@ import { useGameStore } from '../store/gameStore';
 const { width: screenWidth } = Dimensions.get('window');
 const BOARD_PADDING = 20;
 const BOARD_WIDTH = screenWidth - BOARD_PADDING * 2;
-const TILE_MARGIN = 8;
+const TILE_MARGIN = 4;
 
 export function GameBoard({ board, onTilesClear, disabled = false }) {
   const { settings } = useGameStore();
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 6,
-    margin: 1,
+    margin: 2,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

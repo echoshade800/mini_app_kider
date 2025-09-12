@@ -36,36 +36,43 @@ export function generateBoard(level) {
   const { width, height } = getBoardDimensions(level);
   const size = width * height;
   
-  // 初始化棋盘，所有位置都填充数字，形成完整长方形
+  // 初始化棋盘
   const tiles = new Array(size);
   
-  // Determine difficulty parameters
-  let targetPairRatio = 0.8; // 更多的目标配对，降低难度
-  let adjacentRatio = 0.8;   // 更多相邻配对，更容易找到
+  // 确定难度参数和所需道具数量
+  let targetPairRatio = 0.9; // 保证大部分都是可消除的配对
+  let adjacentRatio = 0.7;   // 相邻配对比例
+  let guaranteedSolvable = true; // 保证可解
   
   if (level > 20) {
-    targetPairRatio = 0.6; // Medium levels
-    adjacentRatio = 0.6;
+    targetPairRatio = 0.8; // 中等难度
+    adjacentRatio = 0.5;
   }
   
   if (level > 60) {
-    targetPairRatio = 0.4; // Hard levels  
-    adjacentRatio = 0.4;
+    targetPairRatio = 0.7; // 困难关卡
+    adjacentRatio = 0.3;
   }
   
-  // Generate target pairs that sum to 10
+  // 生成目标配对（和为10）
   const targetPairs = [
     [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
   ];
   
-  // 计算需要放置的配对数量
-  const pairCount = Math.floor(size / 2);
+  // 计算填充的格子数量（不是全部填满）
+  let fillRatio = 0.7; // 70%的格子有数字
+  if (level > 40) fillRatio = 0.8; // 80%
+  if (level > 90) fillRatio = 0.85; // 85%
   
-  // Place target pairs
+  const filledCount = Math.floor(size * fillRatio);
+  const pairCount = Math.floor(filledCount * targetPairRatio / 2);
+  const singleCount = filledCount - (pairCount * 2);
+  
+  // 放置目标配对
   const placedPositions = new Set();
   let pairsPlaced = 0;
   
-  // Place adjacent pairs (easy to find)
+  // 放置相邻配对（容易找到）
   const adjacentPairsToPlace = Math.floor(pairCount * adjacentRatio);
   
   for (let i = 0; i < adjacentPairsToPlace && pairsPlaced < pairCount; i++) {
@@ -106,7 +113,7 @@ export function generateBoard(level) {
     }
   }
   
-  // Place remaining pairs randomly
+  // 放置剩余配对
   while (pairsPlaced < pairCount) {
     const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
     const [val1, val2] = pairType;
@@ -133,21 +140,46 @@ export function generateBoard(level) {
     }
   }
   
-  // 填充剩余位置，确保形成完整长方形，没有空位
+  // 填充单个数字（需要道具交换才能消除）
+  const availablePositions = [];
   for (let i = 0; i < size; i++) {
     if (!placedPositions.has(i)) {
-      // 根据难度添加数字
-      if (level <= 10) {
-        // 简单关卡：主要使用容易配对的数字，避免5
-        const easyNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
-        tiles[i] = easyNumbers[Math.floor(random() * easyNumbers.length)];
-      } else if (level <= 40) {
-        // 中等关卡：少量5作为干扰
-        tiles[i] = random() < 0.1 ? 5 : Math.floor(random() * 9) + 1;
+      availablePositions.push(i);
+    }
+  }
+  
+  // 计算需要的道具数量
+  let requiredSwaps = 0;
+  if (level > 30) requiredSwaps = 1;
+  if (level > 60) requiredSwaps = 2;
+  if (level > 100) requiredSwaps = 3;
+  if (level > 150) requiredSwaps = Math.floor(level / 50);
+  
+  // 放置需要交换的单个数字
+  for (let i = 0; i < Math.min(singleCount, availablePositions.length); i++) {
+    const pos = availablePositions[i];
+    
+    if (i < requiredSwaps * 2) {
+      // 放置需要交换的数字对
+      const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
+      tiles[pos] = pairType[i % 2];
+    } else {
+      // 放置其他数字
+      if (level <= 20) {
+        // 简单关卡：避免太多干扰
+        const safeNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
+        tiles[pos] = safeNumbers[Math.floor(random() * safeNumbers.length)];
       } else {
-        // 困难关卡：更多5和其他干扰数字
-        tiles[i] = random() < 0.3 ? 5 : Math.floor(random() * 9) + 1;
+        // 高级关卡：添加一些干扰数字
+        tiles[pos] = Math.floor(random() * 9) + 1;
       }
+    }
+  }
+  
+  // 其余位置保持为0（空白）
+  for (let i = 0; i < size; i++) {
+    if (!placedPositions.has(i) && !availablePositions.slice(0, singleCount).includes(i)) {
+      tiles[i] = 0;
     }
   }
   
@@ -156,5 +188,6 @@ export function generateBoard(level) {
     width,
     height,
     tiles,
+    requiredSwaps, // 返回建议的道具使用次数
   };
 }

@@ -127,7 +127,7 @@ export default function LevelDetailsScreen() {
   };
 
   const handleBackToLevels = () => {
-    router.back();
+    router.push('/(tabs)/levels');
   };
 
   const getLevelInfo = () => {
@@ -197,7 +197,7 @@ export default function LevelDetailsScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={handleBackToLevels}
+          onPress={() => router.push('/')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -207,6 +207,11 @@ export default function LevelDetailsScreen() {
           <Text style={styles.stageName} numberOfLines={1}>
             {levelInfo.stageName}
           </Text>
+          {currentBoard?.requiredSwaps > 0 && (
+            <Text style={styles.swapHint}>
+              建议使用 {currentBoard.requiredSwaps} 次交换
+            </Text>
+          )}
         </View>
         
         <View style={styles.changeCounter}>
@@ -349,6 +354,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 2,
+  },
+  swapHint: {
+    fontSize: 12,
+    color: '#FF9800',
+    marginTop: 2,
+    fontWeight: '500',
   },
   changeCounter: {
     flexDirection: 'row',

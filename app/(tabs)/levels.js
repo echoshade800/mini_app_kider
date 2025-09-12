@@ -126,6 +126,17 @@ export default function LevelsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 返回按钮 */}
+      <View style={styles.topBar}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.push('/')}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.placeholder} />
+      </View>
+      
       <View style={styles.header}>
         <Text style={styles.title}>Level Mode</Text>
         <Text style={styles.subtitle}>Choose your stage</Text>
@@ -161,12 +172,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f0f8ff',
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'white',
+  },
+  backButton: {
+    padding: 8,
+  },
+  placeholder: {
+    flex: 1,
+  },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   title: {
     fontSize: 24,

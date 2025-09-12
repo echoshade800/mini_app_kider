@@ -119,7 +119,7 @@ export default function ChallengeScreen() {
   const handleBackToHome = () => {
     setShowResults(false);
     setGameState('ready');
-    router.push('/');
+    router.replace('/');
   };
 
   const getIQTitle = (iq) => {
@@ -183,6 +183,34 @@ export default function ChallengeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 游戏中的返回按钮 */}
+      <View style={styles.gameTopBar}>
+        <TouchableOpacity 
+          style={styles.gameBackButton}
+          onPress={() => {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            setGameState('ready');
+            router.push('/');
+          }}
+        >
+          <Ionicons name="arrow-back" size={20} color="#666" />
+        </TouchableOpacity>
+      </View>
+      
+      {/* 返回按钮 */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.push('/')}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Challenge Mode</Text>
+        <View style={styles.placeholder} />
+      </View>
+      
       {/* Game Header */}
       <View style={styles.gameHeader}>
         {/* Bomb and Fuse */}
@@ -210,7 +238,6 @@ export default function ChallengeScreen() {
       </View>
 
       {/* Timer */}
-      <View style={styles.timerContainer}>
         <Text style={styles.timerText}>
           {formatTime(timeLeft)}
         </Text>
@@ -264,17 +291,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f8ff',
   },
   readyContainer: {
-    flex: 1,
+    flex: 1, 
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 30,
   },
-  readyTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '600',
     color: '#333',
-    marginTop: 20,
-    marginBottom: 12,
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 40,
+  },
+  gameTopBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'white',
+  },
+  gameBackButton: {
+    padding: 8,
   },
   readySubtitle: {
     fontSize: 18,

@@ -35,7 +35,7 @@ export default function LevelDetailsScreen() {
   }, [level]);
 
   const loadLevel = () => {
-    const board = generateBoard(level);
+    const board = generateBoard(level, true); // 强制生成新的棋盘
     setCurrentBoard(board);
     setClearedTiles(new Set());
   };
@@ -111,14 +111,7 @@ export default function LevelDetailsScreen() {
   };
 
   const handleRestart = () => {
-    Alert.alert(
-      'Restart Level',
-      'Are you sure you want to restart this level?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Restart', onPress: loadLevel }
-      ]
-    );
+    loadLevel(); // 直接重新生成棋盘，不需要确认
   };
 
   const handleNextLevel = () => {
@@ -248,7 +241,7 @@ export default function LevelDetailsScreen() {
           onPress={handleRestart}
         >
           <Ionicons name="refresh" size={20} color="white" />
-          <Text style={styles.bottomActionButtonText}>Restart</Text>
+          <Text style={styles.bottomActionButtonText}>Reset</Text>
         </TouchableOpacity>
       </View>
 

@@ -229,7 +229,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
 
-    if (sum === 10) {
+    if (sum === 10 && selectedTiles.length > 0) {
       // Success - 创建爆炸效果
       if (settings?.hapticsEnabled !== false) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -280,7 +280,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
         onTilesClear(tilePositions);
       });
 
-    } else {
+    } else if (selectedTiles.length > 0) {
       // Failure - 蓝色反馈
       if (settings?.hapticsEnabled !== false) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -300,6 +300,9 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       ]).start(() => {
         setSelection(null);
       });
+    } else {
+      // No tiles selected
+      setSelection(null);
     }
   };
 

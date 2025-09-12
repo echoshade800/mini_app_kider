@@ -102,7 +102,7 @@ export default function ChallengeScreen() {
   const generateNewBoard = () => {
     // Use high difficulty (level 130+)
     const challengeLevel = 130 + Math.floor(Math.random() * 20);
-    const board = generateBoard(challengeLevel);
+    const board = generateBoard(challengeLevel, true); // 强制生成新的棋盘
     setCurrentBoard(board);
   };
 
@@ -112,8 +112,8 @@ export default function ChallengeScreen() {
     // Award 3 IQ points per clear
     setCurrentIQ(prev => prev + 3);
     
-    // 挑战模式中不自动生成新棋盘，保持原样
-    // generateNewBoard();
+    // 挑战模式中立即生成新棋盘
+    generateNewBoard();
   };
 
   const handleBackToHome = () => {

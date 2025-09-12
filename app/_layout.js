@@ -8,23 +8,36 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { View, Text } from 'react-native';
 import { useGameStore } from './store/gameStore';
 
 export default function RootLayout() {
-  const { initializeApp } = useGameStore();
+  const { initializeApp, isLoading, error } = useGameStore();
 
   useEffect(() => {
-    // 确保应用启动时初始化
-    const initialize = async () => {
-      try {
-        await initializeApp();
-      } catch (error) {
-        console.error('App initialization failed:', error);
-      }
-    };
-    
-    initialize();
+    initializeApp();
   }, []);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f8ff' }}>
+        <Text style={{ fontSize: 18, color: '#666' }}>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f8ff', padding: 20 }}>
+        <Text style={{ fontSize: 18, color: '#f44336', textAlign: 'center', marginBottom: 20 }}>
+          启动失败: {error}
+        </Text>
+        <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+          请重新启动应用
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

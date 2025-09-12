@@ -4,14 +4,14 @@
  * Extend: Add daily challenges, achievements, or social features
  */
 
-import React, { useState } from 'react';
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  Modal
+  Modal,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -31,28 +31,41 @@ export default function HomeScreen() {
   
   const [showSettings, setShowSettings] = useState(false);
 
-  // 确保应用初始化
-  useEffect(() => {
-    // 如果没有用户数据，创建默认用户
-    if (!userData && !isLoading) {
-      // 触发重新初始化
-      const { initializeApp } = useGameStore.getState();
-      initializeApp();
-    }
-  }, [userData, isLoading]);
   const handleStartLevel = () => {
-    // 直接进入关卡选择页面
-    router.push('/(tabs)/levels');
+    try {
+      router.push('/(tabs)/levels');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('导航错误', '无法进入关卡选择页面，请重试');
+    }
   };
 
   const handleStartChallenge = () => {
-    // 直接进入挑战模式
-    router.push('/(tabs)/challenge');
+    try {
+      router.push('/(tabs)/challenge');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('导航错误', '无法进入挑战模式，请重试');
+    }
   };
 
   const handleResetData = () => {
-    resetDemoData();
-    setShowSettings(false);
+    Alert.alert(
+      '重置数据',
+      '这将删除所有进度和设置，确定要重置吗？',
+      [
+        { text: '取消', style: 'cancel' },
+        { 
+          text: '确定', 
+          style: 'destructive',
+          onPress: () => {
+            resetDemoData();
+            setShowSettings(false);
+            Alert.alert('成功', '数据已重置');
+          }
+        }
+      ]
+    );
   };
 
   const getBestLevelDisplay = () => {

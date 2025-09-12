@@ -72,11 +72,16 @@ export default function ChallengeScreen() {
   };
 
   const startChallenge = () => {
-    setGameState('playing');
-    setCurrentIQ(0);
-    setTimeLeft(CHALLENGE_DURATION);
-    fuseAnimation.setValue(1);
-    generateNewBoard();
+    try {
+      setGameState('playing');
+      setCurrentIQ(0);
+      setTimeLeft(CHALLENGE_DURATION);
+      fuseAnimation.setValue(1);
+      generateNewBoard();
+    } catch (error) {
+      console.error('Failed to start challenge:', error);
+      Alert.alert('启动失败', '无法启动挑战模式，请重试');
+    }
   };
 
   const endChallenge = () => {

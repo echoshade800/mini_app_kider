@@ -44,9 +44,9 @@ export const useGameStore = create((set, get) => ({
       if (!gameData) {
         // Initialize default game data
         gameData = {
-          maxLevel: 1, // 从第1关开始
+          maxLevel: 1,
           maxScore: 0,
-          changeItems: 3, // 给一些初始道具
+          changeItems: 3,
           lastPlayedLevel: 1,
         };
         await StorageUtils.setData(gameData);
@@ -66,7 +66,8 @@ export const useGameStore = create((set, get) => ({
         userData, 
         gameData, 
         settings, 
-        isLoading: false 
+        isLoading: false,
+        error: null
       });
     } catch (error) {
       console.error('Failed to initialize app:', error);

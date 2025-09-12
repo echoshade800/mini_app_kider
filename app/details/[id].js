@@ -127,7 +127,7 @@ export default function LevelDetailsScreen() {
   };
 
   const handleBackToLevels = () => {
-    router.push('/(tabs)/levels');
+    router.replace('/');
   };
 
   const getLevelInfo = () => {

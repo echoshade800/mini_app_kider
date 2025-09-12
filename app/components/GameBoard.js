@@ -202,7 +202,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     
     const selectedTiles = [];
     
-    // 计算框内所有有数字的方块
+    // 计算框内所有有数字的方块（支持线条选择）
     for (let row = minRow; row <= maxRow; row++) {
       for (let col = minCol; col <= maxCol; col++) {
         if (row >= 0 && row < height && col >= 0 && col < width) {

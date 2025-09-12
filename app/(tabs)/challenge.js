@@ -192,7 +192,7 @@ export default function ChallengeScreen() {
               clearInterval(timerRef.current);
             }
             setGameState('ready');
-            router.push('/');
+            router.replace('/');
           }}
         >
           <Ionicons name="arrow-back" size={20} color="#666" />
@@ -203,7 +203,7 @@ export default function ChallengeScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.push('/')}
+          onPress={() => router.replace('/')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>

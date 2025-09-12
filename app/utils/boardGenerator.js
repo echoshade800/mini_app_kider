@@ -31,27 +31,48 @@ function getBoardDimensions(level) {
 }
 
 export function generateBoard(level) {
-  const seed = `level_${level}`;
+  // 使用时间戳确保每次都不同，但保持相同难度
+  const timestamp = Date.now();
+  const seed = `level_${level}_${timestamp}`;
   const random = seededRandom(seed);
   const { width, height } = getBoardDimensions(level);
   const size = width * height;
   
-  // 初始化棋盘
+  // 初始化棋盘，填满所有位置
   const tiles = new Array(size);
   
   // 确定难度参数和所需道具数量
-  let targetPairRatio = 0.9; // 保证大部分都是可消除的配对
-  let adjacentRatio = 0.7;   // 相邻配对比例
-  let guaranteedSolvable = true; // 保证可解
+  let targetPairRatio = 1.0; // 前5关100%可消除配对
+  let adjacentRatio = 0.8;   // 相邻配对比例
+  let requiredSwaps = 0;     // 前5关不需要道具
   
-  if (level > 20) {
-    targetPairRatio = 0.8; // 中等难度
-    adjacentRatio = 0.5;
+  if (level > 5) {
+    targetPairRatio = 0.9; // 90%可消除配对
+    adjacentRatio = 0.6;
+  }
+  
+  if (level > 30) {
+    targetPairRatio = 0.8; // 80%可消除配对
+    adjacentRatio = 0.4;
+    requiredSwaps = 1;
   }
   
   if (level > 60) {
-    targetPairRatio = 0.7; // 困难关卡
+    targetPairRatio = 0.7; // 70%可消除配对
     adjacentRatio = 0.3;
+    requiredSwaps = 2;
+  }
+  
+  if (level > 100) {
+    targetPairRatio = 0.6; // 60%可消除配对
+    adjacentRatio = 0.2;
+    requiredSwaps = 3;
+  }
+  
+  if (level > 150) {
+    targetPairRatio = 0.5; // 50%可消除配对
+    adjacentRatio = 0.1;
+    requiredSwaps = Math.floor(level / 50);
   }
   
   // 生成目标配对（和为10）
@@ -59,12 +80,9 @@ export function generateBoard(level) {
     [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
   ];
   
-  // 计算填充的格子数量（不是全部填满）
-  let fillRatio = 1.0; // 100%的格子都有数字，填满整个棋盘
-  
-  const filledCount = Math.floor(size * fillRatio);
-  const pairCount = Math.floor(filledCount * targetPairRatio / 2);
-  const singleCount = filledCount - (pairCount * 2);
+  // 计算配对数量
+  const pairCount = Math.floor(size * targetPairRatio / 2);
+  const singleCount = size - (pairCount * 2);
   
   // 放置目标配对
   const placedPositions = new Set();
@@ -84,7 +102,7 @@ export function generateBoard(level) {
       const row1 = Math.floor(pos1 / width);
       const col1 = pos1 % width;
       
-      // Try adjacent positions
+      // Try adjacent positions (including single line selections)
       const adjacentOffsets = [
         [0, 1], [1, 0], [0, -1], [-1, 0] // right, down, left, up
       ];
@@ -138,47 +156,15 @@ export function generateBoard(level) {
     }
   }
   
-  // 填充单个数字（需要道具交换才能消除）
-  const availablePositions = [];
-  for (let i = 0; i < size; i++) {
-    if (!placedPositions.has(i)) {
-      availablePositions.push(i);
-    }
-  }
-  
-  // 计算需要的道具数量
-  let requiredSwaps = 0;
-  if (level > 30) requiredSwaps = 1;
-  if (level > 60) requiredSwaps = 2;
-  if (level > 100) requiredSwaps = 3;
-  if (level > 150) requiredSwaps = Math.floor(level / 50);
-  
-  // 放置需要交换的单个数字
-  for (let i = 0; i < Math.min(singleCount, availablePositions.length); i++) {
-    const pos = availablePositions[i];
-    
-    if (i < requiredSwaps * 2) {
-      // 放置需要交换的数字对
-      const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-      tiles[pos] = pairType[i % 2];
-    } else {
-      // 放置其他数字
-      if (level <= 20) {
-        // 简单关卡：避免太多干扰
-        const safeNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
-        tiles[pos] = safeNumbers[Math.floor(random() * safeNumbers.length)];
-      } else {
-        // 高级关卡：添加一些干扰数字
-        tiles[pos] = Math.floor(random() * 9) + 1;
-      }
-    }
-  }
-  
   // 填满剩余所有位置
   for (let i = 0; i < size; i++) {
-    if (tiles[i] === undefined || tiles[i] === 0) {
+    if (!placedPositions.has(i)) {
       // 填充随机数字，确保棋盘完全填满
-      if (level <= 20) {
+      if (level <= 5) {
+        // 前5关：只使用容易配对的数字
+        const easyNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
+        tiles[i] = easyNumbers[Math.floor(random() * easyNumbers.length)];
+      } else if (level <= 20) {
         // 简单关卡：避免太多干扰
         const safeNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
         tiles[i] = safeNumbers[Math.floor(random() * safeNumbers.length)];

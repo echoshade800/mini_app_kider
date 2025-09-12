@@ -1,7 +1,7 @@
 /**
  * Challenge Mode Screen - 60-second timed gameplay
  * Purpose: Fast-paced IQ challenge with scoring and leaderboard
- * Features: Timer, bomb animation, IQ scoring, settlement dialog
+ * Extend: Add power-ups, multipliers, or different time modes
  */
 
 import React, { useState, useEffect, useRef } from 'react';

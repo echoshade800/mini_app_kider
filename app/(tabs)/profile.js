@@ -1,7 +1,7 @@
 /**
  * Profile & Settings Screen - User preferences and app settings
  * Purpose: Manage user profile, app settings, and data
- * Features: Settings toggles, theme options, data export/reset
+ * Extend: Add themes, export/import, achievements, or social features
  */
 
 import React, { useState } from 'react';

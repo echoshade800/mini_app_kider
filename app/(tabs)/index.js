@@ -1,7 +1,7 @@
 /**
  * Home Screen - Main dashboard with overview and quick actions
  * Purpose: Show user progress, provide quick access to game modes
- * Features: Best level/challenge badges, start buttons, settings access
+ * Extend: Add daily challenges, achievements, or social features
  */
 
 import React, { useState } from 'react';

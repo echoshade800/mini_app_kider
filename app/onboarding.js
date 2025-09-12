@@ -1,7 +1,7 @@
 /**
  * Onboarding Screen - Welcome and tutorial for new users
  * Purpose: Introduce game mechanics with guided demo
- * Features: Value proposition, interactive tutorial, game rules
+ * Extend: Add more tutorial steps, video demos, or interactive guides
  */
 
 import React, { useState } from 'react';

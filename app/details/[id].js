@@ -1,7 +1,7 @@
 /**
  * Level Details Screen - Individual level gameplay and metadata
  * Purpose: Show level info and provide gameplay interface
- * Features: Level metadata, game board, progress tracking, actions
+ * Extend: Add level statistics, hints, or social sharing features
  */
 
 import React, { useState, useEffect } from 'react';

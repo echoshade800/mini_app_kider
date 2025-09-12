@@ -1,6 +1,7 @@
 /**
- * Root layout component that sets up navigation structure and global providers.
- * Handles the main navigation stack and initializes the app.
+ * Root Layout - App initialization and navigation setup
+ * Purpose: Bootstrap the app, initialize storage, and set up navigation structure
+ * Extend: Add global providers, error boundaries, or app-wide configurations
  */
 
 import { useEffect } from 'react';

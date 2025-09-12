@@ -1,7 +1,7 @@
 /**
  * Level Mode Screen - Browse and select levels to play
  * Purpose: Show level list with filtering, navigate to level details
- * Features: Stage group filters, level cards, progress indicators
+ * Extend: Add search, favorites, difficulty indicators, or completion stats
  */
 
 import React, { useState } from 'react';

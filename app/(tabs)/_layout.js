@@ -1,6 +1,7 @@
 /**
- * Tab navigation layout with four main sections:
- * Home, Level Mode, Challenge Mode, and Profile
+ * Tab Layout - Bottom tab navigation structure
+ * Purpose: Define main app sections with tab navigation
+ * Extend: Add new tabs, customize tab bar appearance, or add tab-specific logic
  */
 
 import { Tabs } from 'expo-router';

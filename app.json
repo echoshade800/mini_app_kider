@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Daycare Number Elimination",
+    "sdkVersion": "53.0.0",
     "slug": "daycare-number-elimination",
     "scheme": "daycare-number-elimination",
     "sdkVersion": "54.0.0"

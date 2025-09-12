@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   },
   board: {
     backgroundColor: '#2E7D32',
-    padding: 8,
+    padding: TILE_MARGIN,
     borderRadius: 12,
     borderWidth: 4,
     borderColor: '#8D6E63',

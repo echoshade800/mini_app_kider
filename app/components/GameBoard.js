@@ -1,7 +1,7 @@
 /**
- * GameBoard Component - Interactive puzzle board with touch selection
- * Purpose: Render game tiles and handle rectangle selection gestures
- * Features: Touch gestures, visual feedback, sum calculation, tile clearing
+ * GameBoard Component - Enhanced interactive puzzle board with advanced visual effects
+ * Purpose: Render game tiles with enhanced touch interactions and explosion animations
+ * Features: Flexible touch gestures, tile scaling, explosion effects, improved responsiveness
  */
 
 import React, { useState, useRef } from 'react';
@@ -23,10 +23,25 @@ const BOARD_WIDTH = screenWidth - BOARD_PADDING * 2;
 export function GameBoard({ board, onTilesClear, disabled = false }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
-  const [animatingTiles, setAnimatingTiles] = useState(new Set());
-  const boardRef = useRef();
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [staticBoard, setStaticBoard] = useState(null);
+  
   const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef({}).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
 
+  // 对于挑战模式，保持棋盘静态直到消除
+  React.useEffect(() => {
+    if (board?.isChallenge && !staticBoard) {
+      setStaticBoard(board);
+    } else if (!board?.isChallenge) {
+      setStaticBoard(null);
+    }
+  }, [board]);
+
+  const currentBoard = staticBoard || board;
   if (!board || !board.tiles) {
     return (
       <View style={styles.loadingContainer}>
@@ -35,7 +50,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     );
   }
 
-  const { width, height, tiles } = board;
+  const { width, height, tiles } = currentBoard;
   
   // 计算实际有数字的区域边界
   const getActualBoardBounds = () => {
@@ -64,11 +79,30 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
   const cellSize = Math.min(
     (BOARD_WIDTH - 40) / actualWidth, 
     (BOARD_WIDTH - 40) / actualHeight,
-    50
+    60
   );
   
   const actualBoardWidth = actualWidth * cellSize;
   const actualBoardHeight = actualHeight * cellSize;
+
+  // 初始化tile动画
+  const initTileScale = (index) => {
+    if (!tileScales[index]) {
+      tileScales[index] = new Animated.Value(1);
+    }
+    return tileScales[index];
+  };
+
+  // 缩放tile
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.spring(tileScale, {
+      toValue: scale,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start();
+  };
 
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => !disabled,
@@ -77,7 +111,6 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     onPanResponderGrant: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
       
-      // 转换为相对于实际内容区域的坐标
       const relativeX = locationX;
       const relativeY = locationY;
       
@@ -96,8 +129,12 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
             endCol: startCol,
           });
           
+          // 立即缩放起始tile
+          scaleTile(startIndex, 1.2);
+          setHoveredTiles(new Set([startIndex]));
+          
           Animated.timing(selectionOpacity, {
-            toValue: 0.3,
+            toValue: 0.4,
             duration: 100,
             useNativeDriver: false,
           }).start();
@@ -123,72 +160,46 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
         endRow,
         endCol,
       }));
+
+      // 更新悬停的tiles
+      const newSelection = { ...selection, endRow, endCol };
+      const selectedTiles = getSelectedTilesForSelection(newSelection);
+      const newHoveredSet = new Set(selectedTiles.map(tile => tile.index));
+      
+      // 缩放新悬停的tiles
+      selectedTiles.forEach(tile => {
+        if (!hoveredTiles.has(tile.index)) {
+          scaleTile(tile.index, 1.2);
+        }
+      });
+      
+      // 恢复不再悬停的tiles
+      hoveredTiles.forEach(index => {
+        if (!newHoveredSet.has(index)) {
+          scaleTile(index, 1);
+        }
+      });
+      
+      setHoveredTiles(newHoveredSet);
     },
 
     onPanResponderRelease: () => {
       if (selection && !disabled) {
         handleSelectionComplete();
       }
+      
+      // 恢复所有tile的缩放
+      hoveredTiles.forEach(index => {
+        scaleTile(index, 1);
+      });
+      setHoveredTiles(new Set());
     },
   });
 
-  const handleSelectionComplete = async () => {
-    if (!selection) return;
-
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
-
-    if (sum === 10) {
-      // Success - green highlight and clear
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-      
-      // Animate success
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.6,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-        onTilesClear(tilePositions);
-      });
-
-    } else {
-      // Failure - blue highlight and vibrate
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.4,
-          duration: 150,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-      });
-    }
-  };
-
-  const getSelectedTiles = () => {
-    if (!selection) return [];
+  const getSelectedTilesForSelection = (sel) => {
+    if (!sel) return [];
     
-    const { startRow, startCol, endRow, endCol } = selection;
+    const { startRow, startCol, endRow, endCol } = sel;
     const minRow = Math.min(startRow, endRow);
     const maxRow = Math.max(startRow, endRow);
     const minCol = Math.min(startCol, endCol);
@@ -209,6 +220,91 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     return selectedTiles;
   };
 
+  const getSelectedTiles = () => {
+    return getSelectedTilesForSelection(selection);
+  };
+
+  const handleSelectionComplete = async () => {
+    if (!selection) return;
+
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+
+    if (sum === 10) {
+      // Success - 创建爆炸效果
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+      
+      // 计算爆炸中心位置
+      const { startRow, startCol, endRow, endCol } = selection;
+      const centerRow = (startRow + endRow) / 2;
+      const centerCol = (startCol + endCol) / 2;
+      const explosionX = (centerCol - bounds.minCol) * cellSize + cellSize / 2;
+      const explosionY = (centerRow - bounds.minRow) * cellSize + cellSize / 2;
+      
+      setExplosionAnimation({ x: explosionX, y: explosionY });
+      
+      // 爆炸动画
+      explosionScale.setValue(0);
+      explosionOpacity.setValue(1);
+      
+      Animated.parallel([
+        Animated.timing(explosionScale, {
+          toValue: 2,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(explosionOpacity, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setExplosionAnimation(null);
+      });
+
+      // 选择框动画
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+        onTilesClear(tilePositions);
+      });
+
+    } else {
+      // Failure - 蓝色反馈
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.5,
+          duration: 150,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+      });
+    }
+  };
+
   const getSelectionStyle = () => {
     if (!selection) return null;
     
@@ -222,7 +318,6 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    // 转换为相对于实际内容区域的坐标
     const left = (minCol - bounds.minCol) * cellSize;
     const top = (minRow - bounds.minRow) * cellSize;
     const width = (maxCol - minCol + 1) * cellSize;
@@ -236,8 +331,8 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       height,
       backgroundColor: isSuccess ? '#4CAF50' : '#2196F3',
       opacity: selectionOpacity,
-      borderRadius: 4,
-      borderWidth: 2,
+      borderRadius: 8,
+      borderWidth: 3,
       borderColor: isSuccess ? '#45a049' : '#1976D2',
     };
   };
@@ -251,32 +346,38 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     if (selectedTiles.length === 0) return null;
     
     const { startRow, startCol, endRow, endCol } = selection;
-    const maxRow = Math.max(startRow, endRow);
-    const maxCol = Math.max(startCol, endCol);
+    const centerRow = (startRow + endRow) / 2;
+    const centerCol = (startCol + endCol) / 2;
     
-    // 转换为相对于实际内容区域的坐标
-    const left = (maxCol - bounds.minCol) * cellSize + cellSize - 20;
-    const top = (maxRow - bounds.minRow) * cellSize + cellSize - 20;
+    const left = (centerCol - bounds.minCol) * cellSize;
+    const top = (centerRow - bounds.minRow) * cellSize;
     
     return {
       sum,
+      isSuccess: sum === 10,
       style: {
         position: 'absolute',
-        left,
-        top,
-        backgroundColor: sum === 10 ? '#4CAF50' : '#2196F3',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 10,
-        minWidth: 20,
+        left: left - 20,
+        top: top - 20,
+        width: 40,
+        height: 40,
+        backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',
+        borderRadius: 20,
         alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: sum === 10 ? '#FFA000' : '#1976D2',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5,
       }
     };
   };
 
   const renderTile = (value, row, col) => {
     const index = row * width + col;
-    const isAnimating = animatingTiles.has(index);
     
     // 只渲染实际内容区域内的方块
     if (row < bounds.minRow || row > bounds.maxRow || 
@@ -284,14 +385,15 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       return null;
     }
 
-    // 计算相对于实际内容区域的位置
     const relativeRow = row - bounds.minRow;
     const relativeCol = col - bounds.minCol;
     const left = relativeCol * cellSize;
     const top = relativeRow * cellSize;
 
+    const tileScale = initTileScale(index);
+
     return (
-      <View 
+      <Animated.View 
         key={`${row}-${col}`}
         style={[
           styles.tile,
@@ -301,8 +403,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
             top,
             width: cellSize, 
             height: cellSize,
-            opacity: isAnimating ? 0.5 : 1,
-            transform: isAnimating ? [{ scale: 1.1 }] : [{ scale: 1 }]
+            transform: [{ scale: tileScale }]
           }
         ]}
       >
@@ -312,7 +413,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
         ]}>
           {value}
         </Text>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -329,7 +430,6 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
             height: actualBoardHeight,
           }
         ]}
-        ref={boardRef}
         {...panResponder.panHandlers}
       >
         {/* Render tiles */}
@@ -344,11 +444,50 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
           <Animated.View style={selectionStyle} />
         )}
         
-        {/* Selection sum */}
+        {/* Selection sum display */}
         {selectionSum && (
           <View style={selectionSum.style}>
-            <Text style={styles.sumText}>{selectionSum.sum}</Text>
+            <Text style={[
+              styles.sumText,
+              { color: selectionSum.isSuccess ? '#333' : 'white' }
+            ]}>
+              {selectionSum.sum}
+            </Text>
           </View>
+        )}
+
+        {/* Explosion effect */}
+        {explosionAnimation && (
+          <Animated.View
+            style={[
+              styles.explosion,
+              {
+                left: explosionAnimation.x - 30,
+                top: explosionAnimation.y - 30,
+                transform: [{ scale: explosionScale }],
+                opacity: explosionOpacity,
+              }
+            ]}
+          >
+            <View style={styles.explosionCenter}>
+              <Text style={styles.explosionText}>10</Text>
+            </View>
+            {/* 爆炸粒子效果 */}
+            {[...Array(8)].map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.explosionParticle,
+                  {
+                    transform: [
+                      { rotate: `${i * 45}deg` },
+                      { translateY: -20 }
+                    ]
+                  }
+                ]}
+              />
+            ))}
+          </Animated.View>
         )}
       </View>
     </View>
@@ -359,6 +498,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     paddingVertical: 20,
+    flex: 1,
   },
   loadingContainer: {
     height: 200,
@@ -372,42 +512,75 @@ const styles = StyleSheet.create({
   board: {
     backgroundColor: '#2E7D32',
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 4,
     borderColor: '#8D6E63',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
     position: 'relative',
   },
   tile: {
     backgroundColor: '#FFF9C4',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 4,
+    borderRadius: 6,
     margin: 1,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
   },
   tileText: {
     fontWeight: 'bold',
     color: '#333',
   },
   sumText: {
-    color: 'white',
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  explosion: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  explosionCenter: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#FFD700',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#FFA000',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  explosionText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  explosionParticle: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    backgroundColor: '#FF6B35',
+    borderRadius: 3,
   },
 });

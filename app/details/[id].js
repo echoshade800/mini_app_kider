@@ -242,28 +242,28 @@ export default function LevelDetailsScreen() {
         onTilesClear={handleTilesClear}
       />
 
-      {/* Actions */}
-      <View style={styles.actionsContainer}>
+      {/* Bottom Actions - Fixed at bottom */}
+      <View style={styles.bottomActionsContainer}>
         <TouchableOpacity 
           style={[
-            styles.actionButton,
+            styles.bottomActionButton,
             changeItems <= 0 && styles.actionButtonDisabled
           ]}
           onPress={handleUseChange}
           disabled={changeItems <= 0}
         >
           <Ionicons name="swap-horizontal" size={20} color="white" />
-          <Text style={styles.actionButtonText}>
+          <Text style={styles.bottomActionButtonText}>
             Use Change ({changeItems})
           </Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[styles.actionButton, styles.restartButton]}
+          style={[styles.bottomActionButton, styles.restartButton]}
           onPress={handleRestart}
         >
           <Ionicons name="refresh" size={20} color="white" />
-          <Text style={styles.actionButtonText}>Restart</Text>
+          <Text style={styles.bottomActionButtonText}>Restart</Text>
         </TouchableOpacity>
       </View>
 
@@ -411,25 +411,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  actionsContainer: {
+  bottomActionsContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingBottom: 32,
+    backgroundColor: 'rgba(240, 248, 255, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
     gap: 12,
   },
-  actionButton: {
+  bottomActionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FF9800',
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
   },
   actionButtonDisabled: {
     backgroundColor: '#ccc',
@@ -437,9 +445,9 @@ const styles = StyleSheet.create({
   restartButton: {
     backgroundColor: '#2196F3',
   },
-  actionButtonText: {
+  bottomActionButtonText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
   },

@@ -36,24 +36,21 @@ export function generateBoard(level) {
   const { width, height } = getBoardDimensions(level);
   const size = width * height;
   
-  // 初始化棋盘，确保形成完整长方形
+  // 初始化棋盘，所有位置都填充数字，形成完整长方形
   const tiles = new Array(size);
   
   // Determine difficulty parameters
   let targetPairRatio = 0.8; // 更多的目标配对，降低难度
   let adjacentRatio = 0.8;   // 更多相邻配对，更容易找到
-  let fillRatio = 1.0;       // 填满整个长方形
   
   if (level > 20) {
     targetPairRatio = 0.6; // Medium levels
     adjacentRatio = 0.6;
-    fillRatio = 1.0;
   }
   
   if (level > 60) {
     targetPairRatio = 0.4; // Hard levels  
     adjacentRatio = 0.4;
-    fillRatio = 1.0;
   }
   
   // Generate target pairs that sum to 10
@@ -61,9 +58,8 @@ export function generateBoard(level) {
     [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
   ];
   
-  // 填满整个长方形
-  const filledCount = size;
-  const pairCount = Math.floor(filledCount / 2);
+  // 计算需要放置的配对数量
+  const pairCount = Math.floor(size / 2);
   
   // Place target pairs
   const placedPositions = new Set();
@@ -137,12 +133,12 @@ export function generateBoard(level) {
     }
   }
   
-  // 填充剩余位置，确保没有空位
+  // 填充剩余位置，确保形成完整长方形，没有空位
   for (let i = 0; i < size; i++) {
     if (!placedPositions.has(i)) {
-      // 根据难度添加干扰数字
+      // 根据难度添加数字
       if (level <= 10) {
-        // 简单关卡：主要使用容易配对的数字
+        // 简单关卡：主要使用容易配对的数字，避免5
         const easyNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
         tiles[i] = easyNumbers[Math.floor(random() * easyNumbers.length)];
       } else if (level <= 40) {

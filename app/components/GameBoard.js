@@ -36,14 +36,8 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
   }
 
   const { width, height, tiles } = board;
-  const cellSize = Math.min(
-    (BOARD_WIDTH - 40) / width, 
-    40
-  );
-  const boardPixelWidth = width * cellSize;
-  const boardPixelHeight = height * cellSize;
-
-  // 计算实际有数字的区域来调整棋盘大小
+  
+  // 计算实际有数字的区域边界
   const getActualBoardBounds = () => {
     let minRow = height, maxRow = -1, minCol = width, maxCol = -1;
     
@@ -65,6 +59,14 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
   const bounds = getActualBoardBounds();
   const actualWidth = bounds.maxCol - bounds.minCol + 1;
   const actualHeight = bounds.maxRow - bounds.minRow + 1;
+  
+  // 根据实际内容计算格子大小
+  const cellSize = Math.min(
+    (BOARD_WIDTH - 40) / actualWidth, 
+    (BOARD_WIDTH - 40) / actualHeight,
+    50
+  );
+  
   const actualBoardWidth = actualWidth * cellSize;
   const actualBoardHeight = actualHeight * cellSize;
 
@@ -74,26 +76,32 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
 
     onPanResponderGrant: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
-      const startCol = Math.floor(locationX / cellSize);
-      const startRow = Math.floor(locationY / cellSize);
       
-      if (startCol >= 0 && startCol < width && startRow >= 0 && startRow < height) {
-        // 确保起始位置有数字方块
+      // 转换为相对于实际内容区域的坐标
+      const relativeX = locationX;
+      const relativeY = locationY;
+      
+      const startCol = Math.floor(relativeX / cellSize) + bounds.minCol;
+      const startRow = Math.floor(relativeY / cellSize) + bounds.minRow;
+      
+      // 检查是否在有效范围内且有数字
+      if (startCol >= bounds.minCol && startCol <= bounds.maxCol && 
+          startRow >= bounds.minRow && startRow <= bounds.maxRow) {
         const startIndex = startRow * width + startCol;
-        if (tiles[startIndex] === 0) return; // 如果起始位置是空的，不开始选择
-        
-        setSelection({
-          startRow,
-          startCol,
-          endRow: startRow,
-          endCol: startCol,
-        });
-        
-        Animated.timing(selectionOpacity, {
-          toValue: 0.3,
-          duration: 100,
-          useNativeDriver: false,
-        }).start();
+        if (tiles[startIndex] > 0) {
+          setSelection({
+            startRow,
+            startCol,
+            endRow: startRow,
+            endCol: startCol,
+          });
+          
+          Animated.timing(selectionOpacity, {
+            toValue: 0.3,
+            duration: 100,
+            useNativeDriver: false,
+          }).start();
+        }
       }
     },
 
@@ -101,8 +109,14 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       if (!selection) return;
       
       const { locationX, locationY } = evt.nativeEvent;
-      const endCol = Math.max(0, Math.min(width - 1, Math.floor(locationX / cellSize)));
-      const endRow = Math.max(0, Math.min(height - 1, Math.floor(locationY / cellSize)));
+      
+      const relativeX = locationX;
+      const relativeY = relativeY;
+      
+      const endCol = Math.max(bounds.minCol, Math.min(bounds.maxCol, 
+        Math.floor(relativeX / cellSize) + bounds.minCol));
+      const endRow = Math.max(bounds.minRow, Math.min(bounds.maxRow, 
+        Math.floor(relativeY / cellSize) + bounds.minRow));
       
       setSelection(prev => ({
         ...prev,
@@ -208,12 +222,18 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
+    // 转换为相对于实际内容区域的坐标
+    const left = (minCol - bounds.minCol) * cellSize;
+    const top = (minRow - bounds.minRow) * cellSize;
+    const width = (maxCol - minCol + 1) * cellSize;
+    const height = (maxRow - minRow + 1) * cellSize;
+    
     return {
       position: 'absolute',
-      left: minCol * cellSize,
-      top: minRow * cellSize,
-      width: (maxCol - minCol + 1) * cellSize,
-      height: (maxRow - minRow + 1) * cellSize,
+      left,
+      top,
+      width,
+      height,
       backgroundColor: isSuccess ? '#4CAF50' : '#2196F3',
       opacity: selectionOpacity,
       borderRadius: 4,
@@ -234,12 +254,16 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     const maxRow = Math.max(startRow, endRow);
     const maxCol = Math.max(startCol, endCol);
     
+    // 转换为相对于实际内容区域的坐标
+    const left = (maxCol - bounds.minCol) * cellSize + cellSize - 20;
+    const top = (maxRow - bounds.minRow) * cellSize + cellSize - 20;
+    
     return {
       sum,
       style: {
         position: 'absolute',
-        left: maxCol * cellSize + cellSize - 20,
-        top: maxRow * cellSize + cellSize - 20,
+        left,
+        top,
         backgroundColor: sum === 10 ? '#4CAF50' : '#2196F3',
         paddingHorizontal: 6,
         paddingVertical: 2,
@@ -254,25 +278,27 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
     const index = row * width + col;
     const isAnimating = animatingTiles.has(index);
     
-    if (value === 0) {
-      return (
-        <View 
-          key={`${row}-${col}`}
-          style={[
-            styles.cell,
-            { width: cellSize, height: cellSize }
-          ]} 
-        />
-      );
+    // 只渲染实际内容区域内的方块
+    if (row < bounds.minRow || row > bounds.maxRow || 
+        col < bounds.minCol || col > bounds.maxCol || value === 0) {
+      return null;
     }
+
+    // 计算相对于实际内容区域的位置
+    const relativeRow = row - bounds.minRow;
+    const relativeCol = col - bounds.minCol;
+    const left = relativeCol * cellSize;
+    const top = relativeRow * cellSize;
 
     return (
       <View 
         key={`${row}-${col}`}
         style={[
-          styles.cell,
           styles.tile,
           { 
+            position: 'absolute',
+            left,
+            top,
             width: cellSize, 
             height: cellSize,
             opacity: isAnimating ? 0.5 : 1,
@@ -299,8 +325,8 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
         style={[
           styles.board,
           {
-            width: boardPixelWidth,
-            height: boardPixelHeight,
+            width: actualBoardWidth,
+            height: actualBoardHeight,
           }
         ]}
         ref={boardRef}
@@ -344,8 +370,6 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   board: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     backgroundColor: '#2E7D32',
     padding: 8,
     borderRadius: 8,
@@ -359,15 +383,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-  },
-  cell: {
-    margin: 1,
-    borderRadius: 4,
+    position: 'relative',
   },
   tile: {
     backgroundColor: '#FFF9C4',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 4,
+    margin: 1,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

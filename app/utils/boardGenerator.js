@@ -18,15 +18,16 @@ function seededRandom(seed) {
 }
 
 function getBoardDimensions(level) {
-  if (level <= 10) return { width: 4, height: 4 };
-  if (level <= 20) return { width: 5, height: 5 };
-  if (level <= 40) return { width: 6, height: 6 };
-  if (level <= 60) return { width: 7, height: 7 };
-  if (level <= 90) return { width: 8, height: 8 };
-  if (level <= 120) return { width: 9, height: 9 };
-  if (level <= 150) return { width: 10, height: 10 };
-  if (level <= 180) return { width: 11, height: 11 };
-  return { width: 12, height: 11 }; // Cap at 132 cells
+  // 降低初期难度，从更小的棋盘开始
+  if (level <= 5) return { width: 3, height: 3 };   // 前5关用3x3
+  if (level <= 15) return { width: 4, height: 4 };  // 6-15关用4x4
+  if (level <= 30) return { width: 5, height: 4 };  // 16-30关用5x4长方形
+  if (level <= 50) return { width: 6, height: 5 };  // 31-50关用6x5长方形
+  if (level <= 80) return { width: 7, height: 6 };  // 51-80关用7x6长方形
+  if (level <= 120) return { width: 8, height: 7 }; // 81-120关用8x7长方形
+  if (level <= 160) return { width: 9, height: 8 }; // 121-160关用9x8长方形
+  if (level <= 200) return { width: 10, height: 9 }; // 161-200关用10x9长方形
+  return { width: 11, height: 10 }; // 200关后用11x10长方形
 }
 
 export function generateBoard(level) {
@@ -35,24 +36,24 @@ export function generateBoard(level) {
   const { width, height } = getBoardDimensions(level);
   const size = width * height;
   
-  // Initialize empty board
-  const tiles = new Array(size).fill(0);
+  // 初始化棋盘，确保形成完整长方形
+  const tiles = new Array(size);
   
   // Determine difficulty parameters
-  let targetPairRatio = 0.6; // Easy levels
-  let adjacentRatio = 0.6;
-  let fillRatio = 0.7;
+  let targetPairRatio = 0.8; // 更多的目标配对，降低难度
+  let adjacentRatio = 0.8;   // 更多相邻配对，更容易找到
+  let fillRatio = 1.0;       // 填满整个长方形
   
-  if (level > 40) {
-    targetPairRatio = 0.4; // Medium levels
-    adjacentRatio = 0.3;
-    fillRatio = 0.75;
+  if (level > 20) {
+    targetPairRatio = 0.6; // Medium levels
+    adjacentRatio = 0.6;
+    fillRatio = 1.0;
   }
   
-  if (level > 90) {
-    targetPairRatio = 0.25; // Hard levels  
-    adjacentRatio = 0.15;
-    fillRatio = 0.8;
+  if (level > 60) {
+    targetPairRatio = 0.4; // Hard levels  
+    adjacentRatio = 0.4;
+    fillRatio = 1.0;
   }
   
   // Generate target pairs that sum to 10
@@ -60,8 +61,8 @@ export function generateBoard(level) {
     [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
   ];
   
-  // Calculate number of filled tiles
-  const filledCount = Math.floor(size * fillRatio);
+  // 填满整个长方形
+  const filledCount = size;
   const pairCount = Math.floor(filledCount / 2);
   
   // Place target pairs
@@ -136,28 +137,21 @@ export function generateBoard(level) {
     }
   }
   
-  // Fill remaining spots with random numbers (add difficulty)
-  const remainingCount = filledCount - (pairsPlaced * 2);
-  const availablePositions = [];
+  // 填充剩余位置，确保没有空位
   for (let i = 0; i < size; i++) {
     if (!placedPositions.has(i)) {
-      availablePositions.push(i);
-    }
-  }
-  
-  for (let i = 0; i < Math.min(remainingCount, availablePositions.length); i++) {
-    const pos = availablePositions[i];
-    
-    // Add interference numbers based on difficulty
-    if (level > 90) {
-      // Hard levels: lots of 5s and other interference
-      tiles[pos] = random() < 0.4 ? 5 : Math.floor(random() * 9) + 1;
-    } else if (level > 40) {
-      // Medium levels: some interference  
-      tiles[pos] = random() < 0.2 ? 5 : Math.floor(random() * 9) + 1;
-    } else {
-      // Easy levels: minimal interference
-      tiles[pos] = Math.floor(random() * 9) + 1;
+      // 根据难度添加干扰数字
+      if (level <= 10) {
+        // 简单关卡：主要使用容易配对的数字
+        const easyNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
+        tiles[i] = easyNumbers[Math.floor(random() * easyNumbers.length)];
+      } else if (level <= 40) {
+        // 中等关卡：少量5作为干扰
+        tiles[i] = random() < 0.1 ? 5 : Math.floor(random() * 9) + 1;
+      } else {
+        // 困难关卡：更多5和其他干扰数字
+        tiles[i] = random() < 0.3 ? 5 : Math.floor(random() * 9) + 1;
+      }
     }
   }
   

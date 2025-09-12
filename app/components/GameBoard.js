@@ -43,6 +43,31 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
   const boardPixelWidth = width * cellSize;
   const boardPixelHeight = height * cellSize;
 
+  // 计算实际有数字的区域来调整棋盘大小
+  const getActualBoardBounds = () => {
+    let minRow = height, maxRow = -1, minCol = width, maxCol = -1;
+    
+    for (let row = 0; row < height; row++) {
+      for (let col = 0; col < width; col++) {
+        const index = row * width + col;
+        if (tiles[index] > 0) {
+          minRow = Math.min(minRow, row);
+          maxRow = Math.max(maxRow, row);
+          minCol = Math.min(minCol, col);
+          maxCol = Math.max(maxCol, col);
+        }
+      }
+    }
+    
+    return { minRow, maxRow, minCol, maxCol };
+  };
+  
+  const bounds = getActualBoardBounds();
+  const actualWidth = bounds.maxCol - bounds.minCol + 1;
+  const actualHeight = bounds.maxRow - bounds.minRow + 1;
+  const actualBoardWidth = actualWidth * cellSize;
+  const actualBoardHeight = actualHeight * cellSize;
+
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => !disabled,
     onMoveShouldSetPanResponder: () => !disabled,
@@ -53,6 +78,10 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       const startRow = Math.floor(locationY / cellSize);
       
       if (startCol >= 0 && startCol < width && startRow >= 0 && startRow < height) {
+        // 确保起始位置有数字方块
+        const startIndex = startRow * width + startCol;
+        if (tiles[startIndex] === 0) return; // 如果起始位置是空的，不开始选择
+        
         setSelection({
           startRow,
           startCol,

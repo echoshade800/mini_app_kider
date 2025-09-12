@@ -30,6 +30,7 @@
     "plugins": [
       "expo-router"
     ],
-    "scheme": "daycare-number-elimination"
+    "scheme": "daycare-number-elimination",
+    "sdkVersion": "53.0.0"
   }
 }

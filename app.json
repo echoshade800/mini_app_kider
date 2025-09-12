@@ -1,12 +1,40 @@
 {
   "expo": {
+    "name": "Daycare Number Elimination",
     "slug": "daycare-number-elimination",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f0f8ff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#f0f8ff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
+    },
     "scheme": "daycare-number-elimination",
-    "sdkVersion": "54.0.0",
     "packagerOpts": {
       "host": "0.0.0.0",
       "port": 8081
     },
-    "platforms": ["ios", "android", "web"]
+    "platforms": ["ios", "android", "web"],
+    "experiments": {
+      "typedRoutes": false
+    }
   }
 }

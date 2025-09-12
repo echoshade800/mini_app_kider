@@ -33,6 +33,12 @@ export default function ChallengeScreen() {
   const timerRef = useRef();
   const fuseAnimation = useRef(new Animated.Value(1)).current;
 
+  // 初始化时生成第一个棋盘
+  useEffect(() => {
+    if (gameState === 'ready' && !currentBoard) {
+      generateNewBoard();
+    }
+  }, [gameState]);
   useEffect(() => {
     if (gameState === 'playing') {
       startTimer();

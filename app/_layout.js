@@ -14,7 +14,16 @@ export default function RootLayout() {
   const { initializeApp } = useGameStore();
 
   useEffect(() => {
-    initializeApp();
+    // 确保应用启动时初始化
+    const initialize = async () => {
+      try {
+        await initializeApp();
+      } catch (error) {
+        console.error('App initialization failed:', error);
+      }
+    };
+    
+    initialize();
   }, []);
 
   return (

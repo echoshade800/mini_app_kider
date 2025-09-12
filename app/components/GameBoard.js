@@ -98,7 +98,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
 
     if (sum === 10) {
       // Success - green highlight and clear
-      if (settings?.hapticsEnabled) {
+      if (settings?.hapticsEnabled !== false) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
       
@@ -121,7 +121,7 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
 
     } else {
       // Failure - blue highlight and vibrate
-      if (settings?.hapticsEnabled) {
+      if (settings?.hapticsEnabled !== false) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
       

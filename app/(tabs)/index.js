@@ -30,20 +30,23 @@ export default function HomeScreen() {
   
   const [showSettings, setShowSettings] = useState(false);
 
-  const handleStartLevel = () => {
-    if (!userData) {
-      router.push('/onboarding');
-      return;
+  // 确保应用初始化
+  useEffect(() => {
+    // 如果没有用户数据，创建默认用户
+    if (!userData && !isLoading) {
+      // 触发重新初始化
+      const { initializeApp } = useGameStore.getState();
+      initializeApp();
     }
-    router.push('/levels');
+  }, [userData, isLoading]);
+  const handleStartLevel = () => {
+    // 直接进入关卡选择页面
+    router.push('/(tabs)/levels');
   };
 
   const handleStartChallenge = () => {
-    if (!userData) {
-      router.push('/onboarding');
-      return;
-    }
-    router.push('/challenge');
+    // 直接进入挑战模式
+    router.push('/(tabs)/challenge');
   };
 
   const handleResetData = () => {

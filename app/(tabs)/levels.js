@@ -38,7 +38,7 @@ export default function LevelsScreen() {
   const { gameData } = useGameStore();
   const [selectedFilter, setSelectedFilter] = useState('all');
   
-  const maxLevel = gameData?.maxLevel || 0;
+  const maxLevel = gameData?.maxLevel || 1; // 至少可以玩第1关
   const lastPlayedLevel = gameData?.lastPlayedLevel || 1;
 
   const getFilteredLevels = () => {
@@ -52,7 +52,7 @@ export default function LevelsScreen() {
         level: i,
         stageName: STAGE_NAMES[i] || `Level ${i}`,
         group: getStageGroup(i),
-        isUnlocked: i <= maxLevel + 1,
+        isUnlocked: i <= Math.max(maxLevel + 1, 1), // 至少第1关是解锁的
         isCompleted: i <= maxLevel,
         isLastPlayed: i === lastPlayedLevel,
       });

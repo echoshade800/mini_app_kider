@@ -44,9 +44,9 @@ export const useGameStore = create((set, get) => ({
       if (!gameData) {
         // Initialize default game data
         gameData = {
-          maxLevel: 0,
+          maxLevel: 1, // 从第1关开始
           maxScore: 0,
-          changeItems: 0,
+          changeItems: 3, // 给一些初始道具
           lastPlayedLevel: 1,
         };
         await StorageUtils.setData(gameData);

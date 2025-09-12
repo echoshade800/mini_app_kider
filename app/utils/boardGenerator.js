@@ -60,9 +60,7 @@ export function generateBoard(level) {
   ];
   
   // 计算填充的格子数量（不是全部填满）
-  let fillRatio = 0.7; // 70%的格子有数字
-  if (level > 40) fillRatio = 0.8; // 80%
-  if (level > 90) fillRatio = 0.85; // 85%
+  let fillRatio = 1.0; // 100%的格子都有数字，填满整个棋盘
   
   const filledCount = Math.floor(size * fillRatio);
   const pairCount = Math.floor(filledCount * targetPairRatio / 2);
@@ -176,10 +174,18 @@ export function generateBoard(level) {
     }
   }
   
-  // 其余位置保持为0（空白）
+  // 填满剩余所有位置
   for (let i = 0; i < size; i++) {
-    if (!placedPositions.has(i) && !availablePositions.slice(0, singleCount).includes(i)) {
-      tiles[i] = 0;
+    if (tiles[i] === undefined || tiles[i] === 0) {
+      // 填充随机数字，确保棋盘完全填满
+      if (level <= 20) {
+        // 简单关卡：避免太多干扰
+        const safeNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
+        tiles[i] = safeNumbers[Math.floor(random() * safeNumbers.length)];
+      } else {
+        // 高级关卡：添加一些干扰数字
+        tiles[i] = Math.floor(random() * 9) + 1;
+      }
     }
   }
   

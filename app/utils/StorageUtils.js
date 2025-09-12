@@ -1,9 +1,49 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// Use localStorage for web compatibility
+const storage = {
+  async getItem(key) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return localStorage.getItem(key);
+      }
+      return null;
+    } catch (e) {
+      console.error('Failed to get item from localStorage:', e);
+      return null;
+    }
+  },
+  async setItem(key, value) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(key, value);
+      }
+    } catch (e) {
+      console.error('Failed to set item to localStorage:', e);
+    }
+  },
+  async removeItem(key) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem(key);
+      }
+    } catch (e) {
+      console.error('Failed to remove item from localStorage:', e);
+    }
+  },
+  async clear() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.clear();
+      }
+    } catch (e) {
+      console.error('Failed to clear localStorage:', e);
+    }
+  }
+};
 
 export class StorageUtils {
   static async getUserData() {
     try {
-      const value = await AsyncStorage.getItem('userData');
+      const value = await storage.getItem('userData');
       return value ? JSON.parse(value) : null;
     } catch (e) {
       console.error('Failed to get user data:', e);
@@ -13,7 +53,7 @@ export class StorageUtils {
 
   static async setUserData(obj) {
     try {
-      await AsyncStorage.setItem('userData', JSON.stringify(obj || {}));
+      await storage.setItem('userData', JSON.stringify(obj || {}));
     } catch (e) {
       console.error('Failed to set user data:', e);
     }
@@ -21,7 +61,7 @@ export class StorageUtils {
 
   static async getSettings() {
     try {
-      const value = await AsyncStorage.getItem('settings');
+      const value = await storage.getItem('settings');
       return value ? JSON.parse(value) : {
         soundEnabled: true,
         hapticsEnabled: true,
@@ -37,7 +77,7 @@ export class StorageUtils {
 
   static async setSettings(settings) {
     try {
-      await AsyncStorage.setItem('settings', JSON.stringify(settings));
+      await storage.setItem('settings', JSON.stringify(settings));
     } catch (e) {
       console.error('Failed to set settings:', e);
     }
@@ -45,7 +85,7 @@ export class StorageUtils {
 
   static async getProgress() {
     try {
-      const value = await AsyncStorage.getItem('progress');
+      const value = await storage.getItem('progress');
       return value ? JSON.parse(value) : {
         currentLevel: 1,
         bestLevel: 0,
@@ -63,7 +103,7 @@ export class StorageUtils {
 
   static async setProgress(progress) {
     try {
-      await AsyncStorage.setItem('progress', JSON.stringify(progress));
+      await storage.setItem('progress', JSON.stringify(progress));
     } catch (e) {
       console.error('Failed to set progress:', e);
     }
@@ -71,7 +111,7 @@ export class StorageUtils {
 
   static async getChallenge() {
     try {
-      const value = await AsyncStorage.getItem('challenge');
+      const value = await storage.getItem('challenge');
       return value ? JSON.parse(value) : {
         bestIQ: 0,
         bestIQTitle: 'Newborn Dreamer',
@@ -89,14 +129,14 @@ export class StorageUtils {
 
   static async setChallenge(challenge) {
     try {
-      await AsyncStorage.setItem('challenge', JSON.stringify(challenge));
+      await storage.setItem('challenge', JSON.stringify(challenge));
     } catch (e) {
       console.error('Failed to set challenge:', e);
     }
   }
   static async clearAll() {
     try {
-      await AsyncStorage.clear();
+      await storage.clear();
     } catch (e) {
       console.error('Failed to clear storage:', e);
     }

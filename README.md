@@ -1,192 +1,122 @@
 # Daycare Number Elimination
 
-Clear tiles by drawing rectangles summing to 10 — climb 200+ school-life levels or sprint in a 60s IQ Challenge.
+A React Native (Expo) puzzle game where players draw rectangles to select tiles that sum to 10. Progress through 200+ educational stages or challenge yourself in a 60-second IQ sprint.
 
 ## Features
 
-### Game Modes
-- **Level Mode**: Progress through 200+ named levels from daycare to cosmic adventures
-- **Challenge Mode**: 60-second IQ sprint with scoring and titles
-
-### Core Gameplay
-- Draw rectangles on a grid to select tiles
-- Rectangles must sum to exactly 10 to clear
-- Use Change items to swap tiles when stuck
-- Beautiful classroom-themed design with wooden frame and green chalkboard
-
-### Progression System
-- Earn Change items by completing levels
-- Track best level and challenge IQ scores
-- Persistent progress saved locally and synced to backend
+- **Level Mode**: Progress through 200+ named stages from daycare to cosmic adventures
+- **Challenge Mode**: 60-second timed gameplay with IQ scoring
+- **Local Storage**: All data stored on device, no internet required
+- **Touch Gameplay**: Draw rectangles with your finger to select tiles
+- **Educational Theme**: Stages named after life milestones from daycare to beyond
 
 ## Installation
 
-### Prerequisites
-- Node.js 20+
-- MySQL database access
-- Expo CLI: `npm install -g @expo/cli`
-
-### Frontend Setup
-
 1. Install dependencies:
 ```bash
-expo install
+npx expo install
 ```
 
-2. Create environment file:
+2. Start the development server:
 ```bash
-cp .env.example .env
+npx expo start
 ```
 
-3. Update `.env` with your API base URL:
+3. Run on your preferred platform:
+- Press `i` for iOS simulator
+- Press `a` for Android emulator  
+- Press `w` for web browser
+- Scan QR code with Expo Go app on your device
+
+## Project Structure
+
 ```
-EXPO_PUBLIC_API_BASE_URL=http://localhost:8080
+app/
+├── (tabs)/           # Tab navigation screens
+│   ├── index.js      # Home dashboard
+│   ├── levels.js     # Level selection
+│   ├── challenge.js  # Challenge mode
+│   └── profile.js    # Settings & profile
+├── components/       # Reusable components
+├── store/           # Zustand state management
+├── utils/           # Utilities and helpers
+├── onboarding.js    # Welcome & tutorial
+├── details/[id].js  # Level detail screen
+├── about.js         # Help & information
+└── _layout.js       # Root navigation
 ```
 
-4. Start the Expo development server:
+## Game Rules
+
+1. **Draw Rectangles**: Drag your finger to select tiles in rectangular shapes
+2. **Sum to 10**: Selected tiles must sum to exactly 10 to clear
+3. **Visual Feedback**: Green = success (sum = 10), Blue = try again (sum ≠ 10)
+4. **Change Items**: Swap any two tiles (earned by completing levels)
+5. **Rectangle Only**: No L-shapes or irregular selections allowed
+
+## Development
+
+### Adding New Screens
+
+1. Create screen file in appropriate directory
+2. Add navigation route in `_layout.js` or tab layout
+3. Import and use shared components from `/components`
+4. Use `useGameStore()` for state management
+
+### Extending Game Logic
+
+- **Board Generation**: Modify `utils/boardGenerator.js`
+- **Difficulty Scaling**: Adjust parameters in board generator
+- **Stage Names**: Update `utils/stageNames.js`
+- **Storage**: Extend `utils/StorageUtils.js`
+
+### State Management
+
+Uses Zustand for lightweight state management:
+- `userData`: User profile and identity
+- `gameData`: Progress, scores, items
+- `settings`: App preferences
+
+## Build & Deploy
+
+### Development Build
 ```bash
-npm run dev
+npx expo build:ios
+npx expo build:android
 ```
 
-### Backend Setup
-
-1. Navigate to backend directory:
+### Production Build
 ```bash
-cd backend
+npx expo build:ios --release-channel production
+npx expo build:android --release-channel production
 ```
 
-2. Install dependencies:
+### Web Build
 ```bash
-npm install
+npx expo export:web
 ```
-
-3. Create environment file:
-```bash
-cp .env.example .env
-```
-
-4. Update `.env` with your database credentials:
-```
-DB_HOST=your-database-host
-DB_PORT=3306
-DB_USER=your-username
-DB_PASSWORD=your-password  
-DB_DATABASE=your-database-name
-PORT=8080
-```
-
-5. Initialize the database:
-```bash
-npm run init-db
-```
-
-6. Start the server:
-```bash
-npm run dev
-```
-
-## API Usage Examples
-
-### Health Check
-```bash
-curl http://localhost:8080/api/health
-```
-
-### User Sync
-```bash
-curl -X POST http://localhost:8080/api/user/sync \
-  -H "Content-Type: application/json" \
-  -d '{"uid":"user123","email":"test@example.com","nickname":"Player1"}'
-```
-
-### Get Level Board
-```bash
-curl http://localhost:8080/api/board/level/1
-```
-
-### Settle Progress
-```bash
-curl -X POST http://localhost:8080/api/progress/settle \
-  -H "Content-Type: application/json" \
-  -d '{"uid":"user123","level":1,"changeItemsDelta":1}'
-```
-
-## Architecture
-
-### Frontend (React Native + Expo)
-- **Navigation**: Expo Router with stack navigation
-- **State Management**: Zustand for global state
-- **Storage**: AsyncStorage for local persistence
-- **Styling**: React Native StyleSheet
-
-### Backend (Node.js + Express)
-- **Database**: MySQL with connection pooling
-- **Validation**: Zod schemas
-- **API**: RESTful endpoints with structured error handling
-
-## Database Schema
-
-### users
-- `id` - Auto-increment primary key
-- `uid` - Unique user identifier
-- `email` - Optional email address
-- `nickname` - Optional display name
-- `meta_json` - JSON metadata
-- `created_at`, `updated_at` - Timestamps
-
-### levels
-- `level` - Level number (1-200)
-- `stage_name` - Display name for level
-
-### user_progress
-- `user_id` - Foreign key to users
-- `current_level` - Current level being played
-- `best_level` - Highest level completed
-- `change_items` - Number of change items owned
-
-### user_challenge_record
-- `user_id` - Foreign key to users
-- `best_iq` - Highest IQ score achieved
-- `best_iq_title` - Title corresponding to best IQ
-- `last_iq` - Most recent IQ score
 
 ## Next Steps
 
-1. **Pagination & Infinite Scroll**: Implement efficient loading for large level lists
-2. **Optimistic Updates**: Update UI immediately while syncing to backend
-3. **Error Boundaries**: Add React error boundaries for better error handling
-4. **Analytics**: Add event tracking for gameplay metrics
-5. **E2E Testing**: Implement automated testing with Detox or similar
-6. **Offline Cache**: Cache boards locally for offline play
-7. **Push Notifications**: Remind users about daily challenges
-8. **Social Features**: Add leaderboards and friend challenges
+Here are concrete improvements to implement:
 
-## Development Commands
+1. **Enhanced Board Generator**: Add more sophisticated difficulty algorithms with guaranteed solvability validation
+2. **Polished Animations**: Implement tile explosion effects, smooth transitions, and celebration animations
+3. **Change Item Tutorial**: Add interactive tutorial showing how to use Change items effectively
+4. **Difficulty Validators**: Create tools to test and balance level difficulty progression
+5. **Internationalization**: Add multi-language support for stage names and UI text
+6. **Accessibility**: Implement screen reader support, high contrast mode, and larger text options
+7. **Save Export/Import**: Allow users to backup and restore their progress across devices
+8. **Achievement System**: Add badges and milestones for completing stage groups or reaching IQ thresholds
 
-### Frontend
-```bash
-npm run dev          # Start Expo dev server
-npm run build:web    # Build for web deployment
-```
+## Technical Notes
 
-### Backend  
-```bash
-npm run dev          # Start development server
-npm run init-db      # Initialize database schema
-```
-
-## Game Design
-
-### Difficulty Scaling
-- **Levels 1-40**: Easy - Adjacent pairs, small rectangles
-- **Levels 41-90**: Medium - Scattered pairs, larger rectangles needed  
-- **Levels 91-200+**: Hard - Edge/corner placements, interference numbers
-- **Challenge Mode**: Uses level 130+ difficulty parameters
-
-### Board Generation
-- Deterministic based on level seed
-- Guaranteed solvable with optional single-change assistance
-- Scales from 4x4 (16 tiles) to 12x11 (132 tiles) maximum
+- **Expo SDK**: Uses Expo 53.0.20 for maximum compatibility
+- **Navigation**: Expo Router with tab + stack navigation
+- **Storage**: AsyncStorage for local data persistence
+- **Gestures**: React Native Gesture Handler for smooth touch interactions
+- **Haptics**: Expo Haptics for tactile feedback
+- **Cross-Platform**: Runs on iOS, Android, and Web
 
 ## License
 

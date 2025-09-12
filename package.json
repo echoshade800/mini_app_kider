@@ -2,6 +2,7 @@
   "name": "daycare-number-elimination",
   "version": "1.0.0",
   "private": true,
+  "main": "expo-router/entry",
   "engines": {
     "node": ">=20.19.1"
   },

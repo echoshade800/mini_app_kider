@@ -112,8 +112,8 @@ export default function ChallengeScreen() {
     // Award 3 IQ points per clear
     setCurrentIQ(prev => prev + 3);
     
-    // Generate new board immediately
-    generateNewBoard();
+    // 挑战模式中不自动生成新棋盘，保持原样
+    // generateNewBoard();
   };
 
   const handleBackToHome = () => {

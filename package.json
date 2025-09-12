@@ -7,13 +7,13 @@
   },
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
-    "dev": "EXPO_NO_TELEMETRY=1 expo start",
-    "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
+    "dev": "EXPO_NO_TELEMETRY=1 npx expo start",
+    "start": "npx expo start",
+    "android": "npx expo run:android",
+    "ios": "npx expo run:ios",
+    "web": "npx expo start --web",
     "clean": "rm -rf node_modules package-lock.json .expo",
-    "doctor": "expo doctor"
+    "doctor": "npx expo doctor"
   },
   "dependencies": {
     "expo": "^53.0.20",

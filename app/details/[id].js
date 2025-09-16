@@ -187,7 +187,6 @@ export default function LevelDetailScreen() {
       setSelectedSwapTile(null);
     });
   };
-  };
 
   const handleRestart = () => {
     if (isSwapMode) return;
@@ -266,7 +265,7 @@ export default function LevelDetailScreen() {
         onTileClick={handleSwapTileClick}
         isSwapMode={isSwapMode}
         selectedSwapTile={selectedSwapTile}
-        swapAnimations={swapAnimations}
+        swapAnimationsProp={swapAnimations}
       />
 
       {/* Floating Action Buttons */}

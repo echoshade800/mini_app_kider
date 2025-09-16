@@ -37,15 +37,14 @@ export function GameBoard({
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [swapAnimations, setSwapAnimations] = useState(new Map());
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const tileShakeAnimations = useRef({}).current;
-              </Text>
 
   if (!board) {
     return (

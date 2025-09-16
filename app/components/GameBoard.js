@@ -117,27 +117,25 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
     },
 
     onPanResponderGrant: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
+      const { locationX, locationY } = evt.nativeEvent;
       
-      // 计算棋盘在屏幕上的位置
-      const boardCenterX = screenWidth / 2;
-      const boardCenterY = screenHeight / 2;
-      const boardLeft = boardCenterX - boardWidth / 2;
-      const boardTop = boardCenterY - boardHeight / 2;
-      
-      // 转换为相对于棋盘的坐标
-      const relativeX = pageX - boardLeft - 10;
-      const relativeY = pageY - boardTop - 10;
+      // 直接使用相对于棋盘的坐标，减去棋盘内边距
+      const relativeX = locationX - 10;
+      const relativeY = locationY - 10;
       
       // 转换为网格坐标
       const startCol = Math.floor(relativeX / cellSize);
       const startRow = Math.floor(relativeY / cellSize);
       
+      // 确保坐标在有效范围内
+      const clampedStartCol = Math.max(0, Math.min(width - 1, startCol));
+      const clampedStartRow = Math.max(0, Math.min(height - 1, startRow));
+      
       setSelection({
-        startRow,
-        startCol,
-        endRow: startRow,
-        endCol: startCol,
+        startRow: clampedStartRow,
+        startCol: clampedStartCol,
+        endRow: clampedStartRow,
+        endCol: clampedStartCol,
       });
       
       // 开始选择动画
@@ -151,28 +149,27 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
     onPanResponderMove: (evt) => {
       if (!selection) return;
       
-      const { pageX, pageY } = evt.nativeEvent;
+      const { locationX, locationY } = evt.nativeEvent;
       
-      // 计算棋盘在屏幕上的位置
-      const boardCenterX = screenWidth / 2;
-      const boardCenterY = screenHeight / 2;
-      const boardLeft = boardCenterX - boardWidth / 2;
-      const boardTop = boardCenterY - boardHeight / 2;
-      
-      const relativeX = pageX - boardLeft - 10;
-      const relativeY = pageY - boardTop - 10;
+      // 直接使用相对于棋盘的坐标，减去棋盘内边距
+      const relativeX = locationX - 10;
+      const relativeY = locationY - 10;
       
       const endCol = Math.floor(relativeX / cellSize);
       const endRow = Math.floor(relativeY / cellSize);
       
+      // 确保坐标在有效范围内
+      const clampedEndCol = Math.max(0, Math.min(width - 1, endCol));
+      const clampedEndRow = Math.max(0, Math.min(height - 1, endRow));
+      
       setSelection(prev => ({
         ...prev,
-        endRow,
-        endCol,
+        endRow: clampedEndRow,
+        endCol: clampedEndCol,
       }));
 
       // 更新悬停的tiles
-      const newSelection = { ...selection, endRow, endCol };
+      const newSelection = { ...selection, endRow: clampedEndRow, endCol: clampedEndCol };
       const selectedTiles = getSelectedTilesForSelection(newSelection);
       const newHoveredSet = new Set(selectedTiles.map(tile => tile.index));
       
@@ -571,17 +568,17 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
 
   return (
     <View style={styles.fullScreenContainer}>
-      <View style={styles.touchableArea} {...panResponder.panHandlers}>
-        <View style={styles.container}>
-          <View 
-            style={[
-              styles.board,
-              {
-                width: boardWidth,
-                height: boardHeight,
-              }
-            ]}
-          >
+      <View style={styles.container}>
+        <View 
+          style={[
+            styles.board,
+            {
+              width: boardWidth,
+              height: boardHeight,
+            }
+          ]}
+          {...panResponder.panHandlers}
+        >
             {/* Render tiles */}
             {tiles.map((value, index) => {
               const row = Math.floor(index / width);
@@ -640,7 +637,6 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
               </Animated.View>
             )}
           </View>
-        </View>
       </View>
     </View>
   );

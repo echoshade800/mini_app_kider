@@ -29,11 +29,11 @@ export function GameBoard({
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [selection, setSelection] = useState(null);
-  const { settings } = useGameStore();
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const { settings } = useGameStore();
 
   if (!board) {
     return (
@@ -102,6 +102,11 @@ export function GameBoard({
     }).start();
   };
 
+  const isInsideButtonArea = (pageX, pageY) => {
+    // 假设按钮区域检查函数
+    return false;
+  };
+
   const isInsideBoardOnly = (pageX, pageY) => {
     // 计算棋盘在屏幕上的位置
     const boardCenterX = screenWidth / 2;
@@ -113,8 +118,14 @@ export function GameBoard({
     
     // 严格检查：必须在棋盘内部区域（排除边框）
     const margin = 10; // 棋盘内边距
-    return pageX >= boardX + margin && pageX < boardX + boardW - margin && 
-           pageY >= boardY + margin && pageY < boardY + boardH - margin;
+    const insideBoard = pageX >= boardX + margin && pageX < boardX + boardW - margin && 
+                       pageY >= boardY + margin && pageY < boardY + boardH - margin;
+    
+    // 第二步：不能在任何按钮区域内
+    if (!insideBoard) return false;
+    if (isInsideButtonArea(pageX, pageY)) return false;
+    
+    return true;
   };
 
   const getSelectedTilesForSelection = (sel) => {

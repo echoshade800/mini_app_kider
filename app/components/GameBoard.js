@@ -647,6 +647,10 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
 }
 
 const styles = StyleSheet.create({
+  );
+}
+
+const styles = StyleSheet.create({
   fullScreenContainer: {
     flex: 1,
   },

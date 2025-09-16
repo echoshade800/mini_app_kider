@@ -26,43 +26,14 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
 }) {
   const [shakeAnimations, setShakeAnimations] = useState({});
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [swapAnimation, setSwapAnimation] = useState(null);
+  const [swapAnimations, setSwapAnimations] = useState({});
+  const { settings } = useGameStore();
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
@@ -95,6 +66,8 @@ export function GameBoard({
   const tileMargin = (cellSize - tileSize) / 2;
   
   // 棋盘背景大小
+  const boardWidth = actualWidth * cellSize + 20;
+  const boardHeight = actualHeight * cellSize + 20;
 
   // 初始化tile动画
   const initTileScale = (index) => {
@@ -262,11 +235,64 @@ export function GameBoard({
       }
     }
   };
+  
   const performSwapAnimation = (tile1, tile2) => {
     // 计算两个方块的位置
     const tile1Row = Math.floor(tile1.index / width);
     const tile1Col = tile1.index % width;
     const tile2Row = Math.floor(tile2.index / width);
+    const tile2Col = tile2.index % width;
+    
+    // 计算移动距离
+    const deltaX = (tile2Col - tile1Col) * cellSize;
+    const deltaY = (tile2Row - tile1Row) * cellSize;
+    
+    // 创建动画值
+    const tile1Animation = {
+      x: new Animated.Value(0),
+      y: new Animated.Value(0)
+    };
+    const tile2Animation = {
+      x: new Animated.Value(0),
+      y: new Animated.Value(0)
+    };
+    
+    setSwapAnimations({
+      [tile1.index]: tile1Animation,
+      [tile2.index]: tile2Animation
+    });
+    
+    setSwapAnimation({ tile1, tile2 });
+    
+    // 执行交换动画
+    Animated.parallel([
+      Animated.timing(tile1Animation.x, {
+        toValue: deltaX,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tile1Animation.y, {
+        toValue: deltaY,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tile2Animation.x, {
+        toValue: -deltaX,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tile2Animation.y, {
+        toValue: -deltaY,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // 动画完成后清理状态并执行实际交换
+      setSwapAnimation(null);
+      setSwapAnimations({});
+      onTileClick(tile2.row, tile2.col);
+    });
+  };
 
   const getSelectedTilesForSelection = (sel) => {
     if (!sel) return [];

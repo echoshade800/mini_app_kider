@@ -1,7 +1,7 @@
 /**
- * GameBoard Component - Enhanced interactive puzzle board with advanced visual effects
- * Purpose: Render game tiles with enhanced touch interactions and explosion animations
- * Features: Flexible touch gestures, tile scaling, explosion effects, improved responsiveness
+ * GameBoard Component - 固定左上角锚点的画框选取功能
+ * Purpose: 实现点击处固定为左上顶点、拖动只向右下扩展的画框操作
+ * Features: 二维前缀和优化、震动反馈、爆炸动画
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -27,34 +27,17 @@ export function GameBoard({
   firstSwapTile = null, 
   disabled = false 
 }) {
-  const [shakeAnimations, setShakeAnimations] = useState({});
-  const [selection, setSelection] = useState(null);
-}
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-}
-)
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-}
-)
-export function GameBoard({ 
-  board, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-}) {
   const { settings } = useGameStore();
   
+  // 状态管理
+  const [shakeAnimations, setShakeAnimations] = useState({});
+  const [selection, setSelection] = useState(null);
+  const [anchorPoint, setAnchorPoint] = useState(null);
+  const [prefixSum, setPrefixSum] = useState([]);
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+  
+  // 动画引用
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -85,6 +68,39 @@ export function GameBoard({
   const boardWidth = width * cellSize + 20;
   const boardHeight = height * cellSize + 20;
 
+  // 计算二维前缀和
+  useEffect(() => {
+    if (!tiles || tiles.length === 0) return;
+    
+    const newPrefixSum = Array(height + 1).fill(null).map(() => Array(width + 1).fill(0));
+    
+    for (let r = 1; r <= height; r++) {
+      for (let c = 1; c <= width; c++) {
+        const tileIndex = (r - 1) * width + (c - 1);
+        const tileValue = tiles[tileIndex] || 0;
+        newPrefixSum[r][c] = tileValue + 
+                            newPrefixSum[r-1][c] + 
+                            newPrefixSum[r][c-1] - 
+                            newPrefixSum[r-1][c-1];
+      }
+    }
+    
+    setPrefixSum(newPrefixSum);
+  }, [tiles, width, height]);
+
+  // 使用前缀和计算区域总和 O(1)
+  const calculateRangeSum = (r1, c1, r2, c2) => {
+    if (!prefixSum.length || r1 < 0 || c1 < 0 || r2 >= height || c2 >= width) return 0;
+    
+    // 转换为前缀和数组的索引（1-based）
+    const pr1 = r1 + 1, pc1 = c1 + 1, pr2 = r2 + 1, pc2 = c2 + 1;
+    
+    return prefixSum[pr2][pc2] - 
+           prefixSum[pr1-1][pc2] - 
+           prefixSum[pr2][pc1-1] + 
+           prefixSum[pr1-1][pc1-1];
+  };
+
   // 初始化tile动画
   const initTileScale = (index) => {
     if (!tileScales[index]) {
@@ -93,15 +109,14 @@ export function GameBoard({
     return tileScales[index];
   };
 
-  // 缩放tile
-  const scaleTile = (index, scale) => {
-    const tileScale = initTileScale(index);
-    Animated.spring(tileScale, {
-      toValue: scale,
-      useNativeDriver: true,
-      tension: 400,
-      friction: 8,
-    }).start();
+  // 停止所有晃动动画
+  const stopAllShakeAnimations = () => {
+    Object.keys(shakeAnimations).forEach(index => {
+      if (shakeAnimations[index]) {
+        shakeAnimations[index].stopAnimation();
+        shakeAnimations[index].setValue(0);
+      }
+    });
   };
 
   // 晃动动画
@@ -138,14 +153,6 @@ export function GameBoard({
     shakeLoop();
   };
 
-  // 停止晃动动画
-  const stopShakeAnimation = (index) => {
-    if (shakeAnimations[index]) {
-      shakeAnimations[index].stopAnimation();
-      shakeAnimations[index].setValue(0);
-    }
-  };
-
   // 当进入交换模式时开始晃动
   useEffect(() => {
     if (swapMode) {
@@ -155,45 +162,57 @@ export function GameBoard({
         }
       });
     } else {
-      // 退出交换模式时停止所有晃动
-      Object.keys(shakeAnimations).forEach(index => {
-        stopShakeAnimation(parseInt(index));
-      });
+      stopAllShakeAnimations();
     }
     
     return () => {
-      // 清理函数
-      Object.keys(shakeAnimations).forEach(index => {
-        stopShakeAnimation(parseInt(index));
-      });
+      stopAllShakeAnimations();
     };
   }, [swapMode]);
 
+  // 坐标转换：屏幕坐标 -> 网格坐标
+  const screenToGrid = (screenX, screenY) => {
+    const relativeX = screenX - 10; // 减去棋盘内边距
+    const relativeY = screenY - 10;
+    
+    const col = Math.floor(relativeX / cellSize);
+    const row = Math.floor(relativeY / cellSize);
+    
+    return {
+      row: Math.max(0, Math.min(height - 1, row)),
+      col: Math.max(0, Math.min(width - 1, col))
+    };
+  };
+
+  // 检查点击是否在棋盘范围内
+  const isInBoardRange = (screenX, screenY) => {
+    return screenX >= 10 && screenX <= boardWidth - 10 && 
+           screenY >= 10 && screenY <= boardHeight - 10;
+  };
+
   // 全屏触摸响应器
   const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !disabled && !swapMode,
-    onMoveShouldSetPanResponder: () => !disabled && !swapMode,
+    onStartShouldSetPanResponder: () => !disabled && !swapMode && !isLocked,
+    onMoveShouldSetPanResponder: () => !disabled && !swapMode && !isLocked,
 
     onPanResponderGrant: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
       
-      // 直接使用相对于棋盘的坐标，减去棋盘内边距
-      const relativeX = locationX - 10;
-      const relativeY = locationY - 10;
+      // 判断点击是否在棋盘范围内
+      if (!isInBoardRange(locationX, locationY)) {
+        return;
+      }
       
-      // 转换为网格坐标
-      const startCol = Math.floor(relativeX / cellSize);
-      const startRow = Math.floor(relativeY / cellSize);
+      // 将点击位置换算成对应的行列，记录为锚点
+      const gridPos = screenToGrid(locationX, locationY);
+      setAnchorPoint(gridPos);
       
-      // 确保坐标在有效范围内
-      const clampedStartCol = Math.max(0, Math.min(width - 1, startCol));
-      const clampedStartRow = Math.max(0, Math.min(height - 1, startRow));
-      
+      // 初始化选区为锚点到锚点（1x1）
       setSelection({
-        startRow: clampedStartRow,
-        startCol: clampedStartCol,
-        endRow: clampedStartRow,
-        endCol: clampedStartCol,
+        startRow: gridPos.row,
+        startCol: gridPos.col,
+        endRow: gridPos.row,
+        endCol: gridPos.col,
       });
       
       // 立即显示选择框
@@ -205,34 +224,23 @@ export function GameBoard({
     },
 
     onPanResponderMove: (evt) => {
-      if (!selection) return;
+      if (!anchorPoint || !selection) return;
       
       const { locationX, locationY } = evt.nativeEvent;
       
-      // 计算相对于棋盘的坐标
-      const relativeX = Math.max(0, locationX - 10);
-      const relativeY = Math.max(0, locationY - 10);
+      // 计算当前指针位置的行列
+      const currentPos = screenToGrid(locationX, locationY);
       
-      // 转换为网格坐标
-      const endCol = Math.floor(relativeX / cellSize);
-      const endRow = Math.floor(relativeY / cellSize);
+      // 固定锚点为左上角，只向右下方向扩展
+      const endRow = Math.max(anchorPoint.row, currentPos.row);
+      const endCol = Math.max(anchorPoint.col, currentPos.col);
       
-      // 确保结束坐标在棋盘范围内
-      const clampedEndCol = Math.max(0, Math.min(width - 1, endCol));
-      const clampedEndRow = Math.max(0, Math.min(height - 1, endRow));
-      
-      // 确保框的方向正确（起始点始终是左上角）
-      const finalStartCol = Math.min(selection.startCol, clampedEndCol);
-      const finalStartRow = Math.min(selection.startRow, clampedEndRow);
-      const finalEndCol = Math.max(selection.startCol, clampedEndCol);
-      const finalEndRow = Math.max(selection.startRow, clampedEndRow);
-      
-      setSelection(prev => ({
-        startRow: finalStartRow,
-        startCol: finalStartCol,
-        endRow: finalEndRow,
-        endCol: finalEndCol,
-      }));
+      setSelection({
+        startRow: anchorPoint.row,
+        startCol: anchorPoint.col,
+        endRow: endRow,
+        endCol: endCol,
+      });
     },
 
     onPanResponderRelease: () => {
@@ -243,23 +251,22 @@ export function GameBoard({
   const handleTilePress = (row, col) => {
     if (swapMode && onTileClick) {
       onTileClick(row, col);
+      // 交换完成后停止所有晃动动画
+      setTimeout(() => {
+        stopAllShakeAnimations();
+      }, 100);
     }
   };
 
-  const getSelectedTilesForSelection = (sel) => {
-    if (!sel) return [];
+  const getSelectedTiles = () => {
+    if (!selection) return [];
     
-    const { startRow, startCol, endRow, endCol } = sel;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
+    const { startRow, startCol, endRow, endCol } = selection;
     const selectedTiles = [];
     
     // 计算框内所有有数字的方块
-    for (let row = minRow; row <= maxRow; row++) {
-      for (let col = minCol; col <= maxCol; col++) {
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
         if (row >= 0 && row < height && col >= 0 && col < width) {
           const index = row * width + col;
           const value = tiles[index];
@@ -273,29 +280,33 @@ export function GameBoard({
     return selectedTiles;
   };
 
-  const getSelectedTiles = () => {
-    return getSelectedTilesForSelection(selection);
-  };
-
   const handleSelectionComplete = async () => {
     if (!selection) return;
 
     const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const { startRow, startCol, endRow, endCol } = selection;
+    
+    // 使用前缀和快速计算总和
+    const sum = calculateRangeSum(startRow, startCol, endRow, endCol);
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
 
     if (sum === 10 && selectedTiles.length > 0) {
-      // Success - 创建爆炸效果
+      // 成功 - 锁定棋盘并播放动画
+      setIsLocked(true);
+      
+      // 长震动反馈
       if (settings?.hapticsEnabled !== false) {
         try {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          // 连续震动模拟长震动
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 100);
+          setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 200);
         } catch (error) {
           console.log('Haptics not available');
         }
       }
       
       // 计算爆炸中心位置
-      const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
       const explosionX = centerCol * cellSize + cellSize / 2 + 10;
@@ -320,6 +331,7 @@ export function GameBoard({
         }),
       ]).start(() => {
         setExplosionAnimation(null);
+        setIsLocked(false);
       });
 
       // 选择框动画
@@ -336,13 +348,14 @@ export function GameBoard({
         }),
       ]).start(() => {
         setSelection(null);
+        setAnchorPoint(null);
         if (onTilesClear) {
           onTilesClear(tilePositions);
         }
       });
 
     } else if (selectedTiles.length > 0) {
-      // Failure - 蓝色反馈
+      // 失败 - 短震动反馈
       if (settings?.hapticsEnabled !== false) {
         try {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -364,10 +377,12 @@ export function GameBoard({
         }),
       ]).start(() => {
         setSelection(null);
+        setAnchorPoint(null);
       });
     } else {
-      // No tiles selected
+      // 没有选择任何方块
       setSelection(null);
+      setAnchorPoint(null);
     }
   };
 
@@ -375,19 +390,14 @@ export function GameBoard({
     if (!selection) return null;
     
     const { startRow, startCol, endRow, endCol } = selection;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
     const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const sum = calculateRangeSum(startRow, startCol, endRow, endCol);
     const isSuccess = sum === 10;
     
-    const left = minCol * cellSize + 10;
-    const top = minRow * cellSize + 10;
-    const selectionWidth = (maxCol - minCol + 1) * cellSize;
-    const selectionHeight = (maxRow - minRow + 1) * cellSize;
+    const left = startCol * cellSize + 10;
+    const top = startRow * cellSize + 10;
+    const selectionWidth = (endCol - startCol + 1) * cellSize;
+    const selectionHeight = (endRow - startRow + 1) * cellSize;
     
     return {
       position: 'absolute',
@@ -406,12 +416,11 @@ export function GameBoard({
   const getSelectionSum = () => {
     if (!selection) return null;
     
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    
-    if (selectedTiles.length === 0) return null;
-    
     const { startRow, startCol, endRow, endCol } = selection;
+    const sum = calculateRangeSum(startRow, startCol, endRow, endCol);
+    
+    if (sum === 0) return null;
+    
     const centerRow = (startRow + endRow) / 2;
     const centerCol = (startCol + endCol) / 2;
     
@@ -610,11 +619,11 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   board: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#2E7D32', // 深绿色背景
     padding: 10,
     borderRadius: 12,
     borderWidth: 6,
-    borderColor: '#D4A574',
+    borderColor: '#8D6E63', // 棕色边框
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

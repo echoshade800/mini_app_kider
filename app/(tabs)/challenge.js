@@ -29,6 +29,8 @@ export default function ChallengeScreen() {
   const [timeLeft, setTimeLeft] = useState(CHALLENGE_DURATION);
   const [currentBoard, setCurrentBoard] = useState(null);
   const [showResults, setShowResults] = useState(false);
+  const [swapMode, setSwapMode] = useState(false);
+  const [firstSwapTile, setFirstSwapTile] = useState(null);
   
   const timerRef = useRef();
   const fuseAnimation = useRef(new Animated.Value(1)).current;
@@ -104,6 +106,9 @@ export default function ChallengeScreen() {
     const challengeLevel = 130 + Math.floor(Math.random() * 20);
     const board = generateBoard(challengeLevel, true); // 强制生成新的棋盘
     setCurrentBoard(board);
+    // 重置交换状态
+    setSwapMode(false);
+    setFirstSwapTile(null);
   };
 
   const handleTilesClear = (clearedPositions) => {
@@ -132,6 +137,65 @@ export default function ChallengeScreen() {
       setTimeout(() => {
         generateNewBoard();
       }, 500);
+    }
+  };
+
+  const handleTileClick = (row, col) => {
+    if (!swapMode || !currentBoard) return;
+
+    const index = row * currentBoard.width + col;
+    const tileValue = currentBoard.tiles[index];
+    
+    // 只能点击有数字的方块
+    if (tileValue === 0) return;
+
+    if (!firstSwapTile) {
+      // 选择第一个方块
+      setFirstSwapTile({ row, col, index, value: tileValue });
+    } else {
+      // 选择第二个方块，执行交换
+      if (firstSwapTile.index === index) {
+        // 点击同一个方块，取消选择
+        setFirstSwapTile(null);
+        return;
+      }
+
+      // 执行交换
+      const newTiles = [...currentBoard.tiles];
+      newTiles[firstSwapTile.index] = tileValue;
+      newTiles[index] = firstSwapTile.value;
+
+      const updatedBoard = { ...currentBoard, tiles: newTiles };
+      setCurrentBoard(updatedBoard);
+
+      // 重置交换状态
+      setSwapMode(false);
+      setFirstSwapTile(null);
+    }
+  };
+
+  const handleUseChange = () => {
+    const currentItems = gameData?.changeItems || 0;
+    if (currentItems <= 0) {
+      return; // 挑战模式中没有道具时静默处理
+    }
+
+    // 检查是否是第一次使用交换道具
+    const hasUsedSwapBefore = gameData?.hasUsedSwapBefore || false;
+    
+    if (!hasUsedSwapBefore) {
+      // 第一次使用，更新状态并进入交换模式
+      updateGameData({ 
+        changeItems: currentItems - 1,
+        hasUsedSwapBefore: true 
+      });
+      setSwapMode(true);
+      setFirstSwapTile(null);
+    } else {
+      // 非第一次使用，直接进入交换模式
+      updateGameData({ changeItems: currentItems - 1 });
+      setSwapMode(true);
+      setFirstSwapTile(null);
     }
   };
 
@@ -259,6 +323,9 @@ export default function ChallengeScreen() {
         <GameBoard 
           board={currentBoard}
           onTilesClear={handleTilesClear}
+          onTileClick={handleTileClick}
+          swapMode={swapMode}
+          firstSwapTile={firstSwapTile}
           disabled={gameState !== 'playing'}
         />
       )}
@@ -267,11 +334,15 @@ export default function ChallengeScreen() {
       {gameState === 'playing' && (
         <View style={styles.challengeButtons}>
           <TouchableOpacity 
-            style={styles.challengeChangeButton}
-            disabled={true}
+            style={[
+              styles.challengeChangeButton,
+              (gameData?.changeItems || 0) <= 0 && styles.challengeChangeButtonDisabled
+            ]}
+            onPress={handleUseChange}
+            disabled={(gameData?.changeItems || 0) <= 0}
           >
             <Text style={styles.challengeChangeButtonText}>Change!</Text>
-            <Text style={styles.challengeChangeButtonSubtext}>(N/A)</Text>
+            <Text style={styles.challengeChangeButtonSubtext}>({gameData?.changeItems || 0})</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -466,20 +537,28 @@ const styles = StyleSheet.create({
     left: 20,
   },
   challengeChangeButton: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#FF9800',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 25,
     alignItems: 'center',
     minWidth: 80,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  challengeChangeButtonDisabled: {
+    backgroundColor: '#ccc',
   },
   challengeChangeButtonText: {
-    color: '#999',
+    color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
   },
   challengeChangeButtonSubtext: {
-    color: '#999',
+    color: 'white',
     fontSize: 12,
     marginTop: 2,
   },

@@ -29,12 +29,15 @@ export function GameBoard({
 }) {
   const [shakeAnimations, setShakeAnimations] = useState({});
   const [selection, setSelection] = useState(null);
+}
 export function GameBoard({ 
   board, 
   onTilesClear, 
   onTileClick, 
   swapMode = false, 
   firstSwapTile = null, 
+}
+)
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -579,6 +582,7 @@ export function GameBoard({
     </View>
   );
 }
+)
 
 const styles = StyleSheet.create({
   fullScreenContainer: {

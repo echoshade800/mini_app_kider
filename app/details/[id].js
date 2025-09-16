@@ -203,8 +203,7 @@ export default function LevelDetailScreen() {
       <GameBoard 
         board={currentBoard}
         onTilesClear={handleTilesClear}
-        onTileClick={handleTileClick}
-          onTileClick={handleSwapTileClick}
+        onTileClick={handleSwapTileClick}
           isSwapMode={isSwapMode}
           selectedSwapTile={selectedSwapTile}
       />

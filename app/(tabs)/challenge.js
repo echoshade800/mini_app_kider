@@ -138,7 +138,7 @@ export default function ChallengeScreen() {
   const handleBackToHome = () => {
     setShowResults(false);
     setGameState('ready');
-    router.replace('/');
+    router.replace('/(tabs)');
   };
 
   const getIQTitle = (iq) => {
@@ -212,7 +212,7 @@ export default function ChallengeScreen() {
               clearInterval(timerRef.current);
             }
             setGameState('ready');
-            router.replace('/');
+            router.replace('/(tabs)');
           }}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />

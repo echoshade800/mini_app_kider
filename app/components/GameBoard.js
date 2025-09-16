@@ -18,7 +18,7 @@ import { useGameStore } from '../store/gameStore';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-export function GameBoard({ board, onTilesClear, disabled = false }) {
+export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, firstSwapTile = null, disabled = false }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
@@ -98,8 +98,8 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
 
   // 全屏触摸响应器
   const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !disabled,
-    onMoveShouldSetPanResponder: () => !disabled,
+    onStartShouldSetPanResponder: () => !disabled && !swapMode,
+    onMoveShouldSetPanResponder: () => !disabled && !swapMode,
 
     onPanResponderGrant: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
@@ -190,6 +190,11 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
       setHoveredTiles(new Set());
     },
   });
+  const handleTilePress = (row, col) => {
+    if (swapMode && onTileClick) {
+      onTileClick(row, col);
+    }
+  };
 
   const getSelectedTilesForSelection = (sel) => {
     if (!sel) return [];
@@ -393,11 +398,14 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
 
     const tileScale = initTileScale(index);
 
+    // 检查是否是交换模式中被选中的方块
+    const isFirstSwapTile = swapMode && firstSwapTile && firstSwapTile.index === index;
+    const tileStyle = isFirstSwapTile ? styles.selectedSwapTile : styles.tile;
     return (
       <Animated.View 
         key={`${row}-${col}`}
         style={[
-          styles.tile,
+          tileStyle,
           { 
             position: 'absolute',
             left,
@@ -408,12 +416,19 @@ export function GameBoard({ board, onTilesClear, disabled = false }) {
           }
         ]}
       >
-        <Text style={[
-          styles.tileText,
-          { fontSize: tileSize * 0.5 }
-        ]}>
-          {value}
-        </Text>
+        <TouchableOpacity
+          style={styles.tileButton}
+          onPress={() => handleTilePress(row, col)}
+          disabled={!swapMode}
+        >
+          <Text style={[
+            styles.tileText,
+            { fontSize: tileSize * 0.5 },
+            isFirstSwapTile && styles.selectedSwapTileText
+          ]}>
+            {value}
+          </Text>
+        </TouchableOpacity>
       </Animated.View>
     );
   };
@@ -549,9 +564,35 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
+  selectedSwapTile: {
+    backgroundColor: '#E3F2FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    borderWidth: 3,
+    borderColor: '#2196F3',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  tileButton: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tileText: {
     fontWeight: 'bold',
     color: '#333',
+  },
+  selectedSwapTileText: {
+    color: '#2196F3',
+    fontWeight: 'bold',
   },
   sumText: {
     fontSize: 18,

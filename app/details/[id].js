@@ -29,6 +29,8 @@ export default function LevelDetailsScreen() {
   const [currentBoard, setCurrentBoard] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [clearedTiles, setClearedTiles] = useState(new Set());
+  const [swapMode, setSwapMode] = useState(false);
+  const [firstSwapTile, setFirstSwapTile] = useState(null);
 
   useEffect(() => {
     loadLevel();
@@ -38,8 +40,45 @@ export default function LevelDetailsScreen() {
     const board = generateBoard(level, true); // 强制生成新的棋盘
     setCurrentBoard(board);
     setClearedTiles(new Set());
+    setSwapMode(false);
+    setFirstSwapTile(null);
   };
 
+  const handleTileClick = (row, col) => {
+    if (!swapMode || !currentBoard) return;
+
+    const index = row * currentBoard.width + col;
+    const tileValue = currentBoard.tiles[index];
+    
+    // 只能点击有数字的方块
+    if (tileValue === 0) return;
+
+    if (!firstSwapTile) {
+      // 选择第一个方块
+      setFirstSwapTile({ row, col, index, value: tileValue });
+    } else {
+      // 选择第二个方块，执行交换
+      if (firstSwapTile.index === index) {
+        // 点击同一个方块，取消选择
+        setFirstSwapTile(null);
+        return;
+      }
+
+      // 执行交换
+      const newTiles = [...currentBoard.tiles];
+      newTiles[firstSwapTile.index] = tileValue;
+      newTiles[index] = firstSwapTile.value;
+
+      const updatedBoard = { ...currentBoard, tiles: newTiles };
+      setCurrentBoard(updatedBoard);
+
+      // 重置交换状态
+      setSwapMode(false);
+      setFirstSwapTile(null);
+
+      Alert.alert('交换完成', '两个数字方块已成功交换位置！');
+    }
+  };
   const handleTilesClear = (clearedPositions) => {
     if (!currentBoard) return;
 
@@ -87,31 +126,38 @@ export default function LevelDetailsScreen() {
     const currentItems = gameData?.changeItems || 0;
     if (currentItems <= 0) {
       Alert.alert(
-        'No Change Items',
-        'You need change items to swap tiles. Complete more levels to earn them!',
+        '没有交换道具',
+        '您需要交换道具来交换方块位置。完成更多关卡来获得道具！',
         [{ text: 'OK' }]
       );
       return;
     }
 
+    // 直接进入交换模式
+    updateGameData({ changeItems: currentItems - 1 });
+    setSwapMode(true);
+    setFirstSwapTile(null);
     Alert.alert(
-      'Use Change Item',
-      'This feature allows you to swap any two tiles on the board. Would you like to use one change item?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Use Item', 
-          onPress: () => {
-            updateGameData({ changeItems: currentItems - 1 });
-            Alert.alert('Change Item Used', 'Select two tiles to swap their positions.');
-          }
-        }
-      ]
+      '交换模式已激活',
+      '请依次点击两个数字方块来交换它们的位置。',
+      [{ text: '确定' }]
     );
   };
 
   const handleRestart = () => {
-    loadLevel(); // 直接重新生成棋盘，不需要确认
+    Alert.alert(
+      '重置关卡',
+      '确定要重新开始这一关吗？',
+      [
+        { text: '取消', style: 'cancel' },
+        { 
+          text: '确定', 
+          onPress: () => {
+            loadLevel(); // 重新生成棋盘
+          }
+        }
+      ]
+    );
   };
 
   const handleNextLevel = () => {
@@ -120,7 +166,7 @@ export default function LevelDetailsScreen() {
   };
 
   const handleBackToLevels = () => {
-    router.replace('/');
+    router.replace('/(tabs)'); // 返回主界面
   };
 
   const getLevelInfo = () => {
@@ -190,7 +236,7 @@ export default function LevelDetailsScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.replace('/')}
+          onPress={handleBackToLevels}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -203,6 +249,11 @@ export default function LevelDetailsScreen() {
           {currentBoard?.requiredSwaps > 0 && (
             <Text style={styles.swapHint}>
               建议使用 {currentBoard.requiredSwaps} 次交换
+            </Text>
+          )}
+          {swapMode && (
+            <Text style={styles.swapModeHint}>
+              {firstSwapTile ? '请选择第二个方块' : '请选择第一个方块'}
             </Text>
           )}
         </View>
@@ -218,6 +269,9 @@ export default function LevelDetailsScreen() {
       <GameBoard 
         board={currentBoard}
         onTilesClear={handleTilesClear}
+        onTileClick={handleTileClick}
+        swapMode={swapMode}
+        firstSwapTile={firstSwapTile}
       />
 
       {/* Bottom Actions - Fixed at bottom */}
@@ -225,20 +279,21 @@ export default function LevelDetailsScreen() {
         <TouchableOpacity 
           style={[
             styles.bottomActionButton,
-            changeItems <= 0 && styles.actionButtonDisabled
+            (changeItems <= 0 || swapMode) && styles.actionButtonDisabled
           ]}
           onPress={handleUseChange}
-          disabled={changeItems <= 0}
+          disabled={changeItems <= 0 || swapMode}
         >
           <Ionicons name="swap-horizontal" size={20} color="white" />
           <Text style={styles.bottomActionButtonText}>
-            Use Change ({changeItems})
+            {swapMode ? '交换模式中...' : `Use Change (${changeItems})`}
           </Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={[styles.bottomActionButton, styles.restartButton]}
           onPress={handleRestart}
+          disabled={swapMode}
         >
           <Ionicons name="refresh" size={20} color="white" />
           <Text style={styles.bottomActionButtonText}>Reset</Text>
@@ -353,6 +408,12 @@ const styles = StyleSheet.create({
     color: '#FF9800',
     marginTop: 2,
     fontWeight: '500',
+  },
+  swapModeHint: {
+    fontSize: 12,
+    color: '#2196F3',
+    marginTop: 2,
+    fontWeight: '600',
   },
   changeCounter: {
     flexDirection: 'row',

@@ -1,7 +1,7 @@
 /**
- * Challenge Mode Screen - 60-second timed gameplay
- * Purpose: Fast-paced IQ challenge with scoring and leaderboard
- * Extend: Add power-ups, multipliers, or different time modes
+ * Challenge Mode Screen - 60-second IQ sprint with enhanced layout
+ * Purpose: Timed gameplay with IQ scoring and centered board layout
+ * Features: Fixed tile sizes, centered board, chalkboard header, countdown timer
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -10,117 +10,138 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  Modal,
-  Animated
+  Alert,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
+import { ChalkboardHeader } from '../components/ChalkboardHeader';
+import { useGameStore } from '../store/gameStore';
 import { generateBoard } from '../utils/boardGenerator';
 
-const CHALLENGE_DURATION = 60000; // 60 seconds
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function ChallengeScreen() {
   const { gameData, updateGameData } = useGameStore();
-  const [gameState, setGameState] = useState('ready'); // ready, playing, finished
-  const [currentIQ, setCurrentIQ] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(CHALLENGE_DURATION);
-  const [currentBoard, setCurrentBoard] = useState(null);
-  const [showResults, setShowResults] = useState(false);
+  const [board, setBoard] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [score, setScore] = useState(0);
+  const [clearedCount, setClearedCount] = useState(0);
   
-  const timerRef = useRef();
-  const fuseAnimation = useRef(new Animated.Value(1)).current;
+  const timerRef = useRef(null);
+  const gameStartTime = useRef(null);
 
-  // 初始化时生成第一个棋盘
-  useEffect(() => {
-    if (gameState === 'ready' && !currentBoard) {
-      generateNewBoard();
+  // 生成挑战棋盘
+  const generateChallengeBoard = () => {
+    // 挑战模式使用高难度关卡的生成逻辑
+    const challengeLevel = 100 + Math.floor(Math.random() * 50);
+    return generateBoard(challengeLevel, true); // forceNewSeed = true
+  };
+
+  // 开始游戏
+  const startGame = () => {
+    setIsPlaying(true);
+    setTimeLeft(60);
+    setScore(0);
+    setClearedCount(0);
+    gameStartTime.current = Date.now();
+    
+    // 生成第一个棋盘
+    const newBoard = generateChallengeBoard();
+    setBoard(newBoard);
+    
+    // 启动计时器
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          endGame();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // 结束游戏
+  const endGame = async () => {
+    setIsPlaying(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-  }, [gameState]);
-  useEffect(() => {
-    if (gameState === 'playing') {
-      startTimer();
-      startFuseAnimation();
+
+    // 计算最终IQ分数
+    const finalIQ = score;
+    const currentBestIQ = gameData?.maxScore || 0;
+    const isNewRecord = finalIQ > currentBestIQ;
+
+    // 更新最高分
+    if (isNewRecord) {
+      await updateGameData({ maxScore: finalIQ });
     }
+
+    // 显示结果
+    Alert.alert(
+      '挑战结束！',
+      `本次IQ: ${finalIQ}\n` +
+      `清除次数: ${clearedCount}\n` +
+      `最高IQ: ${Math.max(finalIQ, currentBestIQ)}` +
+      (isNewRecord ? '\n🎉 新纪录！' : ''),
+      [
+        { text: '再来一次', onPress: startGame },
+        { text: '返回', onPress: () => router.back() }
+      ]
+    );
+  };
+
+  // 处理方块清除
+  const handleTilesClear = (clearedPositions) => {
+    if (!isPlaying) return;
+
+    // 增加分数 (+3 IQ per clear)
+    const newScore = score + 3;
+    setScore(newScore);
+    setClearedCount(prev => prev + 1);
+
+    // 立即生成新棋盘
+    setTimeout(() => {
+      const newBoard = generateChallengeBoard();
+      setBoard(newBoard);
+    }, 500); // 短暂延迟让爆炸动画播放
+  };
+
+  // 返回按钮
+  const handleBack = () => {
+    if (isPlaying) {
+      Alert.alert(
+        '确认退出',
+        '游戏正在进行中，确定要退出吗？',
+        [
+          { text: '取消', style: 'cancel' },
+          { text: '退出', onPress: () => {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            router.back();
+          }}
+        ]
+      );
+    } else {
+      router.back();
+    }
+  };
+
+  // 清理定时器
+  useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [gameState]);
-
-  const startTimer = () => {
-    timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1000) {
-          endChallenge();
-          return 0;
-        }
-        return prev - 1000;
-      });
-    }, 1000);
-  };
-
-  const startFuseAnimation = () => {
-    Animated.timing(fuseAnimation, {
-      toValue: 0,
-      duration: CHALLENGE_DURATION,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const startChallenge = () => {
-    try {
-      setGameState('playing');
-      setCurrentIQ(0);
-      setTimeLeft(CHALLENGE_DURATION);
-      fuseAnimation.setValue(1);
-      generateNewBoard();
-    } catch (error) {
-      console.error('Failed to start challenge:', error);
-      Alert.alert('启动失败', '无法启动挑战模式，请重试');
-    }
-  };
-
-  const endChallenge = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    setGameState('finished');
-    
-    // Update best score if improved
-    const currentBest = gameData?.maxScore || 0;
-    if (currentIQ > currentBest) {
-      updateGameData({ maxScore: currentIQ });
-    }
-    
-    setShowResults(true);
-  };
-
-  const generateNewBoard = () => {
-    // Use high difficulty (level 130+)
-    const challengeLevel = 130 + Math.floor(Math.random() * 20);
-    const board = generateBoard(challengeLevel, true); // 强制生成新的棋盘
-    setCurrentBoard(board);
-  };
-
-  const handleTilesClear = (clearedPositions) => {
-    if (gameState !== 'playing') return;
-    
-    // Award 3 IQ points per clear
-    setCurrentIQ(prev => prev + 3);
-    
-    // 挑战模式中立即生成新棋盘
-    generateNewBoard();
-  };
-
-  const handleBackToHome = () => {
-    setShowResults(false);
-    setGameState('ready');
-    router.replace('/');
-  };
+  }, []);
 
   const getIQTitle = (iq) => {
     if (iq >= 145) return 'Cosmic Genius';
@@ -135,153 +156,97 @@ export default function ChallengeScreen() {
     return 'Newborn Dreamer';
   };
 
-  const formatTime = (milliseconds) => {
-    const seconds = Math.ceil(milliseconds / 1000);
-    return `${seconds}s`;
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
-  const fuseWidth = fuseAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
-
-  const fuseColor = fuseAnimation.interpolate({
-    inputRange: [0, 0.3, 0.7, 1],
-    outputRange: ['#F44336', '#FF9800', '#FFC107', '#4CAF50'],
-  });
-
-  if (gameState === 'ready') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.readyContainer}>
-          <Ionicons name="timer" size={80} color="#FF5722" />
-          <Text style={styles.readyTitle}>Challenge Mode</Text>
-          <Text style={styles.readySubtitle}>
-            60 seconds to maximize your IQ score!
-          </Text>
-          <Text style={styles.readyDescription}>
-            Clear rectangles that sum to 10. Each clear awards +3 IQ points.
-            New boards appear instantly after each clear.
-          </Text>
-          
-          <TouchableOpacity 
-            style={styles.startButton}
-            onPress={startChallenge}
-          >
-            <Text style={styles.startButtonText}>Start Challenge</Text>
-          </TouchableOpacity>
-          
-          <View style={styles.bestScore}>
-            <Text style={styles.bestScoreLabel}>Best IQ:</Text>
-            <Text style={styles.bestScoreValue}>{gameData?.maxScore || 0}</Text>
-            <Text style={styles.bestScoreTitle}>{getIQTitle(gameData?.maxScore || 0)}</Text>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 游戏中的返回按钮 */}
-      <View style={styles.gameTopBar}>
-        <TouchableOpacity 
-          style={styles.gameBackButton}
-          onPress={() => {
-            if (timerRef.current) {
-              clearInterval(timerRef.current);
-            }
-            setGameState('ready');
-            router.replace('/');
-          }}
-        >
-          <Ionicons name="arrow-back" size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
-      
-      {/* 返回按钮 */}
-      <View style={styles.header}>
+      {/* 顶部栏 */}
+      <View style={styles.topBar}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.replace('/')}
+          onPress={handleBack}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Challenge Mode</Text>
-        <View style={styles.placeholder} />
-      </View>
-      
-      {/* Game Header */}
-      <View style={styles.gameHeader}>
-        {/* Bomb and Fuse */}
-        <View style={styles.bombContainer}>
-          <Ionicons name="radio-button-on" size={32} color="#333" />
-          <View style={styles.fuseContainer}>
-            <Animated.View
-              style={[
-                styles.fuse,
-                {
-                  width: fuseWidth,
-                  backgroundColor: fuseColor,
-                },
-              ]}
-            />
-          </View>
-          <View style={styles.spark} />
-        </View>
         
-        {/* IQ Score */}
         <View style={styles.scoreContainer}>
-          <Text style={styles.iqLabel}>IQ:</Text>
-          <Text style={styles.iqScore}>{currentIQ}</Text>
+          {isPlaying && (
+            <>
+              <View style={styles.scoreItem}>
+                <Ionicons name="timer" size={16} color="#FF5722" />
+                <Text style={[styles.scoreText, { color: '#D32F2F' }]}>
+                  {formatTime(timeLeft)}
+                </Text>
+              </View>
+              <View style={styles.scoreItem}>
+                <Ionicons name="trophy" size={16} color="#FF9800" />
+                <Text style={styles.scoreText}>{score}</Text>
+              </View>
+            </>
+          )}
         </View>
       </View>
 
-      {/* Timer */}
-      <View style={styles.timerContainer}>
-        <Text style={styles.timerText}>
-          {formatTime(timeLeft)}
-        </Text>
-      </View>
+      {/* 黑板头部 */}
+      <ChalkboardHeader 
+        level="Challenge" 
+        stageName={isPlaying ? `IQ Sprint - ${getIQTitle(score)}` : "60-Second IQ Sprint"} 
+      />
 
-      {/* Game Board */}
-      {currentBoard && (
-        <GameBoard 
-          board={currentBoard}
-          onTilesClear={handleTilesClear}
-          disabled={gameState !== 'playing'}
-        />
-      )}
-
-      {/* Results Modal */}
-      <Modal
-        visible={showResults}
-        transparent
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.resultsModal}>
-            <Ionicons name="time" size={60} color="#FF5722" />
-            <Text style={styles.resultsTitle}>Time's Up!</Text>
-            
-            <View style={styles.finalScore}>
-              <Text style={styles.finalIQ}>Final IQ: {currentIQ}</Text>
-              <Text style={styles.finalTitle}>{getIQTitle(currentIQ)}</Text>
-              
-              {currentIQ > (gameData?.maxScore || 0) && (
-                <Text style={styles.newRecord}>🎉 New Personal Best!</Text>
-              )}
+      {/* 游戏区域 - 居中布局 */}
+      <View style={styles.gameArea}>
+        {!isPlaying && !board ? (
+          // 开始界面
+          <View style={styles.startContainer}>
+            <View style={styles.instructionCard}>
+              <Ionicons name="flash" size={48} color="#FF5722" />
+              <Text style={styles.instructionTitle}>60秒IQ挑战</Text>
+              <Text style={styles.instructionText}>
+                在60秒内尽可能多地清除方块{'\n'}
+                每次清除获得 +3 IQ分数{'\n'}
+                清除后立即出现新棋盘
+              </Text>
+              <Text style={styles.bestScore}>
+                最高IQ: {gameData?.maxScore || 0} ({getIQTitle(gameData?.maxScore || 0)})
+              </Text>
             </View>
-            
-            <TouchableOpacity 
-              style={styles.okButton}
-              onPress={handleBackToHome}
-            >
-              <Text style={styles.okButtonText}>OK</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
+        ) : (
+          // 游戏棋盘
+          board && (
+            <GameBoard
+              board={board}
+              onTilesClear={handleTilesClear}
+              disabled={!isPlaying}
+            />
+          )
+        )}
+      </View>
+
+      {/* 底部按钮 */}
+      <View style={styles.bottomBar}>
+        {!isPlaying ? (
+          <TouchableOpacity 
+            style={styles.startButton}
+            onPress={startGame}
+          >
+            <Ionicons name="play" size={24} color="white" />
+            <Text style={styles.startButtonText}>开始挑战</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={styles.stopButton}
+            onPress={endGame}
+          >
+            <Ionicons name="stop" size={20} color="white" />
+            <Text style={styles.stopButtonText}>结束挑战</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -291,17 +256,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f0f8ff',
   },
-  readyContainer: {
-    flex: 1, 
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
-  },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
@@ -309,188 +269,102 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-  },
-  placeholder: {
-    width: 40,
-  },
-  gameTopBar: {
+  scoreContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scoreItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginLeft: 8,
+  },
+  scoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E65100',
+    marginLeft: 4,
+  },
+  gameArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+  },
+  startContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  instructionCard: {
     backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    maxWidth: 300,
   },
-  gameBackButton: {
-    padding: 8,
+  instructionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 16,
   },
-  readySubtitle: {
-    fontSize: 18,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  readyDescription: {
+  instructionText: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 40,
-  },
-  startButton: {
-    backgroundColor: '#FF5722',
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  startButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
+    marginBottom: 16,
   },
   bestScore: {
-    alignItems: 'center',
-    marginTop: 40,
-  },
-  bestScoreLabel: {
-    fontSize: 16,
-    color: '#666',
-  },
-  bestScoreValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 14,
     color: '#FF9800',
-    marginTop: 4,
-  },
-  bestScoreTitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  gameHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  bombContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  fuseContainer: {
-    flex: 1,
-    height: 8,
-    backgroundColor: '#FFCCBC',
-    borderRadius: 4,
-    marginHorizontal: 10,
-    overflow: 'hidden',
-  },
-  fuse: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  spark: {
-    width: 6,
-    height: 6,
-    backgroundColor: '#FFC107',
-    borderRadius: 3,
-  },
-  scoreContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FF5722',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  iqLabel: {
-    color: 'white',
-    fontSize: 14,
     fontWeight: '600',
-    marginRight: 8,
-  },
-  iqScore: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  timerContainer: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  timerText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FF5722',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  resultsModal: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-    width: '80%',
-    maxWidth: 350,
-  },
-  resultsTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  finalScore: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  finalIQ: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#FF5722',
-    marginBottom: 8,
-  },
-  finalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#4a90e2',
     textAlign: 'center',
   },
-  newRecord: {
-    fontSize: 16,
-    color: '#4CAF50',
-    fontWeight: '600',
-    marginTop: 12,
+  bottomBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
   },
-  okButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 8,
-    minWidth: 120,
+  startButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF5722',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
   },
-  okButtonText: {
-    color: 'white',
+  startButtonText: {
     fontSize: 18,
     fontWeight: '600',
+    color: 'white',
+    marginLeft: 8,
+  },
+  stopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f44336',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  stopButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    marginLeft: 8,
   },
 });

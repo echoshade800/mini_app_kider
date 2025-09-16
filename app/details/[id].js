@@ -16,10 +16,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Dimensions, Animated } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
 import { STAGE_NAMES } from '../utils/stageNames';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function LevelDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -30,6 +33,7 @@ export default function LevelDetailScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSwapMode, setIsSwapMode] = useState(false);
   const [selectedSwapTile, setSelectedSwapTile] = useState(null);
+  const [swapAnimations, setSwapAnimations] = useState(new Map());
 
   const changeItems = gameData?.changeItems || 0;
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
@@ -110,23 +114,79 @@ export default function LevelDetailScreen() {
   const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // Create new board with swapped values
-    const newTiles = [...currentBoard.tiles];
-    const temp = newTiles[tile1.index];
-    newTiles[tile1.index] = newTiles[tile2.index];
-    newTiles[tile2.index] = temp;
+    // 计算两个方块的位置
+    const cellSize = Math.min(
+      (screenWidth - 80) / currentBoard.width, 
+      (screenHeight - 300) / currentBoard.height,
+      50
+    );
+    
+    const row1 = Math.floor(tile1.index / currentBoard.width);
+    const col1 = tile1.index % currentBoard.width;
+    const row2 = Math.floor(tile2.index / currentBoard.width);
+    const col2 = tile2.index % currentBoard.width;
+    
+    const deltaX = (col2 - col1) * cellSize;
+    const deltaY = (row2 - row1) * cellSize;
+    
+    // 创建交换动画
+    const swapAnim1 = {
+      translateX: new Animated.Value(0),
+      translateY: new Animated.Value(0),
+    };
+    const swapAnim2 = {
+      translateX: new Animated.Value(0),
+      translateY: new Animated.Value(0),
+    };
+    
+    // 设置交换动画到GameBoard
+    setSwapAnimations(new Map([
+      [tile1.index, swapAnim1],
+      [tile2.index, swapAnim2]
+    ]));
+    
+    // 执行动画
+    Animated.parallel([
+      Animated.timing(swapAnim1.translateX, {
+        toValue: deltaX,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(swapAnim1.translateY, {
+        toValue: deltaY,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(swapAnim2.translateX, {
+        toValue: -deltaX,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(swapAnim2.translateY, {
+        toValue: -deltaY,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // 动画完成后更新数据并清除动画
+      const newTiles = [...currentBoard.tiles];
+      const temp = newTiles[tile1.index];
+      newTiles[tile1.index] = newTiles[tile2.index];
+      newTiles[tile2.index] = temp;
 
-    // Update board
-    const updatedBoard = { ...currentBoard, tiles: newTiles };
-    setCurrentBoard(updatedBoard);
-
-    // Consume one change item
-    const newChangeItems = Math.max(0, changeItems - 1);
-    updateGameData({ changeItems: newChangeItems });
-
-    // Exit swap mode
-    setIsSwapMode(false);
-    setSelectedSwapTile(null);
+      const updatedBoard = { ...currentBoard, tiles: newTiles };
+      setCurrentBoard(updatedBoard);
+      
+      // 清除动画状态
+      setSwapAnimations(new Map());
+      
+      // 消耗道具并退出交换模式
+      const newChangeItems = Math.max(0, changeItems - 1);
+      updateGameData({ changeItems: newChangeItems });
+      setIsSwapMode(false);
+      setSelectedSwapTile(null);
+    });
+  };
   };
 
   const handleRestart = () => {
@@ -206,6 +266,7 @@ export default function LevelDetailScreen() {
         onTileClick={handleSwapTileClick}
         isSwapMode={isSwapMode}
         selectedSwapTile={selectedSwapTile}
+        swapAnimations={swapAnimations}
       />
 
       {/* Floating Action Buttons */}

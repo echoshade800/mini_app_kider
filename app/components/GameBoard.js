@@ -25,7 +25,8 @@ export function GameBoard({
   onTileClick, 
   isSwapMode = false, 
   selectedSwapTile = null,
-  disabled = false 
+  disabled = false,
+  swapAnimations = new Map()
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
@@ -87,32 +88,28 @@ export function GameBoard({
 
   // 开始所有数字方块的晃动动画
   const startShakeAnimation = () => {
-    const animations = [];
-    
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i] > 0) {
         const shakeAnim = initTileShake(i);
-        const shakeAnimation = Animated.loop(
+        Animated.loop(
           Animated.sequence([
             Animated.timing(shakeAnim, {
               toValue: 1,
-              duration: 150,
+              duration: 100,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: -1,
-              duration: 150,
+              duration: 100,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: 0,
-              duration: 150,
+              duration: 100,
               useNativeDriver: true,
             }),
           ])
-        );
-        animations.push(shakeAnimation);
-        shakeAnimation.start();
+        ).start();
       }
     }
   };
@@ -596,13 +593,27 @@ export function GameBoard({
     // 计算变换
     const transforms = [{ scale: tileScale }];
     
-    if (isSwapMode && !swapAnim) {
+    if (isSwapMode) {
       // 交换模式下的晃动效果
       transforms.push({
         translateX: tileShake.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [-3, 0, 3],
+          outputRange: [-2, 0, 2],
         }),
+      });
+      transforms.push({
+        translateY: tileShake.interpolate({
+          inputRange: [-1, 0, 1],
+          outputRange: [-1, 0, 1],
+        }),
+      });
+    }
+    
+    // 如果有交换动画，添加位置变换
+    if (swapAnim) {
+      transforms.push({
+        translateX: swapAnim.translateX,
+        translateY: swapAnim.translateY,
       });
     }
     

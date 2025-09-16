@@ -266,13 +266,15 @@ export default function LevelDetailsScreen() {
 
 
       {/* Game Board */}
-      <GameBoard 
-        board={currentBoard}
-        onTilesClear={handleTilesClear}
-        onTileClick={handleTileClick}
-        swapMode={swapMode}
-        firstSwapTile={firstSwapTile}
-      />
+      <View style={styles.gameContainer}>
+        <GameBoard 
+          board={currentBoard}
+          onTilesClear={handleTilesClear}
+          onTileClick={handleTileClick}
+          swapMode={swapMode}
+          firstSwapTile={firstSwapTile}
+        />
+      </View>
 
       {/* Change Button - Left Bottom */}
       <TouchableOpacity 
@@ -281,6 +283,7 @@ export default function LevelDetailsScreen() {
           changeItems <= 0 && styles.changeButtonDisabled
         ]}
         onPress={handleUseChange}
+        activeOpacity={0.7}
         disabled={changeItems <= 0}
       >
         <Text style={[
@@ -301,6 +304,7 @@ export default function LevelDetailsScreen() {
       <TouchableOpacity 
         style={[styles.resetButton, swapMode && styles.resetButtonDisabled]}
         onPress={handleRestart}
+        activeOpacity={0.7}
         disabled={swapMode}
       >
         <Ionicons name="refresh" size={24} color="white" />
@@ -435,6 +439,9 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '600',
   },
+  gameContainer: {
+    flex: 1,
+  },
   changeButton: {
     position: 'absolute',
     bottom: 30,
@@ -451,6 +458,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     minWidth: 80,
+    zIndex: 10,
   },
   changeButtonDisabled: {
     backgroundColor: '#ccc',
@@ -483,6 +491,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    zIndex: 10,
   },
   resetButtonDisabled: {
     backgroundColor: '#ccc',

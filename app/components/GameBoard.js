@@ -83,7 +83,38 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
   // 全屏触摸响应器
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => !disabled && !swapMode,
-    onMoveShouldSetPanResponder: () => !disabled && !swapMode,
+    onMoveShouldSetPanResponder: (evt) => {
+      if (disabled || swapMode) return false;
+      
+      // 检查触摸点是否在按钮区域内，如果是则不拦截
+      const { pageX, pageY } = evt.nativeEvent;
+      
+      // 左下角Change按钮区域 (假设按钮大小约100x60，距离底部和左边各30px)
+      const changeButtonArea = {
+        left: 20,
+        right: 120,
+        top: screenHeight - 90,
+        bottom: screenHeight - 30
+      };
+      
+      // 右下角Reset按钮区域 (假设按钮大小56x56，距离底部和右边各30px)
+      const resetButtonArea = {
+        left: screenWidth - 86,
+        right: screenWidth - 20,
+        top: screenHeight - 86,
+        bottom: screenHeight - 30
+      };
+      
+      // 如果触摸点在按钮区域内，不拦截触摸事件
+      if ((pageX >= changeButtonArea.left && pageX <= changeButtonArea.right &&
+           pageY >= changeButtonArea.top && pageY <= changeButtonArea.bottom) ||
+          (pageX >= resetButtonArea.left && pageX <= resetButtonArea.right &&
+           pageY >= resetButtonArea.top && pageY <= resetButtonArea.bottom)) {
+        return false;
+      }
+      
+      return true;
+    },
 
     onPanResponderGrant: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
@@ -538,7 +569,81 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
   const selectionSum = getSelectionSum();
 
   return (
-    <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
+    <View style={styles.fullScreenContainer}>
+      <View style={styles.touchableArea} {...panResponder.panHandlers}>
+        <View style={styles.container}>
+          <View 
+            style={[
+              styles.board,
+              {
+                width: boardWidth,
+                height: boardHeight,
+              }
+            ]}
+          >
+            {/* Render tiles */}
+            {tiles.map((value, index) => {
+              const row = Math.floor(index / width);
+              const col = index % width;
+              return renderTile(value, row, col);
+            })}
+            
+            {/* Selection overlay */}
+            {selectionStyle && (
+              <Animated.View style={selectionStyle} />
+            )}
+            
+            {/* Selection sum display */}
+            {selectionSum && (
+              <View style={selectionSum.style}>
+                <Text style={[
+                  styles.sumText,
+                  { color: selectionSum.isSuccess ? '#333' : 'white' }
+                ]}>
+                  {selectionSum.sum}
+                </Text>
+              </View>
+            )}
+
+            {/* Explosion effect */}
+            {explosionAnimation && (
+              <Animated.View
+                style={[
+                  styles.explosion,
+                  {
+                    left: explosionAnimation.x - 30,
+                    top: explosionAnimation.y - 30,
+                    transform: [{ scale: explosionScale }],
+                    opacity: explosionOpacity,
+                  }
+                ]}
+              >
+                <View style={styles.explosionCenter}>
+                  <Text style={styles.explosionText}>10</Text>
+                </View>
+                {/* 爆炸粒子效果 */}
+                {[...Array(12)].map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.explosionParticle,
+                      {
+                        transform: [
+                          { rotate: `${i * 30}deg` },
+                          { translateY: -25 }
+                        ]
+                      }
+                    ]}
+                  />
+                ))}
+              </Animated.View>
+            )}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
       <View style={styles.container}>
         <View 
           style={[
@@ -614,12 +719,10 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
 
 const styles = StyleSheet.create({
   fullScreenContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
+    flex: 1,
+  },
+  touchableArea: {
+    flex: 1,
   },
   container: {
     flex: 1,

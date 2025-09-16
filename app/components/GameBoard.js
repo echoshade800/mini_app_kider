@@ -23,9 +23,8 @@ export function GameBoard({
   board, 
   onTilesClear, 
   onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  onSwapTiles,
+  isSwapMode = false, 
+  selectedSwapTile = null,
   disabled = false 
 }) {
   const { settings } = useGameStore();
@@ -115,17 +114,17 @@ export function GameBoard({
           Animated.sequence([
             Animated.timing(shakeAnim, {
               toValue: 1,
-              duration: 100,
+              duration: 150,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: -1,
-              duration: 100,
+              duration: 150,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: 0,
-              duration: 100,
+              duration: 150,
               useNativeDriver: true,
             }),
           ])
@@ -146,7 +145,7 @@ export function GameBoard({
 
   // 开始交换模式时启动晃动
   React.useEffect(() => {
-    if (swapMode) {
+    if (isSwapMode) {
       startShakeAnimation();
     } else {
       stopShakeAnimation();
@@ -155,7 +154,6 @@ export function GameBoard({
     return () => {
       stopShakeAnimation();
     };
-  }, [swapMode]);
 
   // 缩放tile
   const scaleTile = (index, scale) => {
@@ -245,7 +243,7 @@ export function GameBoard({
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
       // 交换模式下不允许画框
-      if (swapMode) return false;
+      if (isSwapMode) return false;
       
       const { pageX, pageY } = evt.nativeEvent;
       // 只有在网格区域内才允许启动画框
@@ -253,7 +251,7 @@ export function GameBoard({
     },
     onMoveShouldSetPanResponder: (evt) => {
       // 交换模式下不允许画框
-      if (swapMode) return false;
+      if (isSwapMode) return false;
       
       const { pageX, pageY } = evt.nativeEvent;
       return !disabled && isInsideGridArea(pageX, pageY);
@@ -390,98 +388,15 @@ export function GameBoard({
 
   // 处理数字方块点击（交换模式）
   const handleTilePress = (row, col, value) => {
-    if (!swapMode || disabled || value === 0) return;
+    if (!isSwapMode || disabled || value === 0) return;
     
-    const index = row * width + col;
-    
-    if (!firstSwapTile) {
-      // 选择第一个方块
-      if (onTileClick) {
-        onTileClick(row, col, value);
-      }
-      scaleTile(index, 1.3); // 放大选中的方块
-      
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-    } else if (firstSwapTile.index === index) {
-      // 取消选择
-      if (onTileClick) {
-        onTileClick(row, col, value);
-      }
-      scaleTile(index, 1);
-    } else {
-      // 选择第二个方块，执行交换
-      const secondTile = { row, col, value, index };
-      performSwapAnimation(firstSwapTile, secondTile);
+    if (onTileClick) {
+      onTileClick(row, col, value);
     }
-  };
-
-  // 执行交换动画
-  const performSwapAnimation = (tile1, tile2) => {
+    
     if (settings?.hapticsEnabled !== false) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-
-    // 计算两个方块的屏幕位置
-    const tile1RelativeRow = tile1.row - bounds.minRow;
-    const tile1RelativeCol = tile1.col - bounds.minCol;
-    const tile1X = tile1RelativeCol * cellSize + cellSize / 2 + 10;
-    const tile1Y = tile1RelativeRow * cellSize + cellSize / 2 + 10;
-
-    const tile2RelativeRow = tile2.row - bounds.minRow;
-    const tile2RelativeCol = tile2.col - bounds.minCol;
-    const tile2X = tile2RelativeCol * cellSize + cellSize / 2 + 10;
-    const tile2Y = tile2RelativeRow * cellSize + cellSize / 2 + 10;
-
-    // 创建交换动画
-    const tile1Anim = {
-      x: new Animated.Value(0),
-      y: new Animated.Value(0),
-    };
-    const tile2Anim = {
-      x: new Animated.Value(0),
-      y: new Animated.Value(0),
-    };
-
-    setSwapAnimations(new Map([
-      [tile1.index, { ...tile1Anim, targetX: tile2X - tile1X, targetY: tile2Y - tile1Y }],
-      [tile2.index, { ...tile2Anim, targetX: tile1X - tile2X, targetY: tile1Y - tile2Y }],
-    ]));
-
-    // 执行动画
-    Animated.parallel([
-      Animated.timing(tile1Anim.x, {
-        toValue: tile2X - tile1X,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(tile1Anim.y, {
-        toValue: tile2Y - tile1Y,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(tile2Anim.x, {
-        toValue: tile1X - tile2X,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(tile2Anim.y, {
-        toValue: tile1Y - tile2Y,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // 动画完成后清理状态并通知父组件
-      setSwapAnimations(new Map());
-      scaleTile(tile1.index, 1);
-      scaleTile(tile2.index, 1);
-      
-      // 通知父组件执行交换
-      if (onSwapTiles) {
-        onSwapTiles(tile1, tile2);
-      }
-    });
   };
 
   const handleSelectionComplete = async () => {
@@ -660,26 +575,18 @@ export function GameBoard({
     // 计算变换
     const transforms = [{ scale: tileScale }];
     
-    if (swapMode && !swapAnim) {
+    if (isSwapMode && !swapAnim) {
       // 交换模式下的晃动效果
       transforms.push({
         translateX: tileShake.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [-2, 0, 2],
+          outputRange: [-3, 0, 3],
         }),
       });
     }
     
-    if (swapAnim) {
-      // 交换动画
-      transforms.push(
-        { translateX: swapAnim.x },
-        { translateY: swapAnim.y }
-      );
-    }
-    
-    // 检查是否是选中的第一个交换方块
-    const isFirstSwapSelected = firstSwapTile && firstSwapTile.index === index;
+    // 检查是否是选中的交换方块
+    const isSwapSelected = selectedSwapTile && selectedSwapTile.index === index;
 
     const tileComponent = (
       <Animated.View 
@@ -693,15 +600,18 @@ export function GameBoard({
             width: tileSize, 
             height: tileSize,
             transform: transforms,
-            backgroundColor: isFirstSwapSelected ? '#FFE082' : '#FFF8E1',
-            borderWidth: isFirstSwapSelected ? 3 : 0,
-            borderColor: isFirstSwapSelected ? '#FF9800' : 'transparent',
+            backgroundColor: isSwapSelected ? '#FFE082' : '#FFF8E1',
+            borderWidth: isSwapSelected ? 3 : 2,
+            borderColor: isSwapSelected ? '#FF9800' : '#E0E0E0',
           }
         ]}
       >
         <Text style={[
           styles.tileText,
-          { fontSize: tileSize * 0.5 }
+          { 
+            fontSize: tileSize * 0.5,
+            color: isSwapSelected ? '#E65100' : '#333'
+          }
         ]}>
           {value}
         </Text>
@@ -709,7 +619,7 @@ export function GameBoard({
     );
     
     // 如果是交换模式，包装成可点击的组件
-    if (swapMode) {
+    if (isSwapMode) {
       return (
         <TouchableOpacity
           key={`${row}-${col}`}

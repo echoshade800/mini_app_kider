@@ -28,8 +28,8 @@ export default function LevelDetailScreen() {
   const { gameData, updateGameData } = useGameStore();
   const [currentBoard, setCurrentBoard] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [swapMode, setSwapMode] = useState(false);
-  const [firstSwapTile, setFirstSwapTile] = useState(null);
+  const [isSwapMode, setIsSwapMode] = useState(false);
+  const [selectedSwapTile, setSelectedSwapTile] = useState(null);
 
   const changeItems = gameData?.changeItems || 0;
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
@@ -82,54 +82,55 @@ export default function LevelDetailScreen() {
   };
 
   const handleUseChange = () => {
-    if (changeItems <= 0 || swapMode) return;
+    if (changeItems <= 0) return;
     
-    // Enter swap mode
-    setSwapMode(true);
-    setFirstSwapTile(null);
+    // 进入交换模式
+    setIsSwapMode(true);
+    setSelectedSwapTile(null);
   };
 
-  const handleTileClick = (row, col, value) => {
-    if (!swapMode || value === 0) return;
+  const handleSwapTileClick = (row, col, value) => {
+    if (!isSwapMode || value === 0) return;
     
     const index = row * currentBoard.width + col;
-    const tileData = { row, col, value, index };
+    const clickedTile = { row, col, value, index };
     
-    if (!firstSwapTile) {
-      // Select first tile
-      setFirstSwapTile(tileData);
-    } else if (firstSwapTile.index === index) {
-      // Deselect if clicking same tile
-      setFirstSwapTile(null);
+    if (!selectedSwapTile) {
+      // 选择第一个方块
+      setSelectedSwapTile(clickedTile);
+    } else if (selectedSwapTile.index === index) {
+      // 取消选择（点击同一个方块）
+      setSelectedSwapTile(null);
     } else {
-      // This will trigger the swap animation in GameBoard
-      // The actual swap will be handled by handleSwapTiles
+      // 选择第二个方块，执行交换
+      performSwap(selectedSwapTile, clickedTile);
     }
   };
 
-  const handleSwapTiles = (tile1, tile2) => {
+  const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // Create new board with swapped tiles
+    // 创建新棋盘，交换两个方块的值
     const newTiles = [...currentBoard.tiles];
     const temp = newTiles[tile1.index];
     newTiles[tile1.index] = newTiles[tile2.index];
     newTiles[tile2.index] = temp;
 
+    // 更新棋盘
     const updatedBoard = { ...currentBoard, tiles: newTiles };
     setCurrentBoard(updatedBoard);
 
-    // Consume one change item
+    // 消耗一个道具
     const newChangeItems = Math.max(0, changeItems - 1);
     updateGameData({ changeItems: newChangeItems });
 
-    // Exit swap mode
-    setSwapMode(false);
-    setFirstSwapTile(null);
+    // 退出交换模式
+    setIsSwapMode(false);
+    setSelectedSwapTile(null);
   };
 
   const handleRestart = () => {
-    if (swapMode) return;
+    if (isSwapMode) return;
     
     Alert.alert(
       '重新开始',
@@ -164,8 +165,8 @@ export default function LevelDetailScreen() {
   };
 
   const handleCancelSwap = () => {
-    setSwapMode(false);
-    setFirstSwapTile(null);
+    setIsSwapMode(false);
+    setSelectedSwapTile(null);
   };
 
   if (!currentBoard) {
@@ -203,21 +204,20 @@ export default function LevelDetailScreen() {
         board={currentBoard}
         onTilesClear={handleTilesClear}
         onTileClick={handleTileClick}
-        swapMode={swapMode}
-        firstSwapTile={firstSwapTile}
-        onSwapTiles={handleSwapTiles}
-        disabled={showSuccess}
+          onTileClick={handleSwapTileClick}
+          isSwapMode={isSwapMode}
+          selectedSwapTile={selectedSwapTile}
       />
 
       {/* Bottom Actions */}
       <View style={styles.bottomActions}>
-        {swapMode ? (
+        {isSwapMode ? (
           <TouchableOpacity 
             style={[styles.bottomActionButton, styles.cancelButton]}
             onPress={handleCancelSwap}
           >
             <Ionicons name="close" size={20} color="white" />
-            <Text style={styles.bottomActionButtonText}>Cancel</Text>
+            <Text style={styles.bottomActionButtonText}>Cancel Swap</Text>
           </TouchableOpacity>
         ) : (
           <>
@@ -231,7 +231,9 @@ export default function LevelDetailScreen() {
               disabled={changeItems <= 0}
             >
               <Ionicons name="swap-horizontal" size={20} color="white" />
-              <Text style={styles.bottomActionButtonText}>
+              <Text style={[
+                styles.bottomActionButtonText,
+                changeItems <= 0 && { color: '#ccc' }]}>
                 Use Change ({changeItems})
               </Text>
             </TouchableOpacity>

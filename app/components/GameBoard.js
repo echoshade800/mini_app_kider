@@ -110,18 +110,18 @@ export function GameBoard({
         Animated.loop(
           Animated.sequence([
             Animated.timing(shakeAnim, {
-              toValue: 1,
-              duration: 200,
+              toValue: 0.5,
+              duration: 150,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
-              toValue: -1,
-              duration: 200,
+              toValue: -0.5,
+              duration: 150,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: 0,
-              duration: 200,
+              duration: 150,
               useNativeDriver: true,
             }),
           ])
@@ -575,8 +575,8 @@ export function GameBoard({
       // 交换模式下的晃动效果
       transforms.push({
         translateX: tileShake.interpolate({
-          inputRange: [-1, 0, 1],
-          outputRange: [-2, 0, 2],
+          inputRange: [-0.5, 0, 0.5],
+          outputRange: [-1, 0, 1],
         }),
       });
     }

@@ -21,22 +21,229 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export function GameBoard({ 
   board, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
   onTilesClear, 
   onTileClick, 
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
 }) {
+}) {
+}) {
+}) {
+}) {
   const [shakeAnimations, setShakeAnimations] = useState({});
   const [selection, setSelection] = useState(null);
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+  const { settings } = useGameStore();
+  
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+}) {
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const [selection, setSelection] = useState(null);
+  const [anchorPoint, setAnchorPoint] = useState(null);
   const { settings } = useGameStore();
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
-  const [anchorPoint, setAnchorPoint] = useState(null);
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [prefixSum, setPrefixSum] = useState([]);
+    if (!selection) return [];
+        left: selectionCenterX - 20,
+        top: selectionCenterY - 20,
+    
+    const { startRow, startCol, endRow, endCol } = selection;
+    const selectedTiles = [];
+    
+    // 计算框内所有有数字的方块
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value > 0) {
+            selectedTiles.push({ row, col, value, index });
+          }
+        }
+      }
+    }
+    
+    return selectedTiles;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+      startCol: minCol,
+      endRow: maxRow,
+      endCol: maxCol,
+    };
+    
+    setSelection(newSelection);
+    
+    // 显示选择框
+    if (selectionOpacity._value === 0) {
+      Animated.timing(selectionOpacity, {
+        toValue: 0.6,
+        duration: 50,
+        useNativeDriver: false,
+      }).start();
+    }
+  };
+
+    const r1 = row1 + 1;
+    const c1 = col1 + 1;
+    const r2 = row2 + 1;
+    const c2 = col2 + 1;
+    
+    return prefixSum[r2][c2] - prefixSum[r1-1][c2] - prefixSum[r2][c1-1] + prefixSum[r1-1][c1-1];
+  };
+  
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
   if (!board) {
@@ -173,49 +380,34 @@ export function GameBoard({
         startCol: clampedStartCol,
         endRow: clampedStartRow,
         endCol: clampedStartCol,
-      });
+      if (isSelecting) return; // 防止重复开始
       
-      // 立即显示选择框
-      Animated.timing(selectionOpacity, {
-        toValue: 0.6,
-        duration: 50,
-        useNativeDriver: false,
-      }).start();
+      const gridPos = getGridPosition(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
+      if (!gridPos) return; // 点击在棋盘外
+      
+      // 设置锚点和当前点
+      setAnchorPoint(gridPos);
+      setCurrentPoint(gridPos);
+      setIsSelecting(true);
+      
+      // 更新选择区域
+      updateSelection(gridPos, gridPos);
     },
 
     onPanResponderMove: (evt) => {
-      if (!selection) return;
+      if (!isSelecting || !anchorPoint) return;
       
-      const { locationX, locationY } = evt.nativeEvent;
+      const gridPos = getGridPosition(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
+      if (!gridPos) return;
       
-      // 计算相对于棋盘的坐标
-      const relativeX = Math.max(0, locationX - 10);
-      const relativeY = Math.max(0, locationY - 10);
-      
-      // 转换为网格坐标
-      const endCol = Math.floor(relativeX / cellSize);
-      const endRow = Math.floor(relativeY / cellSize);
-      
-      // 确保结束坐标在棋盘范围内
-      const clampedEndCol = Math.max(0, Math.min(width - 1, endCol));
-      const clampedEndRow = Math.max(0, Math.min(height - 1, endRow));
-      
-      // 确保框的方向正确（起始点始终是左上角）
-      const finalStartCol = Math.min(selection.startCol, clampedEndCol);
-      const finalStartRow = Math.min(selection.startRow, clampedEndRow);
-      const finalEndCol = Math.max(selection.startCol, clampedEndCol);
-      const finalEndRow = Math.max(selection.startRow, clampedEndRow);
-      
-      setSelection(prev => ({
-        startRow: finalStartRow,
-        startCol: finalStartCol,
-        endRow: finalEndRow,
-        endCol: finalEndCol,
-      }));
+      setCurrentPoint(gridPos);
+      updateSelection(anchorPoint, gridPos);
     },
 
     onPanResponderRelease: () => {
-      handleSelectionComplete();
+      if (isSelecting) {
+        handleSelectionComplete();
+      }
     },
   });
 
@@ -241,7 +433,6 @@ export function GameBoard({
       for (let col = minCol; col <= maxCol; col++) {
         if (row >= 0 && row < height && col >= 0 && col < width) {
           const index = row * width + col;
-          const value = tiles[index];
           if (value > 0) {
             selectedTiles.push({ row, col, value, index });
           }
@@ -263,7 +454,6 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
 
-    if (sum === 10 && selectedTiles.length > 0) {
       // Success - 创建爆炸效果
       if (settings?.hapticsEnabled !== false) {
         try {
@@ -274,11 +464,10 @@ export function GameBoard({
       }
       
       // 计算爆炸中心位置
-      const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
-      const explosionX = centerCol * cellSize + cellSize / 2 + 10;
-      const explosionY = centerRow * cellSize + cellSize / 2 + 10;
+      const explosionX = centerCol * cellSize + cellSize / 2 + boardOffsetX;
+      const explosionY = centerRow * cellSize + cellSize / 2 + boardOffsetY;
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
@@ -314,7 +503,7 @@ export function GameBoard({
           useNativeDriver: false,
         }),
       ]).start(() => {
-        setSelection(null);
+        resetSelection();
         if (onTilesClear) {
           onTilesClear(tilePositions);
         }
@@ -324,7 +513,7 @@ export function GameBoard({
       // Failure - 蓝色反馈
       if (settings?.hapticsEnabled !== false) {
         try {
-          // 短震动反馈
+          // 短振动反馈
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         } catch (error) {
           console.log('Haptics not available');
@@ -343,11 +532,11 @@ export function GameBoard({
           useNativeDriver: false,
         }),
       ]).start(() => {
-        setSelection(null);
+        resetSelection();
       });
     } else {
       // No tiles selected
-      setSelection(null);
+      resetSelection();
     }
   };
 
@@ -401,7 +590,6 @@ export function GameBoard({
     return {
       sum,
       isSuccess: sum === 10,
-      style: {
         position: 'absolute',
         left: left - 20,
         top: top - 20,
@@ -454,7 +642,7 @@ export function GameBoard({
     
     const animatedStyle = {
       transform: [
-        { translateX: shakeX },
+        { translateX: swapMode ? shakeX : 0 }, // 只在交换模式下晃动
         { scale: tileScale }
       ]
     };

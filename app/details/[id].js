@@ -1,732 +1,508 @@
 /**
- * GameBoard Component - Enhanced interactive puzzle board with advanced visual effects
- * Purpose: Render game tiles with enhanced touch interactions and explosion animations
- * Features: Flexible touch gestures, tile scaling, explosion effects, improved responsiveness
+ * Level Detail Screen - Individual level gameplay with board and controls
+ * Purpose: Play specific levels with progress tracking and item usage
+ * Features: Board generation, swap mode, progress saving, item management
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
-  PanResponder, 
-  Dimensions, 
+  TouchableOpacity, 
   StyleSheet,
-  Animated 
+  Alert,
+  Modal,
+  Dimensions
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { GameBoard } from '../components/GameBoard';
 import { useGameStore } from '../store/gameStore';
+import { generateBoard } from '../utils/boardGenerator';
+import { STAGE_NAMES } from '../utils/stageNames';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-}) {
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [selection, setSelection] = useState(null);
+export default function LevelDetailScreen() {
+  const { id } = useLocalSearchParams();
+  const level = parseInt(id);
+  
+  const { gameData, updateGameData } = useGameStore();
+  const [board, setBoard] = useState(null);
+  const [swapMode, setSwapMode] = useState(false);
+  const [firstSwapTile, setFirstSwapTile] = useState(null);
+  const [showVictory, setShowVictory] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [buttonAreas, setButtonAreas] = useState([]);
-  const tileScales = useRef({}).current;
-  const explosionScale = useRef(new Animated.Value(0)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const settings = useGameStore(state => state.settings);
+  
+  // Refs for button layout tracking
+  const backButtonRef = useRef(null);
+  const changeButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (level && level > 0) {
+      const generatedBoard = generateBoard(level);
+      setBoard(generatedBoard);
+      setIsCompleted(level <= (gameData?.maxLevel || 0));
+    }
+  }, [level, gameData?.maxLevel]);
+
+  // Track button layouts
+  const handleBackButtonLayout = (event) => {
+    const { x, y, width, height } = event.nativeEvent.layout;
+    backButtonRef.current?.measureInWindow((pageX, pageY, width, height) => {
+      const newButtonAreas = buttonAreas.filter(area => area.name !== 'backButton');
+      newButtonAreas.push({
+        name: 'backButton',
+        x: pageX,
+        y: pageY,
+        width,
+        height
+      });
+      setButtonAreas(newButtonAreas);
+    });
+  };
+
+  const handleChangeButtonLayout = (event) => {
+    const { x, y, width, height } = event.nativeEvent.layout;
+    changeButtonRef.current?.measureInWindow((pageX, pageY, width, height) => {
+      const newButtonAreas = buttonAreas.filter(area => area.name !== 'changeButton');
+      newButtonAreas.push({
+        name: 'changeButton',
+        x: pageX,
+        y: pageY,
+        width,
+        height
+      });
+      setButtonAreas(newButtonAreas);
+    });
+  };
+
+  const handleTilesClear = async (clearedPositions) => {
+    if (!board) return;
+
+    // Create new board with cleared tiles
+    const newTiles = [...board.tiles];
+    clearedPositions.forEach(pos => {
+      const index = pos.row * board.width + pos.col;
+      newTiles[index] = 0;
+    });
+
+    const updatedBoard = { ...board, tiles: newTiles };
+    setBoard(updatedBoard);
+
+    // Check if level is completed (all tiles cleared)
+    const hasRemainingTiles = newTiles.some(tile => tile > 0);
+    
+    if (!hasRemainingTiles) {
+      // Level completed!
+      const newMaxLevel = Math.max(gameData?.maxLevel || 0, level);
+      const newChangeItems = (gameData?.changeItems || 0) + 1;
+      
+      await updateGameData({
+        maxLevel: newMaxLevel,
+        changeItems: newChangeItems,
+        lastPlayedLevel: level,
+      });
+      
+      setShowVictory(true);
+      setIsCompleted(true);
+    }
+  };
+
+  const handleTileClick = (row, col) => {
+    if (!swapMode || !board) return;
+
+    const clickedTile = { row, col, value: board.tiles[row * board.width + col] };
+
+    if (!firstSwapTile) {
+      // First tile selection
+      if (clickedTile.value === 0) return; // Can't select empty tile
+      setFirstSwapTile(clickedTile);
+    } else {
+      // Second tile selection - perform swap
+      if (clickedTile.value === 0) return; // Can't select empty tile
+      
+      if (firstSwapTile.row === clickedTile.row && firstSwapTile.col === clickedTile.col) {
+        // Clicked same tile, cancel selection
+        setFirstSwapTile(null);
+        return;
+      }
+
+      // Perform the swap
+      const newTiles = [...board.tiles];
+      const firstIndex = firstSwapTile.row * board.width + firstSwapTile.col;
+      const secondIndex = clickedTile.row * board.width + clickedTile.col;
+      
+      // Swap the values
+      const temp = newTiles[firstIndex];
+      newTiles[firstIndex] = newTiles[secondIndex];
+      newTiles[secondIndex] = temp;
+
+      setBoard({ ...board, tiles: newTiles });
+      setFirstSwapTile(null);
+      setSwapMode(false);
+    }
+  };
+
+  const handleUseChangeItem = async () => {
+    const currentChangeItems = gameData?.changeItems || 0;
+    
+    if (currentChangeItems <= 0) {
+      Alert.alert('No Change Items', 'You need Change items to swap tiles. Complete levels to earn more!');
+      return;
+    }
+
+    if (swapMode) {
+      // Cancel swap mode
+      setSwapMode(false);
+      setFirstSwapTile(null);
+    } else {
+      // Enter swap mode and deduct item
+      await updateGameData({
+        changeItems: currentChangeItems - 1,
+      });
+      setSwapMode(true);
+      setFirstSwapTile(null);
+    }
+  };
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  const handleNextLevel = () => {
+    const nextLevel = level + 1;
+    router.replace(`/details/${nextLevel}`);
+  };
+
+  const handleRestart = () => {
+    const newBoard = generateBoard(level, true); // Force new seed
+    setBoard(newBoard);
+    setSwapMode(false);
+    setFirstSwapTile(null);
+    setShowVictory(false);
+  };
 
   if (!board) {
     return (
-    // 第一步：必须在棋盘内部区域（排除边框）
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading board...</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading level {level}...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  const { width, height, tiles } = board;
-  
-  // 计算实际有数字的区域边界
-  const getActualBoardBounds = () => {
-    let minRow = height, maxRow = -1, minCol = width, maxCol = -1;
-    
-    for (let row = 0; row < height; row++) {
-      for (let col = 0; col < width; col++) {
-        const index = row * width + col;
-        if (tiles[index] > 0) {
-          minRow = Math.min(minRow, row);
-          maxRow = Math.max(maxRow, row);
-          minCol = Math.min(minCol, col);
-          maxCol = Math.max(maxCol, col);
-        }
-      }
-    }
-    
-    return { minRow, maxRow, minCol, maxCol };
-  };
-  
-  const bounds = getActualBoardBounds();
-  const actualWidth = bounds.maxCol - bounds.minCol + 1;
-  const actualHeight = bounds.maxRow - bounds.minRow + 1;
-  
-  // 计算格子大小，数字方块更小
-  const cellSize = Math.min(
-    (screenWidth - 80) / actualWidth, 
-    (screenHeight - 300) / actualHeight,
-    50
-  );
-  
-  // 数字方块的实际大小（比格子小，留出间距）
-  const tileSize = cellSize * 0.7;
-  const tileMargin = (cellSize - tileSize) / 2;
-  
-  // 棋盘背景大小
-  const boardWidth = actualWidth * cellSize + 20;
-  const boardHeight = actualHeight * cellSize + 20;
-
-  // 初始化tile动画
-  const initTileScale = (index) => {
-    if (!tileScales[index]) {
-      tileScales[index] = new Animated.Value(1);
-    }
-    return tileScales[index];
-  };
-
-  // 缩放tile
-  const scaleTile = (index, scale) => {
-    const tileScale = initTileScale(index);
-    Animated.spring(tileScale, {
-      toValue: scale,
-      useNativeDriver: true,
-      tension: 400,
-      friction: 8,
-    }).start();
-  };
-
-  const isInsideButtonArea = (pageX, pageY) => {
-    return buttonAreas.some(area => {
-      return pageX >= area.x && pageX <= area.x + area.width &&
-             pageY >= area.y && pageY <= area.y + area.height;
-    });
-  };
-
-  const isInsideBoardOnly = (pageX, pageY) => {
-    // 计算棋盘在屏幕上的位置
-    const boardCenterX = screenWidth / 2;
-    const boardCenterY = screenHeight / 2;
-    const boardX = boardCenterX - boardWidth / 2;
-    const boardY = boardCenterY - boardHeight / 2;
-    const boardW = boardWidth;
-    const boardH = boardHeight;
-    
-    // 严格检查：必须在棋盘内部区域（排除边框）
-    const margin = 10; // 棋盘内边距
-    const insideBoard = pageX >= boardX + margin && pageX < boardX + boardW - margin && 
-                       pageY >= boardY + margin && pageY < boardY + boardH - margin;
-    
-    // 第二步：不能在任何按钮区域内
-    if (!insideBoard) return false;
-    if (isInsideButtonArea(pageX, pageY)) return false;
-    
-    return true;
-  };
-
-  const getSelectedTilesForSelection = (sel) => {
-    if (!sel) return [];
-    
-    const { startRow, startCol, endRow, endCol } = sel;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
-    const selectedTiles = [];
-    
-    // 计算框内所有有数字的方块（支持线条选择）
-    for (let row = minRow; row <= maxRow; row++) {
-      for (let col = minCol; col <= maxCol; col++) {
-        if (row >= 0 && row < height && col >= 0 && col < width) {
-          const index = row * width + col;
-          const value = tiles[index];
-          if (value > 0) {
-            selectedTiles.push({ row, col, value, index });
-          }
-        }
-      }
-    }
-    
-    return selectedTiles;
-  };
-
-  const getSelectedTiles = () => {
-    return getSelectedTilesForSelection(selection);
-  };
-
-  const resetSelection = () => {
-    setSelection(null);
-    selectionOpacity.setValue(0);
-    // 恢复所有tile的缩放
-    hoveredTiles.forEach(index => {
-      scaleTile(index, 1);
-    });
-    setHoveredTiles(new Set());
-  };
-
-  // 全屏触摸响应器
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
-      // 严格检查：只有在纯棋盘区域内才允许启动画框
-      return !disabled && isInsideBoardOnly(pageX, pageY);
-    },
-    onMoveShouldSetPanResponder: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
-      // 移动过程中也要持续检查区域
-      return !disabled && isInsideBoardOnly(pageX, pageY);
-    },
-
-    onPanResponderGrant: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
-      
-      // 双重检查：确保在棋盘区域内
-      if (!isInsideBoardOnly(pageX, pageY)) return;
-      
-      // 计算棋盘在屏幕上的位置
-      const boardCenterX = screenWidth / 2;
-      const boardCenterY = screenHeight / 2;
-      const boardLeft = boardCenterX - boardWidth / 2;
-      const boardTop = boardCenterY - boardHeight / 2;
-      
-      // 转换为相对于棋盘的坐标
-      const relativeX = pageX - boardLeft - 10;
-      const relativeY = pageY - boardTop - 10;
-      
-      // 转换为网格坐标
-      const startCol = Math.floor(relativeX / cellSize) + bounds.minCol;
-      const startRow = Math.floor(relativeY / cellSize) + bounds.minRow;
-      
-      setSelection({
-        startRow,
-        startCol,
-        endRow: startRow,
-        endCol: startCol,
-      });
-      
-      // 开始选择动画
-      Animated.timing(selectionOpacity, {
-        toValue: 0.5,
-        duration: 80,
-        useNativeDriver: false,
-      }).start();
-    },
-
-    onPanResponderMove: (evt) => {
-      if (!selection) return;
-      
-      const { pageX, pageY } = evt.nativeEvent;
-      
-      // 如果移动到棋盘外，终止选择
-      if (!isInsideBoardOnly(pageX, pageY)) {
-        resetSelection();
-        return;
-      }
-      
-      // 计算棋盘在屏幕上的位置
-      const boardCenterX = screenWidth / 2;
-      const boardCenterY = screenHeight / 2;
-      const boardLeft = boardCenterX - boardWidth / 2;
-      const boardTop = boardCenterY - boardHeight / 2;
-      
-      const relativeX = pageX - boardLeft - 10;
-      const relativeY = pageY - boardTop - 10;
-      
-      const endCol = Math.floor(relativeX / cellSize) + bounds.minCol;
-      const endRow = Math.floor(relativeY / cellSize) + bounds.minRow;
-      
-      setSelection(prev => ({
-        ...prev,
-        endRow,
-        endCol,
-      }));
-
-      // 更新悬停的tiles
-      const newSelection = { ...selection, endRow, endCol };
-      const newSelectedTiles = getSelectedTilesForSelection(newSelection);
-      const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
-      
-      // 只有被框选中的数字方块才变大
-      newSelectedTiles.forEach(tile => {
-        if (!hoveredTiles.has(tile.index)) {
-          scaleTile(tile.index, 1.2); // 被选中时放大
-        }
-      });
-      
-      // 恢复不再悬停的tiles到原始大小
-      hoveredTiles.forEach(index => {
-        if (!newHoveredSet.has(index)) {
-          scaleTile(index, 1);
-        }
-      });
-      
-      setHoveredTiles(newHoveredSet);
-    },
-
-    onPanResponderRelease: () => {
-      if (selection && !disabled) {
-        handleSelectionComplete();
-      }
-      
-      // 恢复所有tile的缩放
-      hoveredTiles.forEach(index => {
-        scaleTile(index, 1);
-      });
-      setHoveredTiles(new Set());
-    },
-    
-    // 允许其他组件终止画框（按钮优先）
-    onPanResponderTerminationRequest: () => true,
-    
-    // 被其他组件拒绝时清理状态
-    onPanResponderReject: () => {
-      resetSelection();
-    },
-  });
-
-  const handleSelectionComplete = async () => {
-    if (!selection) return;
-
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
-
-    if (sum === 10 && selectedTiles.length > 0) {
-      // Success - 创建爆炸效果
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
-      
-      // 计算爆炸中心位置
-      const { startRow, startCol, endRow, endCol } = selection;
-      const centerRow = (startRow + endRow) / 2;
-      const centerCol = (startCol + endCol) / 2;
-      const explosionX = (centerCol - bounds.minCol) * cellSize + cellSize / 2 + 10;
-      const explosionY = (centerRow - bounds.minRow) * cellSize + cellSize / 2 + 10;
-      
-      setExplosionAnimation({ x: explosionX, y: explosionY });
-      
-      // 爆炸动画
-      explosionScale.setValue(0);
-      explosionOpacity.setValue(1);
-      
-      Animated.parallel([
-        Animated.timing(explosionScale, {
-          toValue: 2.5,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(explosionOpacity, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setExplosionAnimation(null);
-      });
-
-      // 选择框动画
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.8,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-        onTilesClear(tilePositions);
-      });
-
-    } else if (selectedTiles.length > 0) {
-      // Failure - 蓝色反馈
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.5,
-          duration: 150,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-      });
-    } else {
-      // No tiles selected
-      setSelection(null);
-    }
-  };
-
-  const getSelectionStyle = () => {
-    if (!selection) return null;
-    
-    const { startRow, startCol, endRow, endCol } = selection;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const isSuccess = sum === 10;
-    
-    const left = (minCol - bounds.minCol) * cellSize + 10;
-    const top = (minRow - bounds.minRow) * cellSize + 10;
-    const width = (maxCol - minCol + 1) * cellSize;
-    const height = (maxRow - minRow + 1) * cellSize;
-    
-    return {
-      position: 'absolute',
-      left,
-      top,
-      width,
-      height,
-      backgroundColor: isSuccess ? '#4CAF50' : '#2196F3',
-      opacity: selectionOpacity,
-      borderRadius: 8,
-      borderWidth: 3,
-      borderColor: isSuccess ? '#45a049' : '#1976D2',
-    };
-  };
-
-  const getSelectionSum = () => {
-    if (!selection) return null;
-    
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    
-    if (selectedTiles.length === 0) return null;
-    
-    const { startRow, startCol, endRow, endCol } = selection;
-    const centerRow = (startRow + endRow) / 2;
-    const centerCol = (startCol + endCol) / 2;
-    
-    const left = (centerCol - bounds.minCol) * cellSize + 10;
-    const top = (centerRow - bounds.minRow) * cellSize + 10;
-    
-    return {
-      sum,
-      isSuccess: sum === 10,
-      style: {
-        position: 'absolute',
-        left: left - 25,
-        top: top - 25,
-        width: 50,
-        height: 50,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',
-        borderRadius: 25,
-        borderWidth: 3,
-        borderColor: sum === 10 ? '#FFA000' : '#1976D2',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 8,
-      }
-    };
-  };
-
-  const renderTile = (value, row, col) => {
-    const index = row * width + col;
-    
-    // 只渲染实际内容区域内的方块
-    if (row < bounds.minRow || row > bounds.maxRow || 
-        col < bounds.minCol || col > bounds.maxCol || value === 0) {
-      return null;
-    }
-
-    const relativeRow = row - bounds.minRow;
-    const relativeCol = col - bounds.minCol;
-    const left = relativeCol * cellSize + 10 + tileMargin;
-    const top = relativeRow * cellSize + 10 + tileMargin;
-
-    const tileScale = initTileScale(index);
-
-    return (
-      <Animated.View 
-        key={`${row}-${col}`}
-        style={[
-          styles.tile,
-          { 
-            position: 'absolute',
-            left,
-            top,
-            width: tileSize, 
-            height: tileSize,
-            transform: [{ scale: tileScale }],
-            backgroundColor: '#FFF8E1',
-          }
-        ]}
-      >
-        <Text style={[
-          styles.tileText,
-          { fontSize: tileSize * 0.5 }
-        ]}>
-          {value}
-        </Text>
-      </Animated.View>
-    );
-  };
-
-  const selectionStyle = getSelectionStyle();
-  const selectionSum = getSelectionSum();
+  const stageName = STAGE_NAMES[level] || `Level ${level}`;
+  const currentChangeItems = gameData?.changeItems || 0;
 
   return (
-    <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
-      <View style={styles.container}>
-        <View 
-          style={[
-            styles.board,
-            {
-              width: boardWidth,
-              height: boardHeight,
-            }
-          ]}
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          ref={backButtonRef}
+          style={styles.backButton}
+          onPress={handleBack}
+          onLayout={handleBackButtonLayout}
         >
-          {/* Render tiles */}
-          {tiles.map((value, index) => {
-            const row = Math.floor(index / width);
-            const col = index % width;
-            return renderTile(value, row, col);
-          })}
-          
-          {/* Selection overlay */}
-          {selectionStyle && (
-            <Animated.View style={selectionStyle} />
-          )}
-          {/* Selection sum display */}
-          {selectionSum && (
-            <View style={selectionSum.style}>
-              <Text style={[
-                styles.sumText,
-                { color: selectionSum.isSuccess ? '#333' : 'white' }
-              ]}>
-                {selectionSum.sum}
-              </Text>
-            </View>
-          )}
-
-          {/* Explosion effect */}
-          {explosionAnimation && (
-            <Animated.View
-              style={[
-                styles.explosion,
-                {
-                  left: explosionAnimation.x - 30,
-                  top: explosionAnimation.y - 30,
-                  transform: [{ scale: explosionScale }],
-                  opacity: explosionOpacity,
-                }
-              ]}
-            >
-              <View style={styles.explosionCenter}>
-                <Text style={styles.explosionText}>💥</Text>
-              </View>
-              {/* 爆炸粒子效果 */}
-              {[...Array(12)].map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.explosionParticle,
-                    {
-                      transform: [
-                        { rotate: `${i * 30}deg` },
-                        { translateY: -25 }
-                      ],
-                    }
-                  ]}
-                />
-              ))}
-            </Animated.View>
-          )}
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        
+        <View style={styles.levelInfo}>
+          <Text style={styles.levelNumber}>Level {level}</Text>
+          <Text style={styles.stageName} numberOfLines={1}>{stageName}</Text>
         </View>
+        
+        <View style={styles.placeholder} />
       </View>
-      
-      {/* 按钮区域收集器 - 用于获取按钮坐标 */}
-      <ButtonAreaCollector onButtonAreasUpdate={setButtonAreas} />
-    </View>
+
+      {/* Game Board */}
+      <View style={styles.gameContainer}>
+        <GameBoard 
+          board={board}
+          onTilesClear={handleTilesClear}
+          onTileClick={handleTileClick}
+          swapMode={swapMode}
+          firstSwapTile={firstSwapTile}
+          buttonAreas={buttonAreas}
+        />
+      </View>
+
+      {/* Controls */}
+      <View style={styles.controls}>
+        <TouchableOpacity 
+          ref={changeButtonRef}
+          style={[
+            styles.changeButton,
+            swapMode && styles.changeButtonActive,
+            currentChangeItems <= 0 && styles.changeButtonDisabled
+          ]}
+          onPress={handleUseChangeItem}
+          onLayout={handleChangeButtonLayout}
+          disabled={currentChangeItems <= 0 && !swapMode}
+        >
+          <Ionicons 
+            name="swap-horizontal" 
+            size={20} 
+            color={swapMode ? 'white' : (currentChangeItems <= 0 ? '#ccc' : '#4CAF50')} 
+          />
+          <Text style={[
+            styles.changeButtonText,
+            swapMode && styles.changeButtonTextActive,
+            currentChangeItems <= 0 && styles.changeButtonTextDisabled
+          ]}>
+            {swapMode ? 'Cancel' : 'Change'}
+          </Text>
+          <Text style={[
+            styles.changeItemCount,
+            swapMode && styles.changeItemCountActive,
+            currentChangeItems <= 0 && styles.changeItemCountDisabled
+          ]}>
+            {currentChangeItems}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.restartButton}
+          onPress={handleRestart}
+        >
+          <Ionicons name="refresh" size={20} color="#FF9800" />
+          <Text style={styles.restartButtonText}>Restart</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Victory Modal */}
+      <Modal
+        visible={showVictory}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowVictory(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.victoryModal}>
+            <Ionicons name="trophy" size={60} color="#FFD700" />
+            <Text style={styles.victoryTitle}>Level Complete!</Text>
+            <Text style={styles.victoryText}>
+              Congratulations! You've completed {stageName}
+            </Text>
+            <Text style={styles.rewardText}>
+              +1 Change Item earned!
+            </Text>
+            
+            <View style={styles.victoryButtons}>
+              <TouchableOpacity 
+                style={styles.nextButton}
+                onPress={handleNextLevel}
+              >
+                <Text style={styles.nextButtonText}>Next Level</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.backToMenuButton}
+                onPress={() => {
+                  setShowVictory(false);
+                  router.back();
+                }}
+              >
+                <Text style={styles.backToMenuButtonText}>Back to Menu</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
-}
-
-// 按钮区域收集组件
-function ButtonAreaCollector({ onButtonAreasUpdate }) {
-  const [backButtonLayout, setBackButtonLayout] = useState(null);
-  const [changeButtonLayout, setChangeButtonLayout] = useState(null);
-
-  useEffect(() => {
-    // 收集所有按钮区域
-    const areas = [];
-    if (backButtonLayout) {
-      areas.push({
-        name: 'backButton',
-        x: backButtonLayout.x,
-        y: backButtonLayout.y,
-        width: backButtonLayout.width,
-        height: backButtonLayout.height
-      });
-    }
-    if (changeButtonLayout) {
-      areas.push({
-        name: 'changeButton', 
-        x: changeButtonLayout.x,
-        y: changeButtonLayout.y,
-        width: changeButtonLayout.width,
-        height: changeButtonLayout.height
-      });
-    }
-    onButtonAreasUpdate(areas);
-  }, [backButtonLayout, changeButtonLayout, onButtonAreasUpdate]);
-
-  // 通过全局事件或其他方式收集按钮布局信息
-  useEffect(() => {
-    // 这里可以通过全局事件监听按钮布局变化
-    // 或者通过其他方式获取按钮的布局信息
-    
-    // 临时方案：设置一些常见的按钮区域
-    const updateButtonAreas = () => {
-      // 返回按钮通常在左上角
-      setBackButtonLayout({
-        x: 0,
-        y: 0, 
-        width: 80,
-        height: 80
-      });
-      
-      // Change按钮通常在底部中央
-      setChangeButtonLayout({
-        x: screenWidth / 2 - 50,
-        y: screenHeight - 120,
-        width: 100,
-        height: 60
-      });
-    };
-    
-    updateButtonAreas();
-    
-    // 监听屏幕方向变化
-    const subscription = Dimensions.addEventListener('change', updateButtonAreas);
-    
-    return () => subscription?.remove();
-  }, []);
-
-  return null; // 不渲染任何内容
 }
 
 const styles = StyleSheet.create({
-  fullScreenContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#f0f8ff',
   },
   loadingContainer: {
-    height: 200,
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#666',
   },
-  board: {
-    backgroundColor: '#2E7D32',
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 4,
-    borderColor: '#8D6E63',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-    position: 'relative',
-  },
-  tile: {
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 6,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  tileText: {
-    fontWeight: 'bold',
-    color: '#333',
+  backButton: {
+    padding: 8,
   },
-  sumText: {
+  levelInfo: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  levelNumber: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  stageName: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  placeholder: {
+    width: 40,
+  },
+  gameContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  controls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    gap: 16,
+  },
+  changeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+    backgroundColor: 'white',
+  },
+  changeButtonActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#45a049',
+  },
+  changeButtonDisabled: {
+    borderColor: '#ccc',
+    backgroundColor: '#f5f5f5',
+  },
+  changeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4CAF50',
+    marginLeft: 8,
+    marginRight: 8,
+  },
+  changeButtonTextActive: {
+    color: 'white',
+  },
+  changeButtonTextDisabled: {
+    color: '#ccc',
+  },
+  changeItemCount: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 24,
     textAlign: 'center',
   },
-  explosion: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
+  changeItemCountActive: {
+    color: '#4CAF50',
+    backgroundColor: 'white',
   },
-  explosionCenter: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#FFD700',
-    borderRadius: 25,
+  changeItemCountDisabled: {
+    color: '#ccc',
+    backgroundColor: '#f0f0f0',
+  },
+  restartButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#FF9800',
+    backgroundColor: 'white',
+  },
+  restartButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF9800',
+    marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#FFA000',
+    alignItems: 'center',
+  },
+  victoryModal: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    width: '85%',
+    maxWidth: 400,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     elevation: 8,
   },
-  explosionText: {
-    fontSize: 20,
+  victoryTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#4CAF50',
+    marginTop: 16,
+    marginBottom: 8,
   },
-  explosionParticle: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    backgroundColor: '#FF6B35',
-    borderRadius: 4,
+  victoryText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  rewardText: {
+    fontSize: 14,
+    color: '#FF9800',
+    fontWeight: '600',
+    marginBottom: 24,
+  },
+  victoryButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  nextButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  nextButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backToMenuButton: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backToMenuButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

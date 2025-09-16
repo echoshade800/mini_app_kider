@@ -26,6 +26,8 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
+}
+)
 export function GameBoard({ 
   board, 
   onTilesClear, 

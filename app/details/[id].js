@@ -343,7 +343,6 @@ export function GameBoard({
     };
   };
 
-  // 获取和值显示样式
   const getSumDisplayStyle = () => {
     if (!isSelecting || !anchorPoint || !currentPoint || selectedTiles.length === 0) return null;
     
@@ -507,7 +506,6 @@ export function GameBoard({
         </View>
       </View>
       
-      {/* 选择覆盖层 - 只在选择时启用事件 */}
       <View 
         style={[
           styles.selectionOverlay,

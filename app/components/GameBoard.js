@@ -205,6 +205,7 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
       setHoveredTiles(new Set());
     },
   });
+  
   const handleTilePress = (row, col) => {
     if (swapMode && onTileClick) {
       const index = row * width + col;
@@ -571,8 +572,6 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
   return (
     <View style={styles.fullScreenContainer}>
       <View style={styles.touchableArea} {...panResponder.panHandlers}>
-    <View style={styles.fullScreenContainer}>
-      <View style={styles.touchableArea} {...panResponder.panHandlers}>
         <View style={styles.container}>
           <View 
             style={[
@@ -649,7 +648,12 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
 
 const styles = StyleSheet.create({
   fullScreenContainer: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   touchableArea: {
     flex: 1,

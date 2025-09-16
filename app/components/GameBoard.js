@@ -29,12 +29,14 @@ export function GameBoard({
 }) {
   const [shakeAnimations, setShakeAnimations] = useState({});
   const [selection, setSelection] = useState(null);
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
   const { settings } = useGameStore();
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
+  const [anchorPoint, setAnchorPoint] = useState(null);
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [prefixSum, setPrefixSum] = useState([]);
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
   if (!board) {

@@ -1,10 +1,10 @@
 /**
- * GameBoard Component - Enhanced interactive puzzle board with swap mode
- * Purpose: Render game tiles with touch interactions, explosion animations, and swap functionality
- * Features: Rectangle drawing, tile swapping, shake animations, explosion effects
+ * GameBoard Component - Enhanced interactive puzzle board with advanced visual effects
+ * Purpose: Render game tiles with enhanced touch interactions and explosion animations
+ * Features: Flexible touch gestures, tile scaling, explosion effects, improved responsiveness
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -12,7 +12,7 @@ import {
   Dimensions, 
   StyleSheet,
   Animated,
-  TouchableOpacity
+  TouchableOpacity 
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
@@ -25,38 +25,28 @@ export function GameBoard({
   onTileClick, 
   swapMode = false, 
   firstSwapTile = null, 
+  disabled = false,
   onSwapTiles,
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
+  setFirstSwapTile
 }) {
-  const { settings } = useGameStore();
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [selection, setSelection] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
-  
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const [tileScales] = useState({});
+  const [tileShakeAnimations] = useState({});
+  const [buttonAreas, setButtonAreas] = useState([]);
+  const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
-  const tileScales = useRef({}).current;
-  const tileShakeAnimations = useRef({}).current;
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const settings = useGameStore(state => state.settings);
+
+  const isInsideButtonArea = (pageX, pageY) => {
+    return buttonAreas.some(area => 
+      pageX >= area.x && pageX <= area.x + area.width &&
+      pageY >= area.y && pageY <= area.y + area.height
+    );
+  };
 
   if (!board) {
     return (
@@ -139,6 +129,7 @@ export function GameBoard({
             Animated.timing(shakeAnim, {
               toValue: -1,
               duration: 100,
+              useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: 0,
@@ -151,7 +142,6 @@ export function GameBoard({
         shakeAnimation.start();
       }
     }
-    console.log('Started', animations.length, 'shake animations');
   };
 
   // 停止所有晃动动画
@@ -166,8 +156,10 @@ export function GameBoard({
   React.useEffect(() => {
     if (swapMode) {
       startShakeAnimation();
+      setFirstSwapTile(null);
     } else {
       stopShakeAnimation();
+      setFirstSwapTile(null);
     }
     
     return () => {
@@ -186,36 +178,25 @@ export function GameBoard({
     }).start();
   };
 
-  // 检查触摸点是否在棋盘网格区域内
-  const isInsideGridArea = (pageX, pageY) => {
+  const isInsideBoardOnly = (pageX, pageY) => {
     // 计算棋盘在屏幕上的位置
     const boardCenterX = screenWidth / 2;
     const boardCenterY = screenHeight / 2;
-    const boardLeft = boardCenterX - boardWidth / 2;
-    const boardTop = boardCenterY - boardHeight / 2;
+    const boardX = boardCenterX - boardWidth / 2;
+    const boardY = boardCenterY - boardHeight / 2;
+    const boardW = boardWidth;
+    const boardH = boardHeight;
     
-    // 检查是否在棋盘边界内
-    if (pageX < boardLeft + 10 || pageX > boardLeft + boardWidth - 10 ||
-        pageY < boardTop + 10 || pageY > boardTop + boardHeight - 10) {
-      return false;
-    }
+    // 严格检查：必须在棋盘内部区域（排除边框）
+    const margin = 10; // 棋盘内边距
+    const insideBoard = pageX >= boardX + margin && pageX < boardX + boardW - margin && 
+                       pageY >= boardY + margin && pageY < boardY + boardH - margin;
     
-    // 转换为相对于棋盘的坐标
-    const relativeX = pageX - boardLeft - 10;
-    const relativeY = pageY - boardTop - 10;
+    // 第二步：不能在任何按钮区域内
+    if (!insideBoard) return false;
+    if (isInsideButtonArea(pageX, pageY)) return false;
     
-    // 检查是否在有效的网格区域内
-    if (relativeX < 0 || relativeX >= actualWidth * cellSize ||
-        relativeY < 0 || relativeY >= actualHeight * cellSize) {
-      return false;
-    }
-    
-    // 转换为网格坐标并检查范围
-    const col = Math.floor(relativeX / cellSize) + bounds.minCol;
-    const row = Math.floor(relativeY / cellSize) + bounds.minRow;
-    
-    return row >= bounds.minRow && row <= bounds.maxRow &&
-           col >= bounds.minCol && col <= bounds.maxCol;
+    return true;
   };
 
   const getSelectedTilesForSelection = (sel) => {
@@ -266,22 +247,23 @@ export function GameBoard({
       if (swapMode) return false;
       
       const { pageX, pageY } = evt.nativeEvent;
-      // 只有在网格区域内才允许启动画框
-      return !disabled && isInsideGridArea(pageX, pageY);
+      // 严格检查：只有在纯棋盘区域内才允许启动画框
+      return !disabled && isInsideBoardOnly(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
       // 交换模式下不允许画框
       if (swapMode) return false;
       
       const { pageX, pageY } = evt.nativeEvent;
-      return !disabled && isInsideGridArea(pageX, pageY);
+      // 移动过程中也要持续检查区域
+      return !disabled && isInsideBoardOnly(pageX, pageY);
     },
 
     onPanResponderGrant: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
       
-      // 双重检查：确保在网格区域内
-      if (!isInsideGridArea(pageX, pageY)) return;
+      // 双重检查：确保在棋盘区域内
+      if (!isInsideBoardOnly(pageX, pageY)) return;
       
       // 计算棋盘在屏幕上的位置
       const boardCenterX = screenWidth / 2;
@@ -296,6 +278,12 @@ export function GameBoard({
       // 转换为网格坐标
       const startCol = Math.floor(relativeX / cellSize) + bounds.minCol;
       const startRow = Math.floor(relativeY / cellSize) + bounds.minRow;
+      
+      // 确保网格坐标在有效范围内
+      if (startRow < bounds.minRow || startRow > bounds.maxRow ||
+          startCol < bounds.minCol || startCol > bounds.maxCol) {
+        return; // 网格坐标超出范围
+      }
       
       setSelection({
         startRow,
@@ -317,6 +305,12 @@ export function GameBoard({
       
       const { pageX, pageY } = evt.nativeEvent;
       
+      // 如果移动到棋盘外，终止选择
+      if (!isInsideBoardOnly(pageX, pageY)) {
+        resetSelection();
+        return;
+      }
+      
       // 计算棋盘在屏幕上的位置
       const boardCenterX = screenWidth / 2;
       const boardCenterY = screenHeight / 2;
@@ -324,8 +318,8 @@ export function GameBoard({
       const boardTop = boardCenterY - boardHeight / 2;
       
       // 检查移动点是否在棋盘区域内
-      if (pageX < boardLeft + 10 || pageX > boardLeft + boardWidth - 10 ||
-          pageY < boardTop + 10 || pageY > boardTop + boardHeight - 10) {
+      if (pageX < boardLeft || pageX > boardLeft + boardWidth ||
+          pageY < boardTop || pageY > boardTop + boardHeight) {
         // 如果移动到棋盘外，保持当前选择不变
         return;
       }
@@ -414,9 +408,7 @@ export function GameBoard({
     
     if (!firstSwapTile) {
       // 选择第一个方块
-      if (onTileClick) {
-        onTileClick(row, col, value);
-      }
+      setFirstSwapTile({ row, col, value, index });
       scaleTile(index, 1.3); // 放大选中的方块
       
       if (settings?.hapticsEnabled !== false) {
@@ -424,9 +416,7 @@ export function GameBoard({
       }
     } else if (firstSwapTile.index === index) {
       // 取消选择
-      if (onTileClick) {
-        onTileClick(row, col, value);
-      }
+      setFirstSwapTile(null);
       scaleTile(index, 1);
     } else {
       // 选择第二个方块，执行交换
@@ -492,6 +482,7 @@ export function GameBoard({
     ]).start(() => {
       // 动画完成后清理状态并通知父组件
       setSwapAnimations(new Map());
+      setFirstSwapTile(null);
       scaleTile(tile1.index, 1);
       scaleTile(tile2.index, 1);
       
@@ -819,6 +810,38 @@ export function GameBoard({
       </View>
     </View>
   );
+}
+
+// 按钮区域收集组件
+function ButtonAreaCollector({ onButtonAreasUpdate }) {
+  const [backButtonLayout, setBackButtonLayout] = useState(null);
+  const [changeButtonLayout, setChangeButtonLayout] = useState(null);
+
+  useEffect(() => {
+    // 收集所有按钮区域
+    const areas = [];
+    if (backButtonLayout) {
+      areas.push({
+        name: 'backButton',
+        x: backButtonLayout.x,
+        y: backButtonLayout.y,
+        width: backButtonLayout.width,
+        height: backButtonLayout.height
+      });
+    }
+    if (changeButtonLayout) {
+      areas.push({
+        name: 'changeButton', 
+        x: changeButtonLayout.x,
+        y: changeButtonLayout.y,
+        width: changeButtonLayout.width,
+        height: changeButtonLayout.height
+      });
+    }
+    onButtonAreasUpdate(areas);
+  }, [backButtonLayout, changeButtonLayout, onButtonAreasUpdate]);
+
+  return null;
 }
 
 const styles = StyleSheet.create({

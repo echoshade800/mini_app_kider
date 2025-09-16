@@ -379,10 +379,9 @@ export default function LevelDetailScreen() {
         itemMode={itemMode}
         selectedSwapTile={selectedSwapTile}
         animationsProp={new Map([...swapAnimations, ...fractalAnimations])}
-          swapAnimations={swapAnimationsRef.current}
+        swapAnimations={swapAnimationsRef.current}
+        fractalAnimations={fractalAnimationsRef.current}
       />
-      />
-          fractalAnimations={fractalAnimationsRef.current}
 
       {/* Floating Action Buttons */}
       <View style={styles.floatingButtons}>

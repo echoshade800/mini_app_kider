@@ -146,6 +146,7 @@ export function GameBoard({
     };
   }, [swapMode]);
 
+  // 处理方块点击
   const handleTilePress = (row, col) => {
     if (disabled || !swapMode) return;
     
@@ -218,7 +219,6 @@ export function GameBoard({
       const finalEndRow = Math.max(selection.startRow, clampedEndRow);
       
       setSelection(prev => ({
-        ...prev,
         startRow: finalStartRow,
         startCol: finalStartCol,
         endRow: finalEndRow,

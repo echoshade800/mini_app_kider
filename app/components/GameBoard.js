@@ -26,8 +26,6 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-}
-)
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -35,8 +33,6 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-}
-)
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -44,8 +40,6 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-}
-)
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -53,8 +47,39 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-}
-)
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -63,12 +88,20 @@ export function GameBoard({
   firstSwapTile = null, 
   disabled = false 
 }) {
-  const { settings } = useGameStore();
+}) {
+}) {
+}) {
+}) {
   const [shakeAnimations, setShakeAnimations] = useState({});
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
+        { translateX: shakeX },
+    const selectionHeight = (endRow - startRow + 1) * cellSize;
+        { scale: tileScale }
+      ]
+    };
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
   if (!board) {
@@ -207,10 +240,10 @@ export function GameBoard({
         endCol: clampedStartCol,
       });
       
-      // 开始选择动画
+      // 立即显示选择框
       Animated.timing(selectionOpacity, {
-        toValue: 0.5,
-        duration: 100,
+        toValue: 0.6,
+        duration: 50,
         useNativeDriver: false,
       }).start();
     },
@@ -220,26 +253,28 @@ export function GameBoard({
       
       const { locationX, locationY } = evt.nativeEvent;
       
-      // 直接使用相对于棋盘的坐标，减去棋盘内边距
-      const relativeX = locationX - 10;
-      const relativeY = locationY - 10;
+      // 计算相对于棋盘的坐标
+      const relativeX = Math.max(0, locationX - 10);
+      const relativeY = Math.max(0, locationY - 10);
       
+      // 转换为网格坐标
       const endCol = Math.floor(relativeX / cellSize);
       const endRow = Math.floor(relativeY / cellSize);
       
-      // 确保坐标在有效范围内
+      // 确保结束坐标在棋盘范围内
       const clampedEndCol = Math.max(0, Math.min(width - 1, endCol));
       
       setSelection(prev => ({
-        ...prev,
-        endRow: clampedEndRow,
-        endCol: clampedEndCol,
-      }
-      )
-      )
-    }
-  }
-  )
+      // 确保框的方向正确（起始点始终是左上角）
+      const finalStartCol = Math.min(selection.startCol, clampedEndCol);
+      const finalStartRow = Math.min(selection.startRow, clampedEndRow);
+      const finalEndCol = Math.max(selection.startCol, clampedEndCol);
+      const finalEndRow = Math.max(selection.startRow, clampedEndRow);
+      
+        startRow: finalStartRow,
+        startCol: finalStartCol,
+        endRow: finalEndRow,
+        endCol: finalEndCol,
   const getSelectedTilesForSelection = (sel) => {
     if (!sel) return [];
     
@@ -320,12 +355,12 @@ export function GameBoard({
       Animated.sequence([
         Animated.timing(selectionOpacity, {
           toValue: 0.8,
-          duration: 200,
+          duration: 150,
           useNativeDriver: false,
         }),
         Animated.timing(selectionOpacity, {
           toValue: 0,
-          duration: 400,
+          duration: 300,
           useNativeDriver: false,
         }),
       ]).start(() => {
@@ -348,12 +383,12 @@ export function GameBoard({
       Animated.sequence([
         Animated.timing(selectionOpacity, {
           toValue: 0.5,
-          duration: 150,
+          duration: 100,
           useNativeDriver: false,
         }),
         Animated.timing(selectionOpacity, {
           toValue: 0,
-          duration: 400,
+          duration: 250,
           useNativeDriver: false,
         }),
       ]).start(() => {
@@ -361,6 +396,11 @@ export function GameBoard({
       });
     } else {
       // No tiles selected
+      Animated.timing(selectionOpacity, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: false,
+      }).start();
       setSelection(null);
     }
   };
@@ -420,9 +460,12 @@ export function GameBoard({
         left: left - 25,
         top: top - 25,
         width: 50,
-        height: 50,
+        left: left - 20,
+        top: top - 20,
+        width: 40,
+        height: 40,
         backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',
-        borderRadius: 25,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 3,

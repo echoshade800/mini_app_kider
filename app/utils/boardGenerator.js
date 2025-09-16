@@ -105,6 +105,64 @@ function isBoardSolvable(tiles, width, height) {
   return false; // 超过最大迭代次数，认为不可解
 }
 
+// 确保棋盘总和为10的倍数
+function ensureSumIsMultipleOf10(tiles) {
+  const nonZeroTiles = tiles.filter(tile => tile > 0);
+  const currentSum = nonZeroTiles.reduce((acc, tile) => acc + tile, 0);
+  const remainder = currentSum % 10;
+  
+  if (remainder === 0) {
+    return tiles; // 已经是10的倍数，无需调整
+  }
+  
+  const adjustment = 10 - remainder;
+  const newTiles = [...tiles];
+  
+  // 找到第一个非零数字进行调整
+  for (let i = 0; i < newTiles.length; i++) {
+    if (newTiles[i] > 0) {
+      // 尝试调整这个数字
+      const newValue = newTiles[i] + adjustment;
+      if (newValue >= 1 && newValue <= 9) {
+        newTiles[i] = newValue;
+        return newTiles;
+      }
+      
+      // 如果调整后超出范围，尝试减少
+      const newValueDown = newTiles[i] - (10 - adjustment);
+      if (newValueDown >= 1 && newValueDown <= 9) {
+        newTiles[i] = newValueDown;
+        return newTiles;
+      }
+    }
+  }
+  
+  // 如果单个数字调整不行，尝试调整多个数字
+  let remainingAdjustment = adjustment;
+  for (let i = 0; i < newTiles.length && remainingAdjustment > 0; i++) {
+    if (newTiles[i] > 0) {
+      const maxIncrease = Math.min(9 - newTiles[i], remainingAdjustment);
+      if (maxIncrease > 0) {
+        newTiles[i] += maxIncrease;
+        remainingAdjustment -= maxIncrease;
+      }
+    }
+  }
+  
+  // 如果还有剩余调整量，尝试减少一些数字
+  if (remainingAdjustment > 0) {
+    for (let i = 0; i < newTiles.length && remainingAdjustment > 0; i++) {
+      if (newTiles[i] > 1) {
+        const maxDecrease = Math.min(newTiles[i] - 1, remainingAdjustment);
+        newTiles[i] -= maxDecrease;
+        remainingAdjustment -= maxDecrease;
+      }
+    }
+  }
+  
+  return newTiles;
+}
+
 export function generateBoard(level, forceNewSeed = false) {
   // 使用时间戳或固定种子，根据需要生成不同的棋盘
   const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
@@ -258,13 +316,16 @@ export function generateBoard(level, forceNewSeed = false) {
       }
     }
     
+    // 确保总和为10的倍数
+    const adjustedTiles = ensureSumIsMultipleOf10(tiles);
+    
     // 检查棋盘是否可解
-    if (isBoardSolvable(tiles, width, height)) {
+    if (isBoardSolvable(adjustedTiles, width, height)) {
       return {
         seed,
         width,
         height,
-        tiles,
+        tiles: adjustedTiles,
         requiredSwaps, // 返回建议的道具使用次数
         level,
         solvable: true
@@ -302,11 +363,14 @@ function generateFallbackBoard(level, width, height) {
     pos++;
   }
   
+  // 确保后备棋盘的总和也是10的倍数
+  const adjustedTiles = ensureSumIsMultipleOf10(tiles);
+  
   return {
     seed: `fallback_${level}_${Date.now()}`,
     width,
     height,
-    tiles,
+    tiles: adjustedTiles,
     requiredSwaps: 0,
     level,
     solvable: true

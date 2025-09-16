@@ -442,11 +442,10 @@ export function GameBoard({
           style={[
             styles.board,
             {
-      <View style={[styles.header, { zIndex: 1000 }]}>
+              width: boardWidth,
               height: boardHeight,
-          style={[styles.backButton, { zIndex: 1001 }]}
+            }
           ]}
-          activeOpacity={0.7}
         >
           {/* 渲染格子 */}
           {tiles.map((value, index) => {
@@ -497,9 +496,8 @@ export function GameBoard({
                       transform: [
                         { rotate: `${i * 30}deg` },
                         { translateY: -25 }
-          style={[styles.startButton, { zIndex: 1001 }]}
+                      ]
                     }
-          activeOpacity={0.7}
                   ]}
                 />
               ))}
@@ -551,7 +549,6 @@ const styles = StyleSheet.create({
     shadowOffset: {
       width: 0,
       height: 4,
-              activeOpacity={0.7}
     },
     shadowOpacity: 0.3,
     shadowRadius: 6,

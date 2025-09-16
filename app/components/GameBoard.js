@@ -29,7 +29,13 @@ export function GameBoard({
 }) {
   const [shakeAnimations, setShakeAnimations] = useState({});
   const [selection, setSelection] = useState(null);
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
   const { settings } = useGameStore();
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;

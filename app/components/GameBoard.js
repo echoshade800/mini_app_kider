@@ -27,10 +27,23 @@ export function GameBoard({
   firstSwapTile = null, 
   onSwapTiles,
   disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
   
@@ -121,7 +134,6 @@ export function GameBoard({
             Animated.timing(shakeAnim, {
               toValue: -1,
               duration: 100,
-              useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: 0,
@@ -134,6 +146,7 @@ export function GameBoard({
         shakeAnimation.start();
       }
     }
+    console.log('Started', animations.length, 'shake animations');
   };
 
   // 停止所有晃动动画

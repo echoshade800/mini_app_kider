@@ -381,6 +381,7 @@ export default function LevelDetailScreen() {
         animationsProp={new Map([...swapAnimations, ...fractalAnimations])}
           swapAnimations={swapAnimationsRef.current}
       />
+      />
           fractalAnimations={fractalAnimationsRef.current}
 
       {/* Floating Action Buttons */}

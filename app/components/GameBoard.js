@@ -35,6 +35,12 @@ export function GameBoard({
   onTileClick, 
   swapMode = false, 
   firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
   disabled = false 
   const { settings } = useGameStore();
   

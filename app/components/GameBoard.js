@@ -612,8 +612,9 @@ export function GameBoard({
     if (swapAnim) {
       transforms.push({
         translateX: swapAnim.translateX,
-        translateY: swapAnim.translateY,
+      });
       transforms.push({
+        translateY: swapAnim.translateY,
       });
     }
     

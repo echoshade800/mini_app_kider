@@ -265,7 +265,7 @@ export default function LevelDetailScreen() {
         onTileClick={handleSwapTileClick}
         isSwapMode={isSwapMode}
         selectedSwapTile={selectedSwapTile}
-        swapAnimations={swapAnimations}
+        swapAnimationsProp={swapAnimations}
       />
 
       {/* Floating Action Buttons */}
@@ -396,10 +396,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    justifyContent: 'cen
-  }
-}
-)ter',
+    justifyContent: 'center',
     zIndex: 1000,
     elevation: 1000,
   },

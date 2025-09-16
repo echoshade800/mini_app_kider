@@ -208,46 +208,36 @@ export default function LevelDetailScreen() {
         selectedSwapTile={selectedSwapTile}
       />
 
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        {isSwapMode ? (
-          // Swap mode: Show cancel button
+      {/* Floating Action Buttons */}
+      <View style={styles.floatingButtons}>
+        {/* Swap Mode Button */}
+        <TouchableOpacity 
+          style={[
+            styles.floatingButton,
+            isSwapMode ? styles.cancelSwapButton : styles.swapButton,
+            changeItems <= 0 && !isSwapMode && styles.floatingButtonDisabled
+          ]}
+          onPress={isSwapMode ? handleCancelSwap : handleUseChange}
+          disabled={changeItems <= 0 && !isSwapMode}
+        >
+          <Ionicons 
+            name={isSwapMode ? "close" : "swap-horizontal"} 
+            size={24} 
+            color="white" 
+          />
+          {!isSwapMode && (
+            <Text style={styles.floatingButtonBadge}>{changeItems}</Text>
+          )}
+        </TouchableOpacity>
+        
+        {/* Reset Button */}
+        {!isSwapMode && (
           <TouchableOpacity 
-            style={[styles.bottomActionButton, styles.cancelButton]}
-            onPress={handleCancelSwap}
+            style={[styles.floatingButton, styles.resetButton]}
+            onPress={handleRestart}
           >
-            <Ionicons name="close" size={20} color="white" />
-            <Text style={styles.bottomActionButtonText}>Cancel Swap</Text>
+            <Ionicons name="refresh" size={24} color="white" />
           </TouchableOpacity>
-        ) : (
-          // Normal mode: Show change and reset buttons
-          <>
-            <TouchableOpacity 
-              style={[
-                styles.bottomActionButton, 
-                styles.changeButton,
-                changeItems <= 0 && styles.actionButtonDisabled
-              ]}
-              onPress={handleUseChange}
-              disabled={changeItems <= 0}
-            >
-              <Ionicons name="swap-horizontal" size={20} color="white" />
-              <Text style={[
-                styles.bottomActionButtonText,
-                changeItems <= 0 && { color: '#ccc' }
-              ]}>
-                Use Change ({changeItems})
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.bottomActionButton, styles.restartButton]}
-              onPress={handleRestart}
-            >
-              <Ionicons name="refresh" size={20} color="white" />
-              <Text style={styles.bottomActionButtonText}>Reset</Text>
-            </TouchableOpacity>
-          </>
         )}
       </View>
 
@@ -346,41 +336,55 @@ const styles = StyleSheet.create({
     color: '#FF9800',
     marginLeft: 4,
   },
-  bottomActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    gap: 12,
+  floatingButtons: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    alignItems: 'center',
+    gap: 16,
   },
-  bottomActionButton: {
-    flex: 1,
-    flexDirection: 'row',
+  floatingButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    position: 'relative',
   },
-  changeButton: {
+  swapButton: {
     backgroundColor: '#FF9800',
   },
-  restartButton: {
+  resetButton: {
     backgroundColor: '#2196F3',
   },
-  cancelButton: {
+  cancelSwapButton: {
     backgroundColor: '#f44336',
   },
-  actionButtonDisabled: {
+  floatingButtonDisabled: {
     backgroundColor: '#ccc',
     opacity: 0.6,
   },
-  bottomActionButtonText: {
+  floatingButtonBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#f44336',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  floatingButtonBadgeText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
   },
   modalOverlay: {

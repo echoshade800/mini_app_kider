@@ -217,6 +217,12 @@ export function GameBoard({
     },
   });
 
+  const handleTilePress = (row, col) => {
+    if (swapMode && onTileClick) {
+      onTileClick(row, col);
+    }
+  };
+
   const getSelectedTilesForSelection = (sel) => {
     if (!sel) return [];
     
@@ -246,16 +252,6 @@ export function GameBoard({
 
   const getSelectedTiles = () => {
     return getSelectedTilesForSelection(selection);
-  };
-
-  const handleTilePress = (row, col) => {
-    if (swapMode && onTileClick) {
-      const index = row * width + col;
-      const value = tiles[index];
-      if (value > 0) {
-        onTileClick(row, col);
-      }
-    }
   };
 
   const handleSelectionComplete = async () => {
@@ -307,12 +303,12 @@ export function GameBoard({
       Animated.sequence([
         Animated.timing(selectionOpacity, {
           toValue: 0.8,
-          duration: 150,
+          duration: 200,
           useNativeDriver: false,
         }),
         Animated.timing(selectionOpacity, {
           toValue: 0,
-          duration: 300,
+          duration: 400,
           useNativeDriver: false,
         }),
       ]).start(() => {
@@ -335,12 +331,12 @@ export function GameBoard({
       Animated.sequence([
         Animated.timing(selectionOpacity, {
           toValue: 0.5,
-          duration: 100,
+          duration: 150,
           useNativeDriver: false,
         }),
         Animated.timing(selectionOpacity, {
           toValue: 0,
-          duration: 250,
+          duration: 400,
           useNativeDriver: false,
         }),
       ]).start(() => {
@@ -348,11 +344,6 @@ export function GameBoard({
       });
     } else {
       // No tiles selected
-      Animated.timing(selectionOpacity, {
-        toValue: 0,
-        duration: 100,
-        useNativeDriver: false,
-      }).start();
       setSelection(null);
     }
   };

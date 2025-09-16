@@ -1,42 +1,29 @@
 /**
- * Game Store - Zustand state management for game data
- * Purpose: Manage user data, game progress, and settings with local storage
+ * Game Store - Global state management using Zustand
+ * Purpose: Manage user data, game progress, settings, and app state
+ * Features: Local storage persistence, progress tracking, settings management
  */
 
 import { create } from 'zustand';
 import StorageUtils from '../utils/StorageUtils';
 
-const useGameStore = create((set, get) => ({
+export const useGameStore = create((set, get) => ({
   // State
   userData: null,
-  gameData: {
-    maxLevel: 1,
-    maxScore: 0,
-    changeItems: 0,
-    lastPlayedLevel: 1,
-  },
-  settings: {
-    soundEnabled: true,
-    hapticsEnabled: true,
-  },
+  gameData: null,
+  settings: null,
   isLoading: false,
+  error: null,
 
   // Actions
-  initializeStore: async () => {
+  initializeApp: async () => {
+    set({ isLoading: true });
     try {
-      set({ isLoading: true });
-      
       // Load user data
-      const userData = await StorageUtils.getUserData();
-      
-      // Load game data
-      const gameData = await StorageUtils.getData();
-      
-      // Load settings
-      const settings = await StorageUtils.getSettings();
-      
-      set({
-        userData: userData || {
+      let userData = await StorageUtils.getUserData();
+      if (!userData) {
+        // Create default user
+        userData = {
           id: Date.now(),
           uid: `user_${Date.now()}`,
           userName: 'Player',
@@ -45,77 +32,108 @@ const useGameStore = create((set, get) => ({
           vipLevel: 0,
           passId: null,
           availableAmount: 0,
-          country: 'US',
-          city: 'Unknown',
+          country: null,
+          city: null,
           createTime: Date.now(),
-        },
-        gameData: gameData || {
+        };
+        await StorageUtils.saveUserData(userData);
+      }
+
+      // Load game data
+      let gameData = await StorageUtils.getData();
+      if (!gameData) {
+        // Initialize default game data
+        gameData = {
           maxLevel: 1,
           maxScore: 0,
-          changeItems: 0,
+          changeItems: 3,
           lastPlayedLevel: 1,
-        },
-        settings: settings || {
+        };
+        await StorageUtils.setData(gameData);
+      }
+
+      // Load settings
+      let settings = await StorageUtils.getSettings();
+      if (!settings) {
+        settings = {
           soundEnabled: true,
           hapticsEnabled: true,
-        },
+        };
+        await StorageUtils.setSettings(settings);
+      }
+
+      set({ 
+        userData, 
+        gameData, 
+        settings, 
         isLoading: false,
+        error: null
       });
     } catch (error) {
-      console.error('Failed to initialize store:', error);
-      set({ isLoading: false });
+      console.error('Failed to initialize app:', error);
+      set({ 
+        error: error.message, 
+        isLoading: false 
+      });
     }
   },
 
   updateGameData: async (newData) => {
     try {
-      const currentData = get().gameData;
-      const updatedData = { ...currentData, ...newData };
-      
-      await StorageUtils.setData(updatedData);
-      set({ gameData: updatedData });
+      const success = await StorageUtils.setData(newData);
+      if (success) {
+        const currentData = get().gameData || {};
+        const updatedData = { ...currentData, ...newData };
+        set({ gameData: updatedData });
+      }
     } catch (error) {
       console.error('Failed to update game data:', error);
+      set({ error: error.message });
     }
   },
 
   updateSettings: async (newSettings) => {
     try {
-      const currentSettings = get().settings;
-      const updatedSettings = { ...currentSettings, ...newSettings };
-      
-      await StorageUtils.setSettings(updatedSettings);
-      set({ settings: updatedSettings });
+      const success = await StorageUtils.setSettings(newSettings);
+      if (success) {
+        const currentSettings = get().settings || {};
+        const updatedSettings = { ...currentSettings, ...newSettings };
+        set({ settings: updatedSettings });
+      }
     } catch (error) {
       console.error('Failed to update settings:', error);
+      set({ error: error.message });
     }
   },
 
   resetDemoData: async () => {
     try {
-      const defaultGameData = {
-        maxLevel: 1,
+      // Reset game data
+      const resetGameData = {
+        maxLevel: 0,
         maxScore: 0,
         changeItems: 0,
         lastPlayedLevel: 1,
       };
       
-      const defaultSettings = {
+      // Reset settings
+      const resetSettings = {
         soundEnabled: true,
         hapticsEnabled: true,
       };
+
+      await StorageUtils.setData(resetGameData);
+      await StorageUtils.setSettings(resetSettings);
       
-      await StorageUtils.setData(defaultGameData);
-      await StorageUtils.setSettings(defaultSettings);
-      
-      set({
-        gameData: defaultGameData,
-        settings: defaultSettings,
+      set({ 
+        gameData: resetGameData, 
+        settings: resetSettings 
       });
     } catch (error) {
       console.error('Failed to reset demo data:', error);
+      set({ error: error.message });
     }
   },
-}));
 
-export { useGameStore };
+  clearError: () => set({ error: null }),
+}));

@@ -25,18 +25,44 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
 }) {
-  const { settings } = useGameStore();
+  disabled = false 
+}) {
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [selection, setSelection] = useState(null);
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
   if (!board) {
     return (
+    // 第一步：必须在棋盘内部区域（排除边框）
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
       </View>
@@ -113,8 +139,14 @@ export function GameBoard({
     
     // 严格检查：必须在棋盘内部区域（排除边框）
     const margin = 10; // 棋盘内边距
-    return pageX >= boardX + margin && pageX < boardX + boardW - margin && 
-           pageY >= boardY + margin && pageY < boardY + boardH - margin;
+    const insideBoard = pageX >= boardX + margin && pageX < boardX + boardW - margin && 
+                       pageY >= boardY + margin && pageY < boardY + boardH - margin;
+    
+    // 第二步：不能在任何按钮区域内
+    if (!insideBoard) return false;
+    if (isInsideButtonArea(pageX, pageY)) return false;
+    
+    return true;
   };
 
   const getSelectedTilesForSelection = (sel) => {
@@ -501,7 +533,6 @@ export function GameBoard({
           {selectionStyle && (
             <Animated.View style={selectionStyle} />
           )}
-          
           {/* Selection sum display */}
           {selectionSum && (
             <View style={selectionSum.style}>
@@ -549,10 +580,76 @@ export function GameBoard({
           )}
         </View>
       </View>
+      
+      {/* 按钮区域收集器 - 用于获取按钮坐标 */}
+      <ButtonAreaCollector onButtonAreasUpdate={setButtonAreas} />
     </View>
   );
 }
 
+// 按钮区域收集组件
+function ButtonAreaCollector({ onButtonAreasUpdate }) {
+  const [backButtonLayout, setBackButtonLayout] = useState(null);
+  const [changeButtonLayout, setChangeButtonLayout] = useState(null);
+
+  useEffect(() => {
+    // 收集所有按钮区域
+    const areas = [];
+    if (backButtonLayout) {
+      areas.push({
+        name: 'backButton',
+        x: backButtonLayout.x,
+        y: backButtonLayout.y,
+        width: backButtonLayout.width,
+        height: backButtonLayout.height
+      });
+    }
+    if (changeButtonLayout) {
+      areas.push({
+        name: 'changeButton', 
+        x: changeButtonLayout.x,
+        y: changeButtonLayout.y,
+        width: changeButtonLayout.width,
+        height: changeButtonLayout.height
+      });
+    }
+    onButtonAreasUpdate(areas);
+  }, [backButtonLayout, changeButtonLayout, onButtonAreasUpdate]);
+
+  // 通过全局事件或其他方式收集按钮布局信息
+  useEffect(() => {
+    // 这里可以通过全局事件监听按钮布局变化
+    // 或者通过其他方式获取按钮的布局信息
+    
+    // 临时方案：设置一些常见的按钮区域
+    const updateButtonAreas = () => {
+      // 返回按钮通常在左上角
+      setBackButtonLayout({
+        x: 0,
+        y: 0, 
+        width: 80,
+        height: 80
+      });
+      
+      // Change按钮通常在底部中央
+      setChangeButtonLayout({
+        x: screenWidth / 2 - 50,
+        y: screenHeight - 120,
+        width: 100,
+        height: 60
+      });
+    };
+    
+    updateButtonAreas();
+    
+    // 监听屏幕方向变化
+    const subscription = Dimensions.addEventListener('change', updateButtonAreas);
+    
+    return () => subscription?.remove();
+  }, []);
+
+  return null; // 不渲染任何内容
+}
 const styles = StyleSheet.create({
   fullScreenContainer: {
     position: 'absolute',

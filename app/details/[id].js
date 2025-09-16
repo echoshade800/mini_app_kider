@@ -442,11 +442,10 @@ export function GameBoard({
           style={[
             styles.board,
             {
-      <View style={[styles.header, { zIndex: 1000 }]}>
+              width: boardWidth,
               height: boardHeight,
-          style={[styles.backButton, { zIndex: 1001 }]}
+            }
           ]}
-          activeOpacity={0.7}
         >
           {/* 渲染格子 */}
           {tiles.map((value, index) => {
@@ -502,15 +501,12 @@ export function GameBoard({
                   ]}
                 />
               ))}
-              activeOpacity={0.7}
             </Animated.View>
           )}
         </View>
       </View>
       
-          style={[styles.changeButton, { zIndex: 1001 }]}
       <View 
-          activeOpacity={0.7}
         style={[
           styles.selectionOverlay,
           {

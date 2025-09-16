@@ -61,8 +61,8 @@ export function GameBoard({
     50
   );
   
-  // 数字方块的实际大小（减少间距，让方块更紧密）
-  const tileSize = cellSize * 0.85;
+  // 数字方块的实际大小（恢复到之前的设置）
+  const tileSize = cellSize * 0.7;
   const tileMargin = (cellSize - tileSize) / 2;
   
   // 棋盘背景大小
@@ -580,10 +580,8 @@ export function GameBoard({
       return null;
     }
 
-    const relativeRow = row - bounds.minRow;
-    const relativeCol = col - bounds.minCol;
-    const left = col * cellSize + 10 + tileMargin;
-    const top = row * cellSize + 10 + tileMargin;
+    const left = (col - bounds.minCol) * cellSize + 10 + tileMargin;
+    const top = (row - bounds.minRow) * cellSize + 10 + tileMargin;
 
     const tileScale = initTileScale(index);
     const tileShake = initTileShake(index);
@@ -597,13 +595,13 @@ export function GameBoard({
       transforms.push({
         translateX: tileShake.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [-1.5, 0, 1.5],
+          outputRange: [-2, 0, 2],
         }),
       });
       transforms.push({
         translateY: tileShake.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [-0.8, 0, 0.8],
+          outputRange: [-1, 0, 1],
         }),
       });
     }
@@ -656,7 +654,15 @@ export function GameBoard({
       return (
         <TouchableOpacity
           key={`${row}-${col}`}
-          style={{ position: 'absolute', left, top, width: tileSize, height: tileSize }}
+          style={{ 
+            position: 'absolute', 
+            left: left - tileMargin, 
+            top: top - tileMargin, 
+            width: cellSize, 
+            height: cellSize,
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
           onPress={() => handleTilePress(row, col, value)}
           activeOpacity={0.8}
         >

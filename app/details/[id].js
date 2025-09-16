@@ -29,6 +29,7 @@ export function GameBoard({
 }) {
   const [shakeAnimations, setShakeAnimations] = useState({});
   const [selection, setSelection] = useState(null);
+}
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -60,3 +61,4 @@ export function GameBoard({
     50
   );
   const [explosionAnimation, setExplosionAnimation] = useState(null);
+}

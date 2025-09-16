@@ -41,6 +41,7 @@
     "zustand": "^4.5.4"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2"
+    "@babel/core": "^7.25.2",
+    "babel-plugin-transform-import-meta": "^2.3.3"
   }
 }

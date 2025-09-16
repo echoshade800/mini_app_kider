@@ -24,9 +24,10 @@ export function GameBoard({
   onTilesClear, 
   onTileClick, 
   itemMode = null, // 'swapMaster' | 'fractalSplit' | null
-  selectedTile = null,
+  selectedSwapTile = null,
   disabled = false,
-  animationsProp = new Map()
+  swapAnimations = new Map(),
+  fractalAnimations = new Map()
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
@@ -38,6 +39,23 @@ export function GameBoard({
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const tileShakeAnimations = useRef({}).current;
+
+  // 清理函数
+  React.useEffect(() => {
+    return () => {
+      // 组件卸载时停止所有动画
+      Object.values(tileScales).forEach(anim => {
+        if (anim && anim.stopAnimation) {
+          anim.stopAnimation();
+        }
+      });
+      Object.values(tileShakeAnimations).forEach(anim => {
+        if (anim && anim.stopAnimation) {
+          anim.stopAnimation();
+        }
+      });
+    };
+  }, []);
 
   if (!board) {
     return (
@@ -116,8 +134,10 @@ export function GameBoard({
   // 停止所有晃动动画
   const stopShakeAnimation = () => {
     Object.values(tileShakeAnimations).forEach(anim => {
-      anim.stopAnimation();
-      anim.setValue(0);
+      if (anim && anim.stopAnimation) {
+        anim.stopAnimation();
+        anim.setValue(0);
+      }
     });
   };
 
@@ -137,12 +157,14 @@ export function GameBoard({
   // 缩放tile
   const scaleTile = (index, scale) => {
     const tileScale = initTileScale(index);
-    Animated.spring(tileScale, {
-      toValue: scale,
-      useNativeDriver: true,
-      tension: 400,
-      friction: 8,
-    }).start();
+    if (tileScale) {
+      Animated.spring(tileScale, {
+        toValue: scale,
+        useNativeDriver: true,
+        tension: 400,
+        friction: 8,
+      }).start();
+    }
   };
 
   // 检查触摸点是否在棋盘网格区域内
@@ -585,39 +607,43 @@ export function GameBoard({
 
     const tileScale = initTileScale(index);
     const tileShake = initTileShake(index);
-    const itemAnim = animationsProp.get(index);
     
-    // 计算变换 - 修复transform错误
+    // 获取交换和分裂动画
+    const swapAnim = swapAnimations.get(index);
+    const fractalAnim = fractalAnimations.get(index);
+    
+    // 计算变换
     const transforms = [{ scale: tileScale }];
     
     if (itemMode) {
-      // 道具模式下的晃动效果 - 分别添加translateX和translateY
+      // 道具模式下的晃动效果
       transforms.push({
         translateX: tileShake.interpolate({
           inputRange: [-1, 0, 1],
           outputRange: [-2, 0, 2],
         }),
       });
+    }
+    
+    // 如果有交换动画，添加位置变换
+    if (swapAnim && swapAnim.translateX && swapAnim.translateY) {
       transforms.push({
-        translateY: tileShake.interpolate({
-          inputRange: [-1, 0, 1],
-          outputRange: [-1, 0, 1],
-        }),
+        translateX: swapAnim.translateX,
+      });
+      transforms.push({
+        translateY: swapAnim.translateY,
       });
     }
     
-    // 如果有道具动画，添加位置变换
-    if (itemAnim) {
+    // 如果有分裂动画，添加缩放和透明度变换
+    if (fractalAnim && fractalAnim.scale) {
       transforms.push({
-        translateX: itemAnim.translateX,
-      });
-      transforms.push({
-        translateY: itemAnim.translateY,
+        scale: fractalAnim.scale,
       });
     }
     
-    // 检查是否是选中的方块
-    const isSelected = selectedTile && selectedTile.index === index;
+    // 检查是否是选中的交换方块
+    const isSelected = selectedSwapTile && selectedSwapTile.index === index;
     
     // 根据道具模式设置不同的选中样式
     let selectedBgColor = '#FFF8E1';
@@ -636,6 +662,12 @@ export function GameBoard({
       }
     }
 
+    // 计算透明度
+    let opacity = 1;
+    if (fractalAnim && fractalAnim.opacity) {
+      opacity = fractalAnim.opacity;
+    }
+
     const tileComponent = (
       <Animated.View 
         key={`${row}-${col}`}
@@ -648,6 +680,7 @@ export function GameBoard({
             width: tileSize, 
             height: tileSize,
             transform: transforms,
+            opacity: opacity,
             backgroundColor: selectedBgColor,
             borderWidth: isSelected ? 3 : 2,
             borderColor: selectedBorderColor,

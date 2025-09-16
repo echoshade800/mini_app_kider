@@ -33,8 +33,11 @@ export default function LevelDetailScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [itemMode, setItemMode] = useState(null); // 'swapMaster' | 'fractalSplit' | null
   const [selectedSwapTile, setSelectedSwapTile] = useState(null);
-  const [swapAnimations, setSwapAnimations] = useState(new Map());
-  const [fractalAnimations, setFractalAnimations] = useState(new Map());
+  
+  // 使用 useRef 来存储动画对象，避免重新渲染时丢失
+  const swapAnimationsRef = useRef(new Map());
+  const fractalAnimationsRef = useRef(new Map());
+  const [animationTrigger, setAnimationTrigger] = useState(0); // 用于触发重新渲染
 
   const swapMasterItems = gameData?.swapMasterItems || 0;
   const fractalSplitItems = gameData?.fractalSplitItems || 0;
@@ -132,13 +135,14 @@ export default function LevelDetailScreen() {
   const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // 计算两个方块的位置
+    // 计算单元格大小
     const cellSize = Math.min(
       (screenWidth - 80) / currentBoard.width, 
       (screenHeight - 300) / currentBoard.height,
       50
     );
     
+    // 计算两个方块的位置
     const row1 = Math.floor(tile1.index / currentBoard.width);
     const col1 = tile1.index % currentBoard.width;
     const row2 = Math.floor(tile2.index / currentBoard.width);
@@ -157,11 +161,10 @@ export default function LevelDetailScreen() {
       translateY: new Animated.Value(0),
     };
     
-    // 设置交换动画到GameBoard
-    setSwapAnimations(new Map([
-      [tile1.index, swapAnim1],
-      [tile2.index, swapAnim2]
-    ]));
+    // 设置交换动画
+    swapAnimationsRef.current.set(tile1.index, swapAnim1);
+    swapAnimationsRef.current.set(tile2.index, swapAnim2);
+    setAnimationTrigger(prev => prev + 1); // 触发重新渲染
     
     // 执行动画
     Animated.parallel([
@@ -196,7 +199,9 @@ export default function LevelDetailScreen() {
       setCurrentBoard(updatedBoard);
       
       // 清除动画状态
-      setSwapAnimations(new Map());
+      swapAnimationsRef.current.delete(tile1.index);
+      swapAnimationsRef.current.delete(tile2.index);
+      setAnimationTrigger(prev => prev + 1);
       
       // 消耗道具并退出交换模式
       if (itemMode === 'swapMaster') {
@@ -213,8 +218,6 @@ export default function LevelDetailScreen() {
     if (!currentBoard) return;
 
     const { value, index } = tile;
-    const row = Math.floor(index / currentBoard.width);
-    const col = index % currentBoard.width;
 
     // 寻找可以整除的分割方案，优先级：4 → 3 → 2
     const divisors = [4, 3, 2];
@@ -245,7 +248,7 @@ export default function LevelDetailScreen() {
       return;
     }
 
-    // 执行分裂动画
+    // 计算分裂值
     const splitValue = value / splitCount;
     const newTiles = [...currentBoard.tiles];
     
@@ -264,7 +267,9 @@ export default function LevelDetailScreen() {
       opacity: new Animated.Value(1),
     };
     
-    setFractalAnimations(new Map([[index, fractalAnim]]));
+    // 设置分裂动画
+    fractalAnimationsRef.current.set(index, fractalAnim);
+    setAnimationTrigger(prev => prev + 1);
     
     // 执行爆裂动画
     Animated.parallel([
@@ -281,7 +286,10 @@ export default function LevelDetailScreen() {
     ]).start(() => {
       // 动画完成后更新棋盘
       setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
-      setFractalAnimations(new Map());
+      
+      // 清除动画状态
+      fractalAnimationsRef.current.delete(index);
+      setAnimationTrigger(prev => prev + 1);
       
       // 消耗道具并退出分裂模式
       const newFractalSplitItems = Math.max(0, fractalSplitItems - 1);
@@ -371,7 +379,8 @@ export default function LevelDetailScreen() {
         itemMode={itemMode}
         selectedSwapTile={selectedSwapTile}
         animationsProp={new Map([...swapAnimations, ...fractalAnimations])}
-      />
+          swapAnimations={swapAnimationsRef.current}
+          fractalAnimations={fractalAnimationsRef.current}
 
       {/* Floating Action Buttons */}
       <View style={styles.floatingButtons}>

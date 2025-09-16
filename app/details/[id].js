@@ -187,6 +187,7 @@ export default function LevelDetailScreen() {
       setSelectedSwapTile(null);
     });
   };
+  };
 
   const handleRestart = () => {
     if (isSwapMode) return;
@@ -265,7 +266,7 @@ export default function LevelDetailScreen() {
         onTileClick={handleSwapTileClick}
         isSwapMode={isSwapMode}
         selectedSwapTile={selectedSwapTile}
-        swapAnimationsProp={swapAnimations}
+        swapAnimations={swapAnimations}
       />
 
       {/* Floating Action Buttons */}
@@ -396,7 +397,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'cen
+  }
+}
+)ter',
     zIndex: 1000,
     elevation: 1000,
   },

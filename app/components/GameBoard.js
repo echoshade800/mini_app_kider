@@ -30,9 +30,9 @@ export function GameBoard({
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -453,22 +453,22 @@ export function GameBoard({
     Animated.parallel([
       Animated.timing(tile1Anim.x, {
         toValue: tile2X - tile1X,
-        duration: 400,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.timing(tile1Anim.y, {
         toValue: tile2Y - tile1Y,
-        duration: 400,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.timing(tile2Anim.x, {
         toValue: tile1X - tile2X,
-        duration: 400,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.timing(tile2Anim.y, {
         toValue: tile1Y - tile2Y,
-        duration: 400,
+        duration: 500,
         useNativeDriver: true,
       }),
     ]).start(() => {

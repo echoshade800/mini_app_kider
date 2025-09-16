@@ -112,8 +112,27 @@ export default function ChallengeScreen() {
     // Award 3 IQ points per clear
     setCurrentIQ(prev => prev + 3);
     
-    // 挑战模式中立即生成新棋盘
-    generateNewBoard();
+    // 创建新棋盘，清除指定位置的方块
+    if (!currentBoard) return;
+    
+    const newTiles = [...currentBoard.tiles];
+    clearedPositions.forEach(({ row, col }) => {
+      const index = row * currentBoard.width + col;
+      newTiles[index] = 0;
+    });
+    
+    const updatedBoard = { ...currentBoard, tiles: newTiles };
+    setCurrentBoard(updatedBoard);
+    
+    // 检查是否所有数字方块都被消除
+    const hasRemainingTiles = newTiles.some(tile => tile > 0);
+    
+    if (!hasRemainingTiles) {
+      // 所有方块都消除了，延迟生成新棋盘
+      setTimeout(() => {
+        generateNewBoard();
+      }, 500);
+    }
   };
 
   const handleBackToHome = () => {
@@ -184,9 +203,10 @@ export default function ChallengeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* 游戏中的返回按钮 */}
-      <View style={styles.gameTopBar}>
+      {/* 返回按钮 */}
+      <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.gameBackButton}
+          style={styles.backButton}
           onPress={() => {
             if (timerRef.current) {
               clearInterval(timerRef.current);
@@ -194,16 +214,6 @@ export default function ChallengeScreen() {
             setGameState('ready');
             router.replace('/');
           }}
-        >
-          <Ionicons name="arrow-back" size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
-      
-      {/* 返回按钮 */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.replace('/')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>

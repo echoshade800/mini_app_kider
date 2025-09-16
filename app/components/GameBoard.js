@@ -11,7 +11,8 @@ import {
   PanResponder, 
   Dimensions, 
   StyleSheet,
-  Animated 
+  Animated,
+  TouchableOpacity
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';

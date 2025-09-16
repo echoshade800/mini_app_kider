@@ -25,18 +25,80 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
 }) {
-  const [selection, setSelection] = useState(null);
+}) {
+}) {
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
+          relativeY < 0 || relativeY >= actualHeight * cellSize) {
+        return; // 不在有效网格区域内
+      }
+      
   const explosionOpacity = useRef(new Animated.Value(0)).current;
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const { settings } = useGameStore();
 
   if (!board) {
     return (
+    // 第一步：必须在棋盘内部区域（排除边框）
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
       </View>
@@ -91,6 +153,69 @@ export function GameBoard({
     return tileScales[index];
   };
 
+  // 初始化tile晃动动画
+  const initTileShake = (index) => {
+    if (!tileShakeAnimations[index]) {
+      tileShakeAnimations[index] = new Animated.Value(0);
+    }
+    return tileShakeAnimations[index];
+  };
+
+  // 开始所有数字方块的晃动动画
+  const startShakeAnimation = () => {
+    const animations = [];
+    
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i] > 0) {
+        const shakeAnim = initTileShake(i);
+        const shakeAnimation = Animated.loop(
+          Animated.sequence([
+            Animated.timing(shakeAnim, {
+              toValue: 1,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnim, {
+              toValue: -1,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnim, {
+              toValue: 0,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+        animations.push(shakeAnimation);
+        shakeAnimation.start();
+      }
+    }
+  };
+
+  // 停止所有晃动动画
+  const stopShakeAnimation = () => {
+    Object.values(tileShakeAnimations).forEach(anim => {
+      anim.stopAnimation();
+      anim.setValue(0);
+    });
+  };
+
+  // 开始交换模式时启动晃动
+  React.useEffect(() => {
+    if (swapMode) {
+      startShakeAnimation();
+      setFirstSwapTile(null);
+    } else {
+      stopShakeAnimation();
+      setFirstSwapTile(null);
+    }
+    
+    return () => {
+      stopShakeAnimation();
+    };
+  }, [swapMode]);
+
   // 缩放tile
   const scaleTile = (index, scale) => {
     const tileScale = initTileScale(index);
@@ -102,36 +227,25 @@ export function GameBoard({
     }).start();
   };
 
-  // 检查触摸点是否在棋盘内
-  const isInsideBoardArea = (pageX, pageY) => {
+  const isInsideBoardOnly = (pageX, pageY) => {
     // 计算棋盘在屏幕上的位置
     const boardCenterX = screenWidth / 2;
     const boardCenterY = screenHeight / 2;
-    const boardLeft = boardCenterX - boardWidth / 2;
-    const boardTop = boardCenterY - boardHeight / 2;
+    const boardX = boardCenterX - boardWidth / 2;
+    const boardY = boardCenterY - boardHeight / 2;
+    const boardW = boardWidth;
+    const boardH = boardHeight;
     
-    // 检查是否在棋盘物理边界内（包含边框）
-    return pageX >= boardLeft && pageX <= boardLeft + boardWidth && 
-           pageY >= boardTop && pageY <= boardTop + boardHeight;
-  };
-
-  // 检查触摸点是否在有效网格区域内
-  const isInsideGridArea = (pageX, pageY) => {
-    if (!isInsideBoardArea(pageX, pageY)) return false;
+    // 严格检查：必须在棋盘内部区域（排除边框）
+    const margin = 10; // 棋盘内边距
+    const insideBoard = pageX >= boardX + margin && pageX < boardX + boardW - margin && 
+                       pageY >= boardY + margin && pageY < boardY + boardH - margin;
     
-    // 计算棋盘在屏幕上的位置
-    const boardCenterX = screenWidth / 2;
-    const boardCenterY = screenHeight / 2;
-    const boardLeft = boardCenterX - boardWidth / 2;
-    const boardTop = boardCenterY - boardHeight / 2;
+    // 第二步：不能在任何按钮区域内
+    if (!insideBoard) return false;
+    if (isInsideButtonArea(pageX, pageY)) return false;
     
-    // 转换为相对于棋盘的坐标（排除边框）
-    const relativeX = pageX - boardLeft - 10;
-    const relativeY = pageY - boardTop - 10;
-    
-    // 检查是否在有效的网格区域内
-    return relativeX >= 0 && relativeX < actualWidth * cellSize &&
-           relativeY >= 0 && relativeY < actualHeight * cellSize;
+    return true;
   };
 
   const getSelectedTilesForSelection = (sel) => {
@@ -178,21 +292,27 @@ export function GameBoard({
   // 全屏触摸响应器
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
+      // 交换模式下不允许画框
+      if (swapMode) return false;
+      
       const { pageX, pageY } = evt.nativeEvent;
-      // 只有在棋盘网格区域内才允许启动画框
-      return !disabled && isInsideGridArea(pageX, pageY);
+      // 严格检查：只有在纯棋盘区域内才允许启动画框
+      return !disabled && isInsideBoardOnly(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
+      // 交换模式下不允许画框
+      if (swapMode) return false;
+      
       const { pageX, pageY } = evt.nativeEvent;
       // 移动过程中也要持续检查区域
-      return !disabled && isInsideGridArea(pageX, pageY);
+      return !disabled && isInsideBoardOnly(pageX, pageY);
     },
 
     onPanResponderGrant: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
       
-      // 双重检查：确保在网格区域内
-      if (!isInsideGridArea(pageX, pageY)) return;
+      // 双重检查：确保在棋盘区域内
+      if (!isInsideBoardOnly(pageX, pageY)) return;
       
       // 计算棋盘在屏幕上的位置
       const boardCenterX = screenWidth / 2;
@@ -234,8 +354,9 @@ export function GameBoard({
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      // 如果移动到棋盘外，保持当前选择不变
-      if (!isInsideBoardArea(pageX, pageY)) {
+      // 如果移动到棋盘外，终止选择
+      if (!isInsideBoardOnly(pageX, pageY)) {
+        resetSelection();
         return;
       }
       
@@ -244,6 +365,13 @@ export function GameBoard({
       const boardCenterY = screenHeight / 2;
       const boardLeft = boardCenterX - boardWidth / 2;
       const boardTop = boardCenterY - boardHeight / 2;
+      
+      // 检查移动点是否在棋盘区域内
+      if (pageX < boardLeft || pageX > boardLeft + boardWidth ||
+          pageY < boardTop || pageY > boardTop + boardHeight) {
+        // 如果移动到棋盘外，保持当前选择不变
+        return;
+      }
       
       const relativeX = pageX - boardLeft - 10;
       const relativeY = pageY - boardTop - 10;
@@ -320,6 +448,99 @@ export function GameBoard({
       resetSelection();
     },
   });
+
+  // 处理数字方块点击（交换模式）
+  const handleTilePress = (row, col, value) => {
+    if (!swapMode || disabled || value === 0) return;
+    
+    const index = row * width + col;
+    
+    if (!firstSwapTile) {
+      // 选择第一个方块
+      setFirstSwapTile({ row, col, value, index });
+      scaleTile(index, 1.3); // 放大选中的方块
+      
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } else if (firstSwapTile.index === index) {
+      // 取消选择
+      setFirstSwapTile(null);
+      scaleTile(index, 1);
+    } else {
+      // 选择第二个方块，执行交换
+      const secondTile = { row, col, value, index };
+      performSwapAnimation(firstSwapTile, secondTile);
+    }
+  };
+
+  // 执行交换动画
+  const performSwapAnimation = (tile1, tile2) => {
+    if (settings?.hapticsEnabled !== false) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
+
+    // 计算两个方块的屏幕位置
+    const tile1RelativeRow = tile1.row - bounds.minRow;
+    const tile1RelativeCol = tile1.col - bounds.minCol;
+    const tile1X = tile1RelativeCol * cellSize + cellSize / 2 + 10;
+    const tile1Y = tile1RelativeRow * cellSize + cellSize / 2 + 10;
+
+    const tile2RelativeRow = tile2.row - bounds.minRow;
+    const tile2RelativeCol = tile2.col - bounds.minCol;
+    const tile2X = tile2RelativeCol * cellSize + cellSize / 2 + 10;
+    const tile2Y = tile2RelativeRow * cellSize + cellSize / 2 + 10;
+
+    // 创建交换动画
+    const tile1Anim = {
+      x: new Animated.Value(0),
+      y: new Animated.Value(0),
+    };
+    const tile2Anim = {
+      x: new Animated.Value(0),
+      y: new Animated.Value(0),
+    };
+
+    setSwapAnimations(new Map([
+      [tile1.index, { ...tile1Anim, targetX: tile2X - tile1X, targetY: tile2Y - tile1Y }],
+      [tile2.index, { ...tile2Anim, targetX: tile1X - tile2X, targetY: tile1Y - tile2Y }],
+    ]));
+
+    // 执行动画
+    Animated.parallel([
+      Animated.timing(tile1Anim.x, {
+        toValue: tile2X - tile1X,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tile1Anim.y, {
+        toValue: tile2Y - tile1Y,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tile2Anim.x, {
+        toValue: tile1X - tile2X,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tile2Anim.y, {
+        toValue: tile1Y - tile2Y,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // 动画完成后清理状态并通知父组件
+      setSwapAnimations(new Map());
+      setFirstSwapTile(null);
+      scaleTile(tile1.index, 1);
+      scaleTile(tile2.index, 1);
+      
+      // 通知父组件执行交换
+      if (onSwapTiles) {
+        onSwapTiles(tile1, tile2);
+      }
+    });
+  };
 
   const handleSelectionComplete = async () => {
     if (!selection) return;
@@ -491,8 +712,34 @@ export function GameBoard({
     const top = relativeRow * cellSize + 10 + tileMargin;
 
     const tileScale = initTileScale(index);
+    const tileShake = initTileShake(index);
+    const swapAnim = swapAnimations.get(index);
+    
+    // 计算变换
+    const transforms = [{ scale: tileScale }];
+    
+    if (swapMode && !swapAnim) {
+      // 交换模式下的晃动效果
+      transforms.push({
+        translateX: tileShake.interpolate({
+          inputRange: [-1, 0, 1],
+          outputRange: [-2, 0, 2],
+        }),
+      });
+    }
+    
+    if (swapAnim) {
+      // 交换动画
+      transforms.push(
+        { translateX: swapAnim.x },
+        { translateY: swapAnim.y }
+      );
+    }
+    
+    // 检查是否是选中的第一个交换方块
+    const isFirstSwapSelected = firstSwapTile && firstSwapTile.index === index;
 
-    return (
+    const tileComponent = (
       <Animated.View 
         key={`${row}-${col}`}
         style={[
@@ -503,8 +750,10 @@ export function GameBoard({
             top,
             width: tileSize, 
             height: tileSize,
-            transform: [{ scale: tileScale }],
-            backgroundColor: '#FFF8E1',
+            transform: transforms,
+            backgroundColor: isFirstSwapSelected ? '#FFE082' : '#FFF8E1',
+            borderWidth: isFirstSwapSelected ? 3 : 0,
+            borderColor: isFirstSwapSelected ? '#FF9800' : 'transparent',
           }
         ]}
       >
@@ -516,6 +765,22 @@ export function GameBoard({
         </Text>
       </Animated.View>
     );
+    
+    // 如果是交换模式，包装成可点击的组件
+    if (swapMode) {
+      return (
+        <TouchableOpacity
+          key={`${row}-${col}`}
+          style={{ position: 'absolute', left, top, width: tileSize, height: tileSize }}
+          onPress={() => handleTilePress(row, col, value)}
+          activeOpacity={0.8}
+        >
+          {tileComponent}
+        </TouchableOpacity>
+      );
+    }
+    
+    return tileComponent;
   };
 
   const selectionStyle = getSelectionStyle();
@@ -543,8 +808,6 @@ export function GameBoard({
           {/* Selection overlay */}
           {selectionStyle && (
             <Animated.View style={selectionStyle} />
-          )}
-          
           {/* Selection sum display */}
           {selectionSum && (
             <View style={selectionSum.style}>
@@ -595,6 +858,34 @@ export function GameBoard({
     </View>
   );
 }
+
+// 按钮区域收集组件
+function ButtonAreaCollector({ onButtonAreasUpdate }) {
+  const [backButtonLayout, setBackButtonLayout] = useState(null);
+  const [changeButtonLayout, setChangeButtonLayout] = useState(null);
+
+  useEffect(() => {
+    // 收集所有按钮区域
+    const areas = [];
+    if (backButtonLayout) {
+      areas.push({
+        name: 'backButton',
+        x: backButtonLayout.x,
+        y: backButtonLayout.y,
+        width: backButtonLayout.width,
+        height: backButtonLayout.height
+      });
+    }
+    if (changeButtonLayout) {
+      areas.push({
+        name: 'changeButton', 
+        x: changeButtonLayout.x,
+        y: changeButtonLayout.y,
+        width: changeButtonLayout.width,
+      });
+    }
+    onButtonAreasUpdate(areas);
+  }, [backButtonLayout, changeButtonLayout, onButtonAreasUpdate]);
 
 const styles = StyleSheet.create({
   fullScreenContainer: {

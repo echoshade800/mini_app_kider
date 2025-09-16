@@ -28,12 +28,12 @@ export function GameBoard({
   disabled = false 
 }) {
   const { settings } = useGameStore();
+  const [shakeAnimations, setShakeAnimations] = useState({});
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
-  const [shakeAnimations, setShakeAnimations] = useState({});
-  const [swapAnimations, setSwapAnimations] = useState({});
-  const [swapAnimation, setSwapAnimation] = useState(null);
   const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [swapAnimation, setSwapAnimation] = useState(null);
+  const [swapAnimations, setSwapAnimations] = useState({});
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
@@ -235,7 +235,7 @@ export function GameBoard({
       }
     }
   };
-
+  
   const performSwapAnimation = (tile1, tile2) => {
     // 计算两个方块的位置
     const tile1Row = Math.floor(tile1.index / width);
@@ -243,65 +243,53 @@ export function GameBoard({
     const tile2Row = Math.floor(tile2.index / width);
     const tile2Col = tile2.index % width;
     
-    const tile1X = tile1Col * cellSize + 10 + tileMargin;
-    const tile1Y = tile1Row * cellSize + 10 + tileMargin;
-    const tile2X = tile2Col * cellSize + 10 + tileMargin;
-    const tile2Y = tile2Row * cellSize + 10 + tileMargin;
+    // 计算移动距离
+    const deltaX = (tile2Col - tile1Col) * cellSize;
+    const deltaY = (tile2Row - tile1Row) * cellSize;
     
-    // 初始化动画值
-    if (!swapAnimations[tile1.index]) {
-      swapAnimations[tile1.index] = {
-        x: new Animated.Value(0),
-        y: new Animated.Value(0),
-      };
-    }
-    if (!swapAnimations[tile2.index]) {
-      swapAnimations[tile2.index] = {
-        x: new Animated.Value(0),
-        y: new Animated.Value(0),
-      };
-    }
+    // 创建动画值
+    const tile1Animation = {
+      x: new Animated.Value(0),
+      y: new Animated.Value(0)
+    };
+    const tile2Animation = {
+      x: new Animated.Value(0),
+      y: new Animated.Value(0)
+    };
     
-    const anim1 = swapAnimations[tile1.index];
-    const anim2 = swapAnimations[tile2.index];
-    
-    // 设置交换动画状态
-    setSwapAnimation({
-      tile1: { ...tile1, x: tile1X, y: tile1Y },
-      tile2: { ...tile2, x: tile2X, y: tile2Y }
+    setSwapAnimations({
+      [tile1.index]: tile1Animation,
+      [tile2.index]: tile2Animation
     });
     
-    // 执行动画
+    setSwapAnimation({ tile1, tile2 });
+    
+    // 执行交换动画
     Animated.parallel([
-      Animated.timing(anim1.x, {
-        toValue: tile2X - tile1X,
-        duration: 600,
+      Animated.timing(tile1Animation.x, {
+        toValue: deltaX,
+        duration: 300,
         useNativeDriver: true,
       }),
-      Animated.timing(anim1.y, {
-        toValue: tile2Y - tile1Y,
-        duration: 600,
+      Animated.timing(tile1Animation.y, {
+        toValue: deltaY,
+        duration: 300,
         useNativeDriver: true,
       }),
-      Animated.timing(anim2.x, {
-        toValue: tile1X - tile2X,
-        duration: 600,
+      Animated.timing(tile2Animation.x, {
+        toValue: -deltaX,
+        duration: 300,
         useNativeDriver: true,
       }),
-      Animated.timing(anim2.y, {
-        toValue: tile1Y - tile2Y,
-        duration: 600,
+      Animated.timing(tile2Animation.y, {
+        toValue: -deltaY,
+        duration: 300,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // 动画完成后重置位置并执行交换
-      anim1.x.setValue(0);
-      anim1.y.setValue(0);
-      anim2.x.setValue(0);
-      anim2.y.setValue(0);
+      // 动画完成后清理状态并执行实际交换
       setSwapAnimation(null);
-      
-      // 执行实际的交换
+      setSwapAnimations({});
       onTileClick(tile2.row, tile2.col);
     });
   };

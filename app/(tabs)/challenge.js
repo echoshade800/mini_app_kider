@@ -1,601 +1,496 @@
 /**
- * GameBoard Component - Enhanced interactive puzzle board with advanced visual effects
- * Purpose: Render game tiles with enhanced touch interactions and explosion animations
- * Features: Flexible touch gestures, tile scaling, explosion effects, improved responsiveness
+ * Challenge Mode Screen - 60-second timed gameplay
+ * Purpose: Fast-paced IQ challenge with scoring and leaderboard
+ * Extend: Add power-ups, multipliers, or different time modes
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
-  PanResponder, 
-  Dimensions, 
+  TouchableOpacity, 
   StyleSheet,
-  Animated 
+  Modal,
+  Animated
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
+import { GameBoard } from '../components/GameBoard';
+import { generateBoard } from '../utils/boardGenerator';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const CHALLENGE_DURATION = 60000; // 60 seconds
 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-}) {
-  const { settings } = useGameStore();
-  const [selection, setSelection] = useState(null);
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
+export default function ChallengeScreen() {
+  const { gameData, updateGameData } = useGameStore();
+  const [gameState, setGameState] = useState('ready'); // ready, playing, finished
+  const [currentIQ, setCurrentIQ] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(CHALLENGE_DURATION);
+  const [currentBoard, setCurrentBoard] = useState(null);
+  const [showResults, setShowResults] = useState(false);
   
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const tileScales = useRef({}).current;
-  const explosionScale = useRef(new Animated.Value(0)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const timerRef = useRef();
+  const fuseAnimation = useRef(new Animated.Value(1)).current;
 
-  if (!board) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading board...</Text>
-      </View>
-    );
-  }
-
-  const { width, height, tiles } = board;
-  
-  // 计算实际有数字的区域边界
-  const getActualBoardBounds = () => {
-    let minRow = height, maxRow = -1, minCol = width, maxCol = -1;
-    
-    for (let row = 0; row < height; row++) {
-      for (let col = 0; col < width; col++) {
-        const index = row * width + col;
-        if (tiles[index] > 0) {
-          minRow = Math.min(minRow, row);
-          maxRow = Math.max(maxRow, row);
-          minCol = Math.min(minCol, col);
-          maxCol = Math.max(maxCol, col);
-        }
+  // 初始化时生成第一个棋盘
+  useEffect(() => {
+    if (gameState === 'ready' && !currentBoard) {
+      generateNewBoard();
+    }
+  }, [gameState]);
+  useEffect(() => {
+    if (gameState === 'playing') {
+      startTimer();
+      startFuseAnimation();
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
       }
-    }
-    
-    return { minRow, maxRow, minCol, maxCol };
-  };
-  
-  const bounds = getActualBoardBounds();
-  const actualWidth = bounds.maxCol - bounds.minCol + 1;
-  const actualHeight = bounds.maxRow - bounds.minRow + 1;
-  
-  // 计算格子大小，数字方块更小
-  const cellSize = Math.min(
-    (screenWidth - 80) / actualWidth, 
-    (screenHeight - 300) / actualHeight,
-    50
-  );
-  
-  // 数字方块的实际大小（比格子小，留出间距）
-  const tileSize = cellSize * 0.7;
-  const tileMargin = (cellSize - tileSize) / 2;
-  
-  // 棋盘背景大小
-  const boardWidth = actualWidth * cellSize + 20;
-  const boardHeight = actualHeight * cellSize + 20;
+    };
+  }, [gameState]);
 
-  // 初始化tile动画
-  const initTileScale = (index) => {
-    if (!tileScales[index]) {
-      tileScales[index] = new Animated.Value(1);
-    }
-    return tileScales[index];
+  const startTimer = () => {
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1000) {
+          endChallenge();
+          return 0;
+        }
+        return prev - 1000;
+      });
+    }, 1000);
   };
 
-  // 缩放tile
-  const scaleTile = (index, scale) => {
-    const tileScale = initTileScale(index);
-    Animated.spring(tileScale, {
-      toValue: scale,
-      useNativeDriver: true,
-      tension: 400,
-      friction: 8,
+  const startFuseAnimation = () => {
+    Animated.timing(fuseAnimation, {
+      toValue: 0,
+      duration: CHALLENGE_DURATION,
+      useNativeDriver: false,
     }).start();
   };
 
-  // 全屏触摸响应器
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !disabled,
-    onMoveShouldSetPanResponder: () => !disabled,
+  const startChallenge = () => {
+    try {
+      setGameState('playing');
+      setCurrentIQ(0);
+      setTimeLeft(CHALLENGE_DURATION);
+      fuseAnimation.setValue(1);
+      generateNewBoard();
+    } catch (error) {
+      console.error('Failed to start challenge:', error);
+      Alert.alert('启动失败', '无法启动挑战模式，请重试');
+    }
+  };
 
-    onPanResponderGrant: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
-      
-      // 计算棋盘在屏幕上的位置
-      const boardCenterX = screenWidth / 2;
-      const boardCenterY = screenHeight / 2;
-      const boardLeft = boardCenterX - boardWidth / 2;
-      const boardTop = boardCenterY - boardHeight / 2;
-      
-      // 转换为相对于棋盘的坐标
-      const relativeX = pageX - boardLeft - 10;
-      const relativeY = pageY - boardTop - 10;
-      
-      // 转换为网格坐标
-      const startCol = Math.floor(relativeX / cellSize) + bounds.minCol;
-      const startRow = Math.floor(relativeY / cellSize) + bounds.minRow;
-      
-      setSelection({
-        startRow,
-        startCol,
-        endRow: startRow,
-        endCol: startCol,
-      });
-      
-      // 开始选择动画
-      Animated.timing(selectionOpacity, {
-        toValue: 0.5,
-        duration: 80,
-        useNativeDriver: false,
-      }).start();
-    },
+  const endChallenge = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    setGameState('finished');
+    
+    // Update best score if improved
+    const currentBest = gameData?.maxScore || 0;
+    if (currentIQ > currentBest) {
+      updateGameData({ maxScore: currentIQ });
+    }
+    
+    setShowResults(true);
+  };
 
-    onPanResponderMove: (evt) => {
-      if (!selection) return;
-      
-      const { pageX, pageY } = evt.nativeEvent;
-      
-      // 计算棋盘在屏幕上的位置
-      const boardCenterX = screenWidth / 2;
-      const boardCenterY = screenHeight / 2;
-      const boardLeft = boardCenterX - boardWidth / 2;
-      const boardTop = boardCenterY - boardHeight / 2;
-      
-      const relativeX = pageX - boardLeft - 10;
-      const relativeY = pageY - boardTop - 10;
-      
-      const endCol = Math.floor(relativeX / cellSize) + bounds.minCol;
-      const endRow = Math.floor(relativeY / cellSize) + bounds.minRow;
-      
-      setSelection(prev => ({
-        ...prev,
-        endRow,
-        endCol,
-      }));
+  const generateNewBoard = () => {
+    // Use high difficulty (level 130+)
+    const challengeLevel = 130 + Math.floor(Math.random() * 20);
+    const board = generateBoard(challengeLevel, true); // 强制生成新的棋盘
+    setCurrentBoard(board);
+  };
 
-      // 更新悬停的tiles
-      const newSelection = { ...selection, endRow, endCol };
-      const selectedTiles = getSelectedTilesForSelection(newSelection);
-      const newHoveredSet = new Set(selectedTiles.map(tile => tile.index));
-      
-      // 只有被框选中的数字方块才变大
-      selectedTiles.forEach(tile => {
-        if (!hoveredTiles.has(tile.index)) {
-          scaleTile(tile.index, 1.8); // 被选中时放大
-        }
-      });
-      
-      // 恢复不再悬停的tiles到原始大小
-      hoveredTiles.forEach(index => {
-        if (!newHoveredSet.has(index)) {
-          scaleTile(index, 1);
-        }
-      });
-      
-      setHoveredTiles(newHoveredSet);
-    },
+  const handleTilesClear = (clearedPositions) => {
+    if (gameState !== 'playing') return;
+    
+    // Award 3 IQ points per clear
+    setCurrentIQ(prev => prev + 3);
+    
+    // 挑战模式中立即生成新棋盘
+    generateNewBoard();
+  };
 
-    onPanResponderRelease: () => {
-      if (selection && !disabled) {
-        handleSelectionComplete();
-      }
-      
-      // 恢复所有tile的缩放
-      hoveredTiles.forEach(index => {
-        scaleTile(index, 1);
-      });
-      setHoveredTiles(new Set());
-    },
+  const handleBackToHome = () => {
+    setShowResults(false);
+    setGameState('ready');
+    router.replace('/');
+  };
+
+  const getIQTitle = (iq) => {
+    if (iq >= 145) return 'Cosmic Genius';
+    if (iq >= 130) return 'Puzzle Master';
+    if (iq >= 115) return 'Rising Star';
+    if (iq >= 100) return 'Everyday Scholar';
+    if (iq >= 85) return 'Hardworking Student';
+    if (iq >= 70) return 'Slow but Steady';
+    if (iq >= 65) return 'Little Explorer';
+    if (iq >= 55) return 'Learning Hatchling';
+    if (iq >= 40) return 'Tiny Adventurer';
+    return 'Newborn Dreamer';
+  };
+
+  const formatTime = (milliseconds) => {
+    const seconds = Math.ceil(milliseconds / 1000);
+    return `${seconds}s`;
+  };
+
+  const fuseWidth = fuseAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
   });
 
-  const getSelectedTilesForSelection = (sel) => {
-    if (!sel) return [];
-    
-    const { startRow, startCol, endRow, endCol } = sel;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
-    const selectedTiles = [];
-    
-    // 计算框内所有有数字的方块（支持线条选择）
-    for (let row = minRow; row <= maxRow; row++) {
-      for (let col = minCol; col <= maxCol; col++) {
-        if (row >= 0 && row < height && col >= 0 && col < width) {
-          const index = row * width + col;
-          const value = tiles[index];
-          if (value > 0) {
-            selectedTiles.push({ row, col, value, index });
-          }
-        }
-      }
-    }
-    
-    return selectedTiles;
-  };
+  const fuseColor = fuseAnimation.interpolate({
+    inputRange: [0, 0.3, 0.7, 1],
+    outputRange: ['#F44336', '#FF9800', '#FFC107', '#4CAF50'],
+  });
 
-  const getSelectedTiles = () => {
-    return getSelectedTilesForSelection(selection);
-  };
-
-  const handleSelectionComplete = async () => {
-    if (!selection) return;
-
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
-
-    if (sum === 10 && selectedTiles.length > 0) {
-      // Success - 创建爆炸效果
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
-      
-      // 计算爆炸中心位置
-      const { startRow, startCol, endRow, endCol } = selection;
-      const centerRow = (startRow + endRow) / 2;
-      const centerCol = (startCol + endCol) / 2;
-      const explosionX = (centerCol - bounds.minCol) * cellSize + cellSize / 2 + 10;
-      const explosionY = (centerRow - bounds.minRow) * cellSize + cellSize / 2 + 10;
-      
-      setExplosionAnimation({ x: explosionX, y: explosionY });
-      
-      // 爆炸动画
-      explosionScale.setValue(0);
-      explosionOpacity.setValue(1);
-      
-      Animated.parallel([
-        Animated.timing(explosionScale, {
-          toValue: 2.5,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(explosionOpacity, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setExplosionAnimation(null);
-      });
-
-      // 选择框动画
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.8,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-        onTilesClear(tilePositions);
-      });
-
-    } else if (selectedTiles.length > 0) {
-      // Failure - 蓝色反馈
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.5,
-          duration: 150,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-      });
-    } else {
-      // No tiles selected
-      setSelection(null);
-    }
-  };
-
-  const getSelectionStyle = () => {
-    if (!selection) return null;
-    
-    const { startRow, startCol, endRow, endCol } = selection;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const isSuccess = sum === 10;
-    
-    const left = (minCol - bounds.minCol) * cellSize + 10;
-    const top = (minRow - bounds.minRow) * cellSize + 10;
-    const width = (maxCol - minCol + 1) * cellSize;
-    const height = (maxRow - minRow + 1) * cellSize;
-    
-    return {
-      position: 'absolute',
-      left,
-      top,
-      width,
-      height,
-      backgroundColor: isSuccess ? '#4CAF50' : '#2196F3',
-      opacity: selectionOpacity,
-      borderRadius: 8,
-      borderWidth: 3,
-      borderColor: isSuccess ? '#45a049' : '#1976D2',
-    };
-  };
-
-  const getSelectionSum = () => {
-    if (!selection) return null;
-    
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    
-    if (selectedTiles.length === 0) return null;
-    
-    const { startRow, startCol, endRow, endCol } = selection;
-    const centerRow = (startRow + endRow) / 2;
-    const centerCol = (startCol + endCol) / 2;
-    
-    const left = (centerCol - bounds.minCol) * cellSize + 10;
-    const top = (centerRow - bounds.minRow) * cellSize + 10;
-    
-    return {
-      sum,
-      isSuccess: sum === 10,
-      style: {
-        position: 'absolute',
-        left: left - 25,
-        top: top - 25,
-        width: 50,
-        height: 50,
-        backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',
-        borderRadius: 25,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 3,
-        borderColor: sum === 10 ? '#FFA000' : '#1976D2',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 8,
-      }
-    };
-  };
-
-  const renderTile = (value, row, col) => {
-    const index = row * width + col;
-    
-    // 只渲染实际内容区域内的方块
-    if (row < bounds.minRow || row > bounds.maxRow || 
-        col < bounds.minCol || col > bounds.maxCol || value === 0) {
-      return null;
-    }
-
-    const relativeRow = row - bounds.minRow;
-    const relativeCol = col - bounds.minCol;
-    const left = relativeCol * cellSize + 10 + tileMargin;
-    const top = relativeRow * cellSize + 10 + tileMargin;
-
-    const tileScale = initTileScale(index);
-
+  if (gameState === 'ready') {
     return (
-      <Animated.View 
-        key={`${row}-${col}`}
-        style={[
-          styles.tile,
-          { 
-            position: 'absolute',
-            left,
-            top,
-            width: tileSize, 
-            height: tileSize,
-            transform: [{ scale: tileScale }]
-          }
-        ]}
-      >
-        <Text style={[
-          styles.tileText,
-          { fontSize: tileSize * 0.5 }
-        ]}>
-          {value}
-        </Text>
-      </Animated.View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.readyContainer}>
+          <Ionicons name="timer" size={80} color="#FF5722" />
+          <Text style={styles.readyTitle}>Challenge Mode</Text>
+          <Text style={styles.readySubtitle}>
+            60 seconds to maximize your IQ score!
+          </Text>
+          <Text style={styles.readyDescription}>
+            Clear rectangles that sum to 10. Each clear awards +3 IQ points.
+            New boards appear instantly after each clear.
+          </Text>
+          
+          <TouchableOpacity 
+            style={styles.startButton}
+            onPress={startChallenge}
+          >
+            <Text style={styles.startButtonText}>Start Challenge</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.bestScore}>
+            <Text style={styles.bestScoreLabel}>Best IQ:</Text>
+            <Text style={styles.bestScoreValue}>{gameData?.maxScore || 0}</Text>
+            <Text style={styles.bestScoreTitle}>{getIQTitle(gameData?.maxScore || 0)}</Text>
+          </View>
+        </View>
+      </SafeAreaView>
     );
-  };
-
-  const selectionStyle = getSelectionStyle();
-  const selectionSum = getSelectionSum();
+  }
 
   return (
-    <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
-      <View style={styles.container}>
-        <View 
-          style={[
-            styles.board,
-            {
-              width: boardWidth,
-              height: boardHeight,
+    <SafeAreaView style={styles.container}>
+      {/* 游戏中的返回按钮 */}
+      <View style={styles.gameTopBar}>
+        <TouchableOpacity 
+          style={styles.gameBackButton}
+          onPress={() => {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
             }
-          ]}
+            setGameState('ready');
+            router.replace('/');
+          }}
         >
-          {/* Render tiles */}
-          {tiles.map((value, index) => {
-            const row = Math.floor(index / width);
-            const col = index % width;
-            return renderTile(value, row, col);
-          })}
-          
-          {/* Selection overlay */}
-          {selectionStyle && (
-            <Animated.View style={selectionStyle} />
-          )}
-          
-          {/* Selection sum display */}
-          {selectionSum && (
-            <View style={selectionSum.style}>
-              <Text style={[
-                styles.sumText,
-                { color: selectionSum.isSuccess ? '#333' : 'white' }
-              ]}>
-                {selectionSum.sum}
-              </Text>
-            </View>
-          )}
-
-          {/* Explosion effect */}
-          {explosionAnimation && (
+          <Ionicons name="arrow-back" size={20} color="#666" />
+        </TouchableOpacity>
+      </View>
+      
+      {/* 返回按钮 */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.replace('/')}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Challenge Mode</Text>
+        <View style={styles.placeholder} />
+      </View>
+      
+      {/* Game Header */}
+      <View style={styles.gameHeader}>
+        {/* Bomb and Fuse */}
+        <View style={styles.bombContainer}>
+          <Ionicons name="radio-button-on" size={32} color="#333" />
+          <View style={styles.fuseContainer}>
             <Animated.View
               style={[
-                styles.explosion,
+                styles.fuse,
                 {
-                  left: explosionAnimation.x - 30,
-                  top: explosionAnimation.y - 30,
-                  transform: [{ scale: explosionScale }],
-                  opacity: explosionOpacity,
-                }
+                  width: fuseWidth,
+                  backgroundColor: fuseColor,
+                },
               ]}
-            >
-              <View style={styles.explosionCenter}>
-                <Text style={styles.explosionText}>10</Text>
-              </View>
-              {/* 爆炸粒子效果 */}
-              {[...Array(12)].map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.explosionParticle,
-                    {
-                      transform: [
-                        { rotate: `${i * 30}deg` },
-                        { translateY: -25 }
-                      ]
-                    }
-                  ]}
-                />
-              ))}
-            </Animated.View>
-          )}
+            />
+          </View>
+          <View style={styles.spark} />
+        </View>
+        
+        {/* IQ Score */}
+        <View style={styles.scoreContainer}>
+          <Text style={styles.iqLabel}>IQ:</Text>
+          <Text style={styles.iqScore}>{currentIQ}</Text>
         </View>
       </View>
-    </View>
+
+      {/* Timer */}
+      <View style={styles.timerContainer}>
+        <Text style={styles.timerText}>
+          {formatTime(timeLeft)}
+        </Text>
+      </View>
+
+      {/* Game Board */}
+      {currentBoard && (
+        <GameBoard 
+          board={currentBoard}
+          onTilesClear={handleTilesClear}
+          disabled={gameState !== 'playing'}
+        />
+      )}
+
+      {/* Results Modal */}
+      <Modal
+        visible={showResults}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.resultsModal}>
+            <Ionicons name="time" size={60} color="#FF5722" />
+            <Text style={styles.resultsTitle}>Time's Up!</Text>
+            
+            <View style={styles.finalScore}>
+              <Text style={styles.finalIQ}>Final IQ: {currentIQ}</Text>
+              <Text style={styles.finalTitle}>{getIQTitle(currentIQ)}</Text>
+              
+              {currentIQ > (gameData?.maxScore || 0) && (
+                <Text style={styles.newRecord}>🎉 New Personal Best!</Text>
+              )}
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.okButton}
+              onPress={handleBackToHome}
+            >
+              <Text style={styles.okButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  fullScreenContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
   container: {
     flex: 1,
+    backgroundColor: '#f0f8ff',
+  },
+  readyContainer: {
+    flex: 1, 
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 30,
   },
-  loadingContainer: {
-    height: 200,
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  loadingText: {
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 40,
+  },
+  gameTopBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'white',
+  },
+  gameBackButton: {
+    padding: 8,
+  },
+  readySubtitle: {
+    fontSize: 18,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  readyDescription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+  },
+  startButton: {
+    backgroundColor: '#FF5722',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  startButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  bestScore: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  bestScoreLabel: {
     fontSize: 16,
     color: '#666',
   },
-  board: {
-    backgroundColor: '#2E7D32',
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 4,
-    borderColor: '#8D6E63',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-    position: 'relative',
-  },
-  tile: {
-    backgroundColor: '#FFF9C4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 6,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  tileText: {
+  bestScoreValue: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FF9800',
+    marginTop: 4,
   },
-  sumText: {
+  bestScoreTitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  gameHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  bombContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  fuseContainer: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#FFCCBC',
+    borderRadius: 4,
+    marginHorizontal: 10,
+    overflow: 'hidden',
+  },
+  fuse: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  spark: {
+    width: 6,
+    height: 6,
+    backgroundColor: '#FFC107',
+    borderRadius: 3,
+  },
+  scoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF5722',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  iqLabel: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  iqScore: {
+    color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-    textAlign: 'center',
   },
-  explosion: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
+  timerContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 16,
   },
-  explosionCenter: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#FFD700',
-    borderRadius: 25,
+  timerText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FF5722',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#FFA000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
   },
-  explosionText: {
-    fontSize: 20,
+  resultsModal: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 350,
+  },
+  resultsTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
+    marginTop: 16,
+    marginBottom: 24,
   },
-  explosionParticle: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    backgroundColor: '#FF6B35',
-    borderRadius: 4,
+  finalScore: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  finalIQ: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#FF5722',
+    marginBottom: 8,
+  },
+  finalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4a90e2',
+    textAlign: 'center',
+  },
+  newRecord: {
+    fontSize: 16,
+    color: '#4CAF50',
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  okButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  okButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });

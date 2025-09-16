@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   selectedSwapTileText: {
-    color: '#2196F3',
+    color: '#4CAF50',
     fontWeight: 'bold',
   },
   sumText: {

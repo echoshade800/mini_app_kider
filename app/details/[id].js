@@ -4,7 +4,7 @@
  * Features: Flexible touch gestures, tile scaling, explosion effects, improved responsiveness
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -25,46 +25,16 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-}) {
 }) {
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [selection, setSelection] = useState(null);
+  const [buttonAreas, setButtonAreas] = useState([]);
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const settings = useGameStore(state => state.settings);
 
   if (!board) {
     return (
@@ -132,6 +102,13 @@ export function GameBoard({
       tension: 400,
       friction: 8,
     }).start();
+  };
+
+  const isInsideButtonArea = (pageX, pageY) => {
+    return buttonAreas.some(area => {
+      return pageX >= area.x && pageX <= area.x + area.width &&
+             pageY >= area.y && pageY <= area.y + area.height;
+    });
   };
 
   const isInsideBoardOnly = (pageX, pageY) => {
@@ -656,6 +633,7 @@ function ButtonAreaCollector({ onButtonAreasUpdate }) {
 
   return null; // 不渲染任何内容
 }
+
 const styles = StyleSheet.create({
   fullScreenContainer: {
     position: 'absolute',

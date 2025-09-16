@@ -1,559 +1,284 @@
 /**
- * GameBoard Component - 优化版游戏棋盘
- * 需求1: 解决画框与按钮冲突 - 严格限制事件区域，分层穿透设计
- * 需求2: 固定格子尺寸 - 不随关卡缩放，保持手感一致性
+ * Level Mode Screen - Browse and select levels to play
+ * Purpose: Show level list with filtering, navigate to level details
+ * Extend: Add search, favorites, difficulty indicators, or completion stats
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
-  PanResponder, 
-  Dimensions, 
+  TouchableOpacity, 
   StyleSheet,
-  Animated 
+  ScrollView,
+  FlatList
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
+import { STAGE_NAMES, STAGE_GROUPS, getStageGroup } from '../utils/stageNames';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const FILTER_CHIPS = [
+  { id: 'all', label: 'All Levels', range: [1, 200] },
+  { id: 'daycare', label: 'Daycare', range: [1, 5] },
+  { id: 'kindergarten', label: 'Kindergarten', range: [6, 10] },
+  { id: 'elementary', label: 'Elementary', range: [11, 30] },
+  { id: 'middle', label: 'Middle School', range: [31, 45] },
+  { id: 'high', label: 'High School', range: [46, 65] },
+  { id: 'college', label: 'College', range: [66, 85] },
+  { id: 'graduate', label: 'Graduate', range: [86, 95] },
+  { id: 'professor', label: 'Professor', range: [96, 100] },
+  { id: 'career', label: 'Career', range: [101, 150] },
+  { id: 'life', label: 'Life Stages', range: [151, 180] },
+  { id: 'beyond', label: 'Beyond Reality', range: [181, 200] },
+];
 
-// 需求2: 固定格子尺寸常量
-const FIXED_TILE_SIZE = 48; // 固定格子大小
-const TILE_GAP = 4; // 格子间距
-const BOARD_PADDING = 12; // 棋盘内边距
-
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-}) {
-  const { settings } = useGameStore();
+export default function LevelsScreen() {
+  const { gameData } = useGameStore();
+  const [selectedFilter, setSelectedFilter] = useState('all');
   
-  // 选择状态管理
-  const [isSelecting, setIsSelecting] = useState(false);
-  const [anchorPoint, setAnchorPoint] = useState(null);
-  const [currentPoint, setCurrentPoint] = useState(null);
-  const [selectionSum, setSelectionSum] = useState(0);
-  
-  // 动画引用
-  const explosionAnimation = useRef(null);
-  const explosionScale = useRef(new Animated.Value(0)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const maxLevel = gameData?.maxLevel || 1; // 至少可以玩第1关
+  const lastPlayedLevel = gameData?.lastPlayedLevel || 1;
 
-  if (!board) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading board...</Text>
-      </View>
-    );
-  }
-
-  const { width, height, tiles } = board;
-  
-  // 计算实际内容边界
-  const getActualBounds = useCallback(() => {
-    let minRow = height, maxRow = -1, minCol = width, maxCol = -1;
+  const getFilteredLevels = () => {
+    const filter = FILTER_CHIPS.find(f => f.id === selectedFilter);
+    if (!filter) return [];
     
-    for (let row = 0; row < height; row++) {
-      for (let col = 0; col < width; col++) {
-        const index = row * width + col;
-        if (tiles[index] > 0) {
-          minRow = Math.min(minRow, row);
-          maxRow = Math.max(maxRow, row);
-          minCol = Math.min(minCol, col);
-          maxCol = Math.max(maxCol, col);
-        }
-      }
-    }
-    
-    return { minRow, maxRow, minCol, maxCol };
-  }, [tiles, width, height]);
-
-  const bounds = getActualBounds();
-  const actualWidth = bounds.maxCol - bounds.minCol + 1;
-  const actualHeight = bounds.maxRow - bounds.minRow + 1;
-  
-  // 需求2: 固定尺寸计算
-  const boardWidth = actualWidth * (FIXED_TILE_SIZE + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
-  const boardHeight = actualHeight * (FIXED_TILE_SIZE + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
-
-  // 需求1: 棋盘区域边界计算（用于事件限制）
-  const boardRect = {
-    x: (screenWidth - boardWidth) / 2,
-    y: 0, // 将由父组件定位
-    width: boardWidth,
-    height: boardHeight
-  };
-
-  // 需求1: 屏幕坐标转网格坐标
-  const getGridPosition = useCallback((pageX, pageY, boardY) => {
-    const relativeX = pageX - boardRect.x - BOARD_PADDING;
-    const relativeY = pageY - boardY - BOARD_PADDING;
-    
-    const col = Math.floor(relativeX / (FIXED_TILE_SIZE + TILE_GAP)) + bounds.minCol;
-    const row = Math.floor(relativeY / (FIXED_TILE_SIZE + TILE_GAP)) + bounds.minRow;
-    
-    return { row, col };
-  }, [boardRect.x, bounds.minCol, bounds.minRow]);
-
-  // 需求1: 检查是否在棋盘区域内
-  const isInsideBoard = useCallback((pageX, pageY, boardY) => {
-    return pageX >= boardRect.x && 
-           pageX < boardRect.x + boardRect.width &&
-           pageY >= boardY && 
-           pageY < boardY + boardRect.height;
-  }, [boardRect]);
-
-  // 更新选择区域
-  const updateSelection = useCallback((anchor, current) => {
-    if (!anchor || !current) return;
-
-    const minRow = Math.min(anchor.row, current.row);
-    const maxRow = Math.max(anchor.row, current.row);
-    const minCol = Math.min(anchor.col, current.col);
-    const maxCol = Math.max(anchor.col, current.col);
-
-    const newSelectedTiles = [];
-    let sum = 0;
-
-    for (let row = minRow; row <= maxRow; row++) {
-      for (let col = minCol; col <= maxCol; col++) {
-        if (row >= 0 && row < height && col >= 0 && col < width) {
-          const index = row * width + col;
-          const value = tiles[index];
-          if (value > 0) {
-            newSelectedTiles.push({ row, col, value, index });
-            sum += value;
-          }
-        }
-      }
-    }
-
-    setSelectedTiles(newSelectedTiles);
-    setSelectionSum(sum);
-  }, [tiles, width, height]);
-
-  // 重置选择状态
-  const resetSelection = useCallback(() => {
-    setIsSelecting(false);
-    setAnchorPoint(null);
-    setCurrentPoint(null);
-    setSelectedTiles([]);
-    setSelectionSum(0);
-    
-    Animated.timing(selectionOpacity, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [selectionOpacity]);
-
-  // 处理选择完成
-  const handleSelectionComplete = useCallback(async () => {
-    if (selectedTiles.length === 0) {
-      resetSelection();
-      return;
-    }
-
-    const isSuccess = selectionSum === 10;
-    
-    if (isSuccess) {
-      // 成功：长振动 + 爆炸动画
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
-      
-      // 计算爆炸位置
-      const centerRow = (anchorPoint.row + currentPoint.row) / 2;
-      const centerCol = (anchorPoint.col + currentPoint.col) / 2;
-      const explosionX = (centerCol - bounds.minCol) * (FIXED_TILE_SIZE + TILE_GAP) + FIXED_TILE_SIZE / 2 + BOARD_PADDING;
-      const explosionY = (centerRow - bounds.minRow) * (FIXED_TILE_SIZE + TILE_GAP) + FIXED_TILE_SIZE / 2 + BOARD_PADDING;
-      
-      explosionAnimation.current = { x: explosionX, y: explosionY };
-      
-      // 爆炸动画
-      explosionScale.setValue(0);
-      explosionOpacity.setValue(1);
-      
-      Animated.parallel([
-        Animated.timing(explosionScale, {
-          toValue: 2.5,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(explosionOpacity, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        explosionAnimation.current = null;
-      });
-
-      // 成功动画
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.8,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
-        resetSelection();
-        onTilesClear(tilePositions);
-      });
-
-    } else {
-      // 失败：短振动 + 蓝色反馈
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.5,
-          duration: 150,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        resetSelection();
+    const levels = [];
+    for (let i = filter.range[0]; i <= filter.range[1]; i++) {
+      levels.push({
+        id: i,
+        level: i,
+        stageName: STAGE_NAMES[i] || `Level ${i}`,
+        group: getStageGroup(i),
+        isUnlocked: i <= Math.max(maxLevel + 1, 1), // 至少第1关是解锁的
+        isCompleted: i <= maxLevel,
+        isLastPlayed: i === lastPlayedLevel,
       });
     }
-  }, [selectedTiles, selectionSum, anchorPoint, currentPoint, bounds, settings, resetSelection, onTilesClear]);
-
-  // 需求1: 严格限制事件区域的PanResponder
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: (evt) => {
-      if (disabled) return false;
-      // 只有在棋盘区域内才响应
-      return isInsideBoard(evt.nativeEvent.pageX, evt.nativeEvent.pageY, boardRect.y);
-    },
-    
-    onMoveShouldSetPanResponder: (evt) => {
-      if (disabled) return false;
-      return isInsideBoard(evt.nativeEvent.pageX, evt.nativeEvent.pageY, boardRect.y);
-    },
-
-    onPanResponderGrant: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
-      const gridPos = getGridPosition(pageX, pageY, boardRect.y);
-      
-      // 检查是否点击到有效格子
-      if (gridPos.row >= 0 && gridPos.row < height && 
-          gridPos.col >= 0 && gridPos.col < width) {
-        const index = gridPos.row * width + gridPos.col;
-        if (tiles[index] > 0) {
-          setIsSelecting(true);
-          setAnchorPoint(gridPos);
-          setCurrentPoint(gridPos);
-          
-          Animated.timing(selectionOpacity, {
-            toValue: 0.5,
-            duration: 80,
-            useNativeDriver: false,
-          }).start();
-        }
-      }
-    },
-
-    onPanResponderMove: (evt) => {
-      if (!isSelecting || !anchorPoint) return;
-      
-      const { pageX, pageY } = evt.nativeEvent;
-      const gridPos = getGridPosition(pageX, pageY, boardRect.y);
-      
-      setCurrentPoint(gridPos);
-      updateSelection(anchorPoint, gridPos);
-    },
-
-    onPanResponderRelease: () => {
-      if (isSelecting) {
-        handleSelectionComplete();
-      }
-    },
-  });
-
-  // 获取选择框样式
-  const getSelectionStyle = () => {
-    if (!isSelecting || !anchorPoint || !currentPoint) return null;
-    
-    const minRow = Math.min(anchorPoint.row, currentPoint.row);
-    const maxRow = Math.max(anchorPoint.row, currentPoint.row);
-    const minCol = Math.min(anchorPoint.col, currentPoint.col);
-    const maxCol = Math.max(anchorPoint.col, currentPoint.col);
-    
-    const isSuccess = selectionSum === 10;
-    
-    const left = (minCol - bounds.minCol) * (FIXED_TILE_SIZE + TILE_GAP) + BOARD_PADDING;
-    const top = (minRow - bounds.minRow) * (FIXED_TILE_SIZE + TILE_GAP) + BOARD_PADDING;
-    const width = (maxCol - minCol + 1) * (FIXED_TILE_SIZE + TILE_GAP) - TILE_GAP;
-    const height = (maxRow - minRow + 1) * (FIXED_TILE_SIZE + TILE_GAP) - TILE_GAP;
-    
-    return {
-      position: 'absolute',
-      left,
-      top,
-      width,
-      height,
-      backgroundColor: isSuccess ? '#4CAF50' : '#2196F3',
-      opacity: selectionOpacity,
-      borderRadius: 8,
-      borderWidth: 3,
-      borderColor: isSuccess ? '#45a049' : '#1976D2',
-    };
+    return levels;
   };
 
-  // 获取和值显示样式
-  const getSumDisplayStyle = () => {
-    if (!isSelecting || !anchorPoint || !currentPoint || selectedTiles.length === 0) return null;
-    
-    const minRow = Math.min(anchorPoint.row, currentPoint.row);
-    const maxRow = Math.max(anchorPoint.row, currentPoint.row);
-    const minCol = Math.min(anchorPoint.col, currentPoint.col);
-    const maxCol = Math.max(anchorPoint.col, currentPoint.col);
-    
-    const centerCol = (minCol + maxCol) / 2;
-    const centerRow = (minRow + maxRow) / 2;
-    
-    const left = (centerCol - bounds.minCol) * (FIXED_TILE_SIZE + TILE_GAP) + BOARD_PADDING;
-    const top = (centerRow - bounds.minRow) * (FIXED_TILE_SIZE + TILE_GAP) + BOARD_PADDING;
-    
-    const isSuccess = selectionSum === 10;
-    
-    return {
-      sum: selectionSum,
-      isSuccess,
-      style: {
-        position: 'absolute',
-        left: left - 25,
-        top: top - 25,
-        width: 50,
-        height: 50,
-        backgroundColor: isSuccess ? '#FFD700' : '#2196F3',
-        borderRadius: 25,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 3,
-        borderColor: isSuccess ? '#FFA000' : '#1976D2',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 8,
-      }
-    };
-  };
-
-  // 渲染单个格子
-  const renderTile = (value, row, col) => {
-    const index = row * width + col;
-    
-    if (row < bounds.minRow || row > bounds.maxRow || 
-        col < bounds.minCol || col > bounds.maxCol || value === 0) {
-      return null;
+  const handleLevelPress = (level) => {
+    if (level.isUnlocked) {
+      router.push(`/details/${level.level}`);
     }
+  };
 
-    const relativeRow = row - bounds.minRow;
-    const relativeCol = col - bounds.minCol;
-    const left = relativeCol * (FIXED_TILE_SIZE + TILE_GAP) + BOARD_PADDING;
-    const top = relativeRow * (FIXED_TILE_SIZE + TILE_GAP) + BOARD_PADDING;
+  const renderFilterChip = ({ item }) => (
+    <TouchableOpacity
+      style={[
+        styles.filterChip,
+        selectedFilter === item.id && styles.filterChipActive
+      ]}
+      onPress={() => setSelectedFilter(item.id)}
+    >
+      <Text style={[
+        styles.filterChipText,
+        selectedFilter === item.id && styles.filterChipTextActive
+      ]}>
+        {item.label}
+      </Text>
+    </TouchableOpacity>
+  );
 
-    return (
-      <View 
-        key={`${row}-${col}`}
-        style={[
-          styles.tile,
-          { 
-            position: 'absolute',
-            left,
-            top,
-            width: FIXED_TILE_SIZE, 
-            height: FIXED_TILE_SIZE,
-          }
-        ]}
-      >
+  const renderLevelCard = ({ item }) => (
+    <TouchableOpacity
+      style={[
+        styles.levelCard,
+        !item.isUnlocked && styles.levelCardLocked,
+        item.isLastPlayed && styles.levelCardCurrent
+      ]}
+      onPress={() => handleLevelPress(item)}
+      disabled={!item.isUnlocked}
+    >
+      <View style={styles.levelCardHeader}>
         <Text style={[
-          styles.tileText,
-          { fontSize: FIXED_TILE_SIZE * 0.4 }
+          styles.levelNumber,
+          !item.isUnlocked && styles.levelNumberLocked
         ]}>
-          {value}
+          {item.level}
         </Text>
+        {item.isCompleted && (
+          <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+        )}
+        {!item.isUnlocked && (
+          <Ionicons name="lock-closed" size={20} color="#ccc" />
+        )}
       </View>
-    );
-  };
+      <Text style={[
+        styles.levelName,
+        !item.isUnlocked && styles.levelNameLocked
+      ]} numberOfLines={2}>
+        {item.stageName}
+      </Text>
+      <Text style={[
+        styles.levelGroup,
+        !item.isUnlocked && styles.levelGroupLocked
+      ]}>
+        {item.group}
+      </Text>
+    </TouchableOpacity>
+  );
 
-  const selectionStyle = getSelectionStyle();
-  const sumDisplay = getSumDisplayStyle();
+  const filteredLevels = getFilteredLevels();
 
   return (
-    <View 
-      style={[styles.boardContainer, { width: boardWidth, height: boardHeight }]}
-      {...panResponder.panHandlers}
-    >
-      <View style={styles.board}>
-        {/* 渲染格子 */}
-        {tiles.map((value, index) => {
-          const row = Math.floor(index / width);
-          const col = index % width;
-          return renderTile(value, row, col);
-        })}
-        
-        {/* 选择框 */}
-        {selectionStyle && (
-          <Animated.View style={selectionStyle} />
-        )}
-        
-        {/* 和值显示 */}
-        {sumDisplay && (
-          <View style={sumDisplay.style}>
-            <Text style={[
-              styles.sumText,
-              { color: sumDisplay.isSuccess ? '#333' : 'white' }
-            ]}>
-              {sumDisplay.sum}
-            </Text>
-          </View>
-        )}
-
-        {/* 爆炸效果 */}
-        {explosionAnimation.current && (
-          <Animated.View
-            style={[
-              styles.explosion,
-              {
-                left: explosionAnimation.current.x - 30,
-                top: explosionAnimation.current.y - 30,
-                transform: [{ scale: explosionScale }],
-                opacity: explosionOpacity,
-              }
-            ]}
-          >
-            <View style={styles.explosionCenter}>
-              <Text style={styles.explosionText}>10</Text>
-            </View>
-            {[...Array(12)].map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.explosionParticle,
-                  {
-                    transform: [
-                      { rotate: `${i * 30}deg` },
-                      { translateY: -25 }
-                    ]
-                  }
-                ]}
-              />
-            ))}
-          </Animated.View>
-        )}
+    <SafeAreaView style={styles.container}>
+      {/* 返回按钮 */}
+      <View style={styles.topBar}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.replace('/')}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <View style={styles.placeholder} />
       </View>
-    </View>
+      
+      <View style={styles.header}>
+        <Text style={styles.title}>Level Mode</Text>
+        <Text style={styles.subtitle}>Choose your stage</Text>
+      </View>
+
+      {/* Filter Chips */}
+      <View style={styles.filtersContainer}>
+        <FlatList
+          data={FILTER_CHIPS}
+          renderItem={renderFilterChip}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersContent}
+        />
+      </View>
+
+      {/* Levels Grid */}
+      <FlatList
+        data={filteredLevels}
+        renderItem={renderLevelCard}
+        keyExtractor={(item) => item.id.toString()}
+        numColumns={2}
+        contentContainerStyle={styles.levelsContent}
+        showsVerticalScrollIndicator={false}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  boardContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  container: {
+    flex: 1,
+    backgroundColor: '#f0f8ff',
   },
-  loadingContainer: {
-    height: 200,
+  topBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'white',
   },
-  loadingText: {
+  backButton: {
+    padding: 8,
+  },
+  placeholder: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  subtitle: {
     fontSize: 16,
     color: '#666',
+    marginTop: 4,
   },
-  board: {
-    backgroundColor: '#2E7D32',
-    padding: BOARD_PADDING,
+  filtersContainer: {
+    backgroundColor: 'white',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  filtersContent: {
+    paddingHorizontal: 16,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    marginRight: 8,
+  },
+  filterChipActive: {
+    backgroundColor: '#4CAF50',
+  },
+  filterChipText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  filterChipTextActive: {
+    color: 'white',
+  },
+  levelsContent: {
+    padding: 16,
+  },
+  levelCard: {
+    flex: 1,
+    backgroundColor: 'white',
     borderRadius: 12,
-    borderWidth: 4,
-    borderColor: '#8D6E63',
+    padding: 16,
+    margin: 6,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-    position: 'relative',
-    width: '100%',
-    height: '100%',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  tile: {
-    backgroundColor: '#FFF9C4',
+  levelCardLocked: {
+    backgroundColor: '#f8f8f8',
+    opacity: 0.6,
+  },
+  levelCardCurrent: {
+    borderWidth: 2,
+    borderColor: '#FF9800',
+  },
+  levelCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 6,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 4,
+    marginBottom: 8,
   },
-  tileText: {
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  sumText: {
+  levelNumber: {
     fontSize: 18,
     fontWeight: 'bold',
-    textAlign: 'center',
+    color: '#4CAF50',
   },
-  explosion: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
+  levelNumberLocked: {
+    color: '#ccc',
   },
-  explosionCenter: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#FFD700',
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#FFA000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  explosionText: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  levelName: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
+    minHeight: 36,
   },
-  explosionParticle: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    backgroundColor: '#FF6B35',
-    borderRadius: 4,
+  levelNameLocked: {
+    color: '#999',
+  },
+  levelGroup: {
+    fontSize: 12,
+    color: '#666',
+  },
+  levelGroupLocked: {
+    color: '#ccc',
   },
 });

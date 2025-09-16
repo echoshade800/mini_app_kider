@@ -31,11 +31,14 @@ export default function LevelDetailScreen() {
   const { gameData, updateGameData } = useGameStore();
   const [currentBoard, setCurrentBoard] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [isSwapMode, setIsSwapMode] = useState(false);
+  const [itemMode, setItemMode] = useState(null); // 'swapMaster' | 'fractalSplit' | null
   const [selectedSwapTile, setSelectedSwapTile] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
+  const [fractalAnimations, setFractalAnimations] = useState(new Map());
 
   const changeItems = gameData?.changeItems || 0;
+  const swapMasterItems = gameData?.swapMasterItems || 0;
+  const fractalSplitItems = gameData?.fractalSplitItems || 0;
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
 
   useEffect(() => {
@@ -89,25 +92,47 @@ export default function LevelDetailScreen() {
     if (changeItems <= 0) return;
     
     // Enter swap mode
-    setIsSwapMode(true);
+    setItemMode('swap');
+    setSelectedSwapTile(null);
+  };
+
+  const handleUseSwapMaster = () => {
+    if (swapMasterItems <= 0) return;
+    
+    setItemMode('swapMaster');
+    setSelectedSwapTile(null);
+  };
+
+  const handleUseFractalSplit = () => {
+    if (fractalSplitItems <= 0) return;
+    
+    setItemMode('fractalSplit');
     setSelectedSwapTile(null);
   };
 
   const handleSwapTileClick = (row, col, value) => {
-    if (!isSwapMode || value === 0) return;
+    if (!itemMode || value === 0) return;
     
     const index = row * currentBoard.width + col;
     const clickedTile = { row, col, value, index };
     
-    if (!selectedSwapTile) {
-      // Select first tile
-      setSelectedSwapTile(clickedTile);
-    } else if (selectedSwapTile.index === index) {
-      // Cancel selection (clicked same tile)
-      setSelectedSwapTile(null);
-    } else {
-      // Select second tile and perform swap
-      performSwap(selectedSwapTile, clickedTile);
+    if (itemMode === 'swapMaster' || itemMode === 'swap') {
+      if (!selectedSwapTile) {
+        // Select first tile
+        setSelectedSwapTile(clickedTile);
+      } else if (selectedSwapTile.index === index) {
+        // Cancel selection (clicked same tile)
+        setSelectedSwapTile(null);
+      } else {
+        // Select second tile and perform swap
+        performSwap(selectedSwapTile, clickedTile);
+      }
+    } else if (itemMode === 'fractalSplit') {
+      if (value >= 2) {
+        performFractalSplit(clickedTile);
+      } else {
+        Alert.alert('无法分裂', '数字必须大于等于2才能进行分裂操作');
+      }
     }
   };
 
@@ -181,15 +206,103 @@ export default function LevelDetailScreen() {
       setSwapAnimations(new Map());
       
       // 消耗道具并退出交换模式
-      const newChangeItems = Math.max(0, changeItems - 1);
-      updateGameData({ changeItems: newChangeItems });
-      setIsSwapMode(false);
+      if (itemMode === 'swap') {
+        const newChangeItems = Math.max(0, changeItems - 1);
+        updateGameData({ changeItems: newChangeItems });
+      } else if (itemMode === 'swapMaster') {
+        const newSwapMasterItems = Math.max(0, swapMasterItems - 1);
+        updateGameData({ swapMasterItems: newSwapMasterItems });
+      }
+      
+      setItemMode(null);
+      setSelectedSwapTile(null);
+    });
+  };
+
+  const performFractalSplit = (tile) => {
+    if (!currentBoard) return;
+
+    const { value, index } = tile;
+    const row = Math.floor(index / currentBoard.width);
+    const col = index % currentBoard.width;
+
+    // 寻找可以整除的分割方案，优先级：4 → 3 → 2
+    const divisors = [4, 3, 2];
+    let splitCount = 0;
+    
+    for (const divisor of divisors) {
+      if (value % divisor === 0) {
+        splitCount = divisor;
+        break;
+      }
+    }
+
+    if (splitCount === 0) {
+      Alert.alert('无法分裂', '该数字无法被2、3或4整除');
+      return;
+    }
+
+    // 寻找足够的空位
+    const emptyPositions = [];
+    for (let i = 0; i < currentBoard.tiles.length; i++) {
+      if (currentBoard.tiles[i] === 0) {
+        emptyPositions.push(i);
+      }
+    }
+
+    if (emptyPositions.length < splitCount - 1) {
+      Alert.alert('空位不足', `需要${splitCount - 1}个空位进行分裂，当前只有${emptyPositions.length}个空位`);
+      return;
+    }
+
+    // 执行分裂动画
+    const splitValue = value / splitCount;
+    const newTiles = [...currentBoard.tiles];
+    
+    // 原位置保留一个分裂值
+    newTiles[index] = splitValue;
+    
+    // 在空位放置其他分裂值
+    const selectedEmptyPositions = emptyPositions.slice(0, splitCount - 1);
+    selectedEmptyPositions.forEach(pos => {
+      newTiles[pos] = splitValue;
+    });
+
+    // 创建爆裂动画
+    const fractalAnim = {
+      scale: new Animated.Value(1),
+      opacity: new Animated.Value(1),
+    };
+    
+    setFractalAnimations(new Map([[index, fractalAnim]]));
+    
+    // 执行爆裂动画
+    Animated.parallel([
+      Animated.timing(fractalAnim.scale, {
+        toValue: 2,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fractalAnim.opacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // 动画完成后更新棋盘
+      setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
+      setFractalAnimations(new Map());
+      
+      // 消耗道具并退出分裂模式
+      const newFractalSplitItems = Math.max(0, fractalSplitItems - 1);
+      updateGameData({ fractalSplitItems: newFractalSplitItems });
+      setItemMode(null);
       setSelectedSwapTile(null);
     });
   };
 
   const handleRestart = () => {
-    if (isSwapMode) return;
+    if (itemMode) return;
     
     Alert.alert(
       '重新开始',
@@ -224,7 +337,7 @@ export default function LevelDetailScreen() {
   };
 
   const handleCancelSwap = () => {
-    setIsSwapMode(false);
+    setItemMode(null);
     setSelectedSwapTile(null);
   };
 
@@ -252,9 +365,13 @@ export default function LevelDetailScreen() {
           <Text style={styles.levelTitle}>Level {level}</Text>
           <Text style={styles.stageName}>{stageName}</Text>
         </View>
-        <View style={styles.changeItemsContainer}>
+        <View style={styles.itemsContainer}>
           <Ionicons name="swap-horizontal" size={20} color="#FF9800" />
           <Text style={styles.changeItemsText}>{changeItems}</Text>
+          <Ionicons name="shuffle" size={20} color="#2196F3" style={styles.itemIcon} />
+          <Text style={styles.itemText}>{swapMasterItems}</Text>
+          <Ionicons name="git-branch" size={20} color="#9C27B0" style={styles.itemIcon} />
+          <Text style={styles.itemText}>{fractalSplitItems}</Text>
         </View>
       </View>
 
@@ -263,33 +380,78 @@ export default function LevelDetailScreen() {
         board={currentBoard}
         onTilesClear={handleTilesClear}
         onTileClick={handleSwapTileClick}
-        isSwapMode={isSwapMode}
+        itemMode={itemMode}
         selectedSwapTile={selectedSwapTile}
-        swapAnimationsProp={swapAnimations}
+        animationsProp={new Map([...swapAnimations, ...fractalAnimations])}
       />
 
       {/* Floating Action Buttons */}
       <View style={styles.floatingButtons}>
-        {/* Swap Mode Button - Now at bottom center */}
+        {/* Change Item Button */}
         <TouchableOpacity 
           style={[
-            styles.bottomSwapButton,
-            isSwapMode ? styles.cancelSwapButton : styles.swapButton,
-            changeItems <= 0 && !isSwapMode && styles.floatingButtonDisabled
+            styles.floatingButton,
+            itemMode === 'swap' ? styles.cancelButton : styles.changeButton,
+            changeItems <= 0 && itemMode !== 'swap' && styles.floatingButtonDisabled
           ]}
-          onPress={isSwapMode ? handleCancelSwap : handleUseChange}
-          disabled={changeItems <= 0 && !isSwapMode}
+          onPress={itemMode === 'swap' ? handleCancelSwap : handleUseChange}
+          disabled={changeItems <= 0 && itemMode !== 'swap'}
           activeOpacity={0.7}
-          pointerEvents="box-none"
         >
           <Ionicons 
-            name={isSwapMode ? "close" : "swap-horizontal"} 
+            name={itemMode === 'swap' ? "close" : "swap-horizontal"} 
             size={24} 
             color="white" 
           />
-          {!isSwapMode && (
+          {itemMode !== 'swap' && (
             <View style={styles.floatingButtonBadge}>
               <Text style={styles.floatingButtonBadgeText}>{changeItems}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        
+        {/* SwapMaster Button */}
+        <TouchableOpacity 
+          style={[
+            styles.floatingButton,
+            itemMode === 'swapMaster' ? styles.cancelButton : styles.swapMasterButton,
+            swapMasterItems <= 0 && itemMode !== 'swapMaster' && styles.floatingButtonDisabled
+          ]}
+          onPress={itemMode === 'swapMaster' ? handleCancelSwap : handleUseSwapMaster}
+          disabled={swapMasterItems <= 0 && itemMode !== 'swapMaster'}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name={itemMode === 'swapMaster' ? "close" : "shuffle"} 
+            size={24} 
+            color="white" 
+          />
+          {itemMode !== 'swapMaster' && (
+            <View style={styles.floatingButtonBadge}>
+              <Text style={styles.floatingButtonBadgeText}>{swapMasterItems}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        
+        {/* FractalSplit Button */}
+        <TouchableOpacity 
+          style={[
+            styles.floatingButton,
+            itemMode === 'fractalSplit' ? styles.cancelButton : styles.fractalSplitButton,
+            fractalSplitItems <= 0 && itemMode !== 'fractalSplit' && styles.floatingButtonDisabled
+          ]}
+          onPress={itemMode === 'fractalSplit' ? handleCancelSwap : handleUseFractalSplit}
+          disabled={fractalSplitItems <= 0 && itemMode !== 'fractalSplit'}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name={itemMode === 'fractalSplit' ? "close" : "git-branch"} 
+            size={24} 
+            color="white" 
+          />
+          {itemMode !== 'fractalSplit' && (
+            <View style={styles.floatingButtonBadge}>
+              <Text style={styles.floatingButtonBadgeText}>{fractalSplitItems}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -376,7 +538,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
-  changeItemsContainer: {
+  itemsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF3E0',
@@ -390,28 +552,26 @@ const styles = StyleSheet.create({
     color: '#FF9800',
     marginLeft: 4,
   },
+  itemIcon: {
+    marginLeft: 8,
+  },
+  itemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginLeft: 4,
+  },
   floatingButtons: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 30,
     left: 0,
     right: 0,
-    alignItems: 'center',
+    flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 1000,
     elevation: 1000,
-  },
-  bottomSwapButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    position: 'relative',
+    gap: 15,
   },
   floatingButton: {
     width: 60,
@@ -426,10 +586,16 @@ const styles = StyleSheet.create({
     elevation: 8,
     position: 'relative',
   },
-  swapButton: {
+  changeButton: {
     backgroundColor: '#FF9800',
   },
-  cancelSwapButton: {
+  swapMasterButton: {
+    backgroundColor: '#2196F3',
+  },
+  fractalSplitButton: {
+    backgroundColor: '#9C27B0',
+  },
+  cancelButton: {
     backgroundColor: '#f44336',
   },
   floatingButtonDisabled: {

@@ -115,6 +115,22 @@ export default function ProfileScreen() {
                 <Text style={styles.statValue}>{gameData?.changeItems || 0}</Text>
               </View>
             </View>
+            
+            <View style={styles.statRow}>
+              <Ionicons name="shuffle" size={24} color="#2196F3" />
+              <View style={styles.statContent}>
+                <Text style={styles.statLabel}>SwapMaster Items</Text>
+                <Text style={styles.statValue}>{gameData?.swapMasterItems || 0}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.statRow}>
+              <Ionicons name="git-branch" size={24} color="#9C27B0" />
+              <View style={styles.statContent}>
+                <Text style={styles.statLabel}>FractalSplit Items</Text>
+                <Text style={styles.statValue}>{gameData?.fractalSplitItems || 0}</Text>
+              </View>
+            </View>
           </View>
         </View>
 

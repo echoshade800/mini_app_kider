@@ -30,9 +30,9 @@ export function GameBoard({
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;

@@ -36,7 +36,6 @@ export default function LevelDetailScreen() {
   const [swapAnimations, setSwapAnimations] = useState(new Map());
   const [fractalAnimations, setFractalAnimations] = useState(new Map());
 
-  const changeItems = gameData?.changeItems || 0;
   const swapMasterItems = gameData?.swapMasterItems || 0;
   const fractalSplitItems = gameData?.fractalSplitItems || 0;
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
@@ -72,11 +71,13 @@ export default function LevelDetailScreen() {
       // Update progress
       const currentMaxLevel = gameData?.maxLevel || 0;
       const newMaxLevel = Math.max(currentMaxLevel, level);
-      const newChangeItems = changeItems + 1; // Award 1 change item
+      const newSwapMasterItems = swapMasterItems + 1; // Award 1 SwapMaster item
+      const newFractalSplitItems = fractalSplitItems + 1; // Award 1 FractalSplit item
       
       updateGameData({
         maxLevel: newMaxLevel,
-        changeItems: newChangeItems,
+        swapMasterItems: newSwapMasterItems,
+        fractalSplitItems: newFractalSplitItems,
         lastPlayedLevel: level
       });
     } else {
@@ -86,14 +87,6 @@ export default function LevelDetailScreen() {
         tiles: newTiles
       }));
     }
-  };
-
-  const handleUseChange = () => {
-    if (changeItems <= 0) return;
-    
-    // Enter swap mode
-    setItemMode('swap');
-    setSelectedSwapTile(null);
   };
 
   const handleUseSwapMaster = () => {
@@ -116,7 +109,7 @@ export default function LevelDetailScreen() {
     const index = row * currentBoard.width + col;
     const clickedTile = { row, col, value, index };
     
-    if (itemMode === 'swapMaster' || itemMode === 'swap') {
+    if (itemMode === 'swapMaster') {
       if (!selectedSwapTile) {
         // Select first tile
         setSelectedSwapTile(clickedTile);
@@ -206,10 +199,7 @@ export default function LevelDetailScreen() {
       setSwapAnimations(new Map());
       
       // 消耗道具并退出交换模式
-      if (itemMode === 'swap') {
-        const newChangeItems = Math.max(0, changeItems - 1);
-        updateGameData({ changeItems: newChangeItems });
-      } else if (itemMode === 'swapMaster') {
+      if (itemMode === 'swapMaster') {
         const newSwapMasterItems = Math.max(0, swapMasterItems - 1);
         updateGameData({ swapMasterItems: newSwapMasterItems });
       }
@@ -366,8 +356,6 @@ export default function LevelDetailScreen() {
           <Text style={styles.stageName}>{stageName}</Text>
         </View>
         <View style={styles.itemsContainer}>
-          <Ionicons name="swap-horizontal" size={20} color="#FF9800" />
-          <Text style={styles.changeItemsText}>{changeItems}</Text>
           <Ionicons name="shuffle" size={20} color="#2196F3" style={styles.itemIcon} />
           <Text style={styles.itemText}>{swapMasterItems}</Text>
           <Ionicons name="git-branch" size={20} color="#9C27B0" style={styles.itemIcon} />
@@ -387,29 +375,6 @@ export default function LevelDetailScreen() {
 
       {/* Floating Action Buttons */}
       <View style={styles.floatingButtons}>
-        {/* Change Item Button */}
-        <TouchableOpacity 
-          style={[
-            styles.floatingButton,
-            itemMode === 'swap' ? styles.cancelButton : styles.changeButton,
-            changeItems <= 0 && itemMode !== 'swap' && styles.floatingButtonDisabled
-          ]}
-          onPress={itemMode === 'swap' ? handleCancelSwap : handleUseChange}
-          disabled={changeItems <= 0 && itemMode !== 'swap'}
-          activeOpacity={0.7}
-        >
-          <Ionicons 
-            name={itemMode === 'swap' ? "close" : "swap-horizontal"} 
-            size={24} 
-            color="white" 
-          />
-          {itemMode !== 'swap' && (
-            <View style={styles.floatingButtonBadge}>
-              <Text style={styles.floatingButtonBadgeText}>{changeItems}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        
         {/* SwapMaster Button */}
         <TouchableOpacity 
           style={[
@@ -471,7 +436,7 @@ export default function LevelDetailScreen() {
               Congratulations! You've completed {stageName}
             </Text>
             <Text style={styles.rewardText}>
-              +1 Change Item Earned!
+              +1 SwapMaster & +1 FractalSplit Earned!
             </Text>
             
             <View style={styles.modalButtons}>
@@ -546,20 +511,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  changeItemsText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FF9800',
-    marginLeft: 4,
-  },
   itemIcon: {
-    marginLeft: 8,
+    marginLeft: 0,
   },
   itemText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#666',
     marginLeft: 4,
+    marginRight: 8,
   },
   floatingButtons: {
     position: 'absolute',
@@ -571,7 +531,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1000,
     elevation: 1000,
-    gap: 15,
+    gap: 20,
   },
   floatingButton: {
     width: 60,
@@ -585,9 +545,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
     position: 'relative',
-  },
-  changeButton: {
-    backgroundColor: '#FF9800',
   },
   swapMasterButton: {
     backgroundColor: '#2196F3',

@@ -109,14 +109,6 @@ export default function ProfileScreen() {
             </View>
             
             <View style={styles.statRow}>
-              <Ionicons name="swap-horizontal" size={24} color="#2196F3" />
-              <View style={styles.statContent}>
-                <Text style={styles.statLabel}>Change Items</Text>
-                <Text style={styles.statValue}>{gameData?.changeItems || 0}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.statRow}>
               <Ionicons name="shuffle" size={24} color="#2196F3" />
               <View style={styles.statContent}>
                 <Text style={styles.statLabel}>SwapMaster Items</Text>

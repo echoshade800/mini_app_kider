@@ -23,7 +23,7 @@ export function GameBoard({
   board, 
   onTilesClear, 
   onTileClick, 
-  itemMode = null, // 'swap' | 'swapMaster' | 'fractalSplit' | null
+  itemMode = null, // 'swapMaster' | 'fractalSplit' | null
   selectedTile = null,
   disabled = false,
   animationsProp = new Map()
@@ -625,11 +625,7 @@ export function GameBoard({
     let selectedTextColor = '#333';
     
     if (isSelected) {
-      if (itemMode === 'swap') {
-        selectedBgColor = '#FFE082';
-        selectedBorderColor = '#FF9800';
-        selectedTextColor = '#E65100';
-      } else if (itemMode === 'swapMaster') {
+      if (itemMode === 'swapMaster') {
         selectedBgColor = '#E3F2FD';
         selectedBorderColor = '#2196F3';
         selectedTextColor = '#0D47A1';

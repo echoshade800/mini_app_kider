@@ -146,6 +146,20 @@ export function GameBoard({
     };
   }, [swapMode]);
 
+  // 处理方块点击
+  const handleTilePress = (row, col) => {
+    if (disabled || !swapMode) return;
+    
+    const index = row * width + col;
+    const value = tiles[index];
+    
+    if (value === 0) return;
+    
+    if (onTileClick) {
+      onTileClick(row, col, value, index);
+    }
+  };
+
   // 全屏触摸响应器
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => !disabled && !swapMode,
@@ -198,17 +212,10 @@ export function GameBoard({
       const clampedEndCol = Math.max(0, Math.min(width - 1, endCol));
       const clampedEndRow = Math.max(0, Math.min(height - 1, endRow));
       
-      // 确保框的方向正确（起始点始终是左上角）
-      const finalStartCol = Math.min(selection.startCol, clampedEndCol);
-      const finalStartRow = Math.min(selection.startRow, clampedEndRow);
-      const finalEndCol = Math.max(selection.startCol, clampedEndCol);
-      const finalEndRow = Math.max(selection.startRow, clampedEndRow);
-      
       setSelection(prev => ({
-        startRow: finalStartRow,
-        startCol: finalStartCol,
-        endRow: finalEndRow,
-        endCol: finalEndCol,
+        ...prev,
+        endRow: clampedEndRow,
+        endCol: clampedEndCol,
       }));
     },
 
@@ -246,16 +253,6 @@ export function GameBoard({
 
   const getSelectedTiles = () => {
     return getSelectedTilesForSelection(selection);
-  };
-
-  const handleTilePress = (row, col) => {
-    if (swapMode && onTileClick) {
-      const index = row * width + col;
-      const value = tiles[index];
-      if (value > 0) {
-        onTileClick(row, col, value, index);
-      }
-    }
   };
 
   const handleSelectionComplete = async () => {
@@ -307,12 +304,12 @@ export function GameBoard({
       Animated.sequence([
         Animated.timing(selectionOpacity, {
           toValue: 0.8,
-          duration: 200,
+          duration: 150,
           useNativeDriver: false,
         }),
         Animated.timing(selectionOpacity, {
           toValue: 0,
-          duration: 400,
+          duration: 300,
           useNativeDriver: false,
         }),
       ]).start(() => {
@@ -335,12 +332,12 @@ export function GameBoard({
       Animated.sequence([
         Animated.timing(selectionOpacity, {
           toValue: 0.5,
-          duration: 150,
+          duration: 100,
           useNativeDriver: false,
         }),
         Animated.timing(selectionOpacity, {
           toValue: 0,
-          duration: 400,
+          duration: 250,
           useNativeDriver: false,
         }),
       ]).start(() => {
@@ -348,6 +345,11 @@ export function GameBoard({
       });
     } else {
       // No tiles selected
+      Animated.timing(selectionOpacity, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: false,
+      }).start();
       setSelection(null);
     }
   };

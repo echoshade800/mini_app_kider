@@ -378,7 +378,6 @@ export default function LevelDetailScreen() {
         onTileClick={handleSwapTileClick}
         itemMode={itemMode}
         selectedSwapTile={selectedSwapTile}
-        animationsProp={new Map([...swapAnimations, ...fractalAnimations])}
         swapAnimations={swapAnimationsRef.current}
         fractalAnimations={fractalAnimationsRef.current}
       />

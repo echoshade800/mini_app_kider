@@ -26,8 +26,8 @@ export function GameBoard({
   itemMode = null, // 'swapMaster' | 'fractalSplit' | null
   selectedSwapTile = null,
   disabled = false,
-  swapAnimations = new Map(),
-  fractalAnimations = new Map()
+  swapAnimations,
+  fractalAnimations
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
@@ -609,8 +609,8 @@ export function GameBoard({
     const tileShake = initTileShake(index);
     
     // 获取交换和分裂动画
-    const swapAnim = swapAnimations.get(index);
-    const fractalAnim = fractalAnimations.get(index);
+    const swapAnim = swapAnimations ? swapAnimations.get(index) : null;
+    const fractalAnim = fractalAnimations ? fractalAnimations.get(index) : null;
     
     // 计算变换
     const transforms = [{ scale: tileScale }];

@@ -380,6 +380,7 @@ export default function LevelDetailScreen() {
         selectedSwapTile={selectedSwapTile}
         animationsProp={new Map([...swapAnimations, ...fractalAnimations])}
           swapAnimations={swapAnimationsRef.current}
+      />
           fractalAnimations={fractalAnimationsRef.current}
 
       {/* Floating Action Buttons */}

@@ -25,17 +25,12 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
 }) {
   const { settings } = useGameStore();
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [selection, setSelection] = useState(null);
+  const [isSelecting, setIsSelecting] = useState(false);
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -89,6 +84,14 @@ export function GameBoard({
   const boardWidth = actualWidth * cellSize + 20;
   const boardHeight = actualHeight * cellSize + 20;
 
+  // 计算棋盘在屏幕上的位置
+  const boardCenterX = screenWidth / 2;
+  const boardCenterY = screenHeight / 2;
+  const boardX = boardCenterX - boardWidth / 2;
+  const boardY = boardCenterY - boardHeight / 2;
+  const boardW = boardWidth;
+  const boardH = boardHeight;
+
   // 初始化tile动画
   const initTileScale = (index) => {
     if (!tileScales[index]) {
@@ -109,18 +112,20 @@ export function GameBoard({
   };
 
   const isInsideBoardOnly = (pageX, pageY) => {
-    // 计算棋盘在屏幕上的位置
-    const boardCenterX = screenWidth / 2;
-    const boardCenterY = screenHeight / 2;
-    const boardX = boardCenterX - boardWidth / 2;
-    const boardY = boardCenterY - boardHeight / 2;
-    const boardW = boardWidth;
-    const boardH = boardHeight;
-    
     // 严格检查：必须在棋盘内部区域（排除边框）
     const margin = 10; // 棋盘内边距
     return pageX >= boardX + margin && pageX < boardX + boardW - margin && 
            pageY >= boardY + margin && pageY < boardY + boardH - margin;
+  };
+
+  const resetSelection = () => {
+    setSelection(null);
+    setIsSelecting(false);
+    Animated.timing(selectionOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
   };
 
   const getSelectedTilesForSelection = (sel) => {
@@ -154,14 +159,88 @@ export function GameBoard({
     return getSelectedTilesForSelection(selection);
   };
 
-  const resetSelection = () => {
-    setSelection(null);
-    selectionOpacity.setValue(0);
-    // 恢复所有tile的缩放
-    hoveredTiles.forEach(index => {
-      scaleTile(index, 1);
-    });
-    setHoveredTiles(new Set());
+  const handleSelectionComplete = async () => {
+    if (!selection) return;
+
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+
+    if (sum === 10 && selectedTiles.length > 0) {
+      // Success - 创建爆炸效果
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }
+      
+      // 计算爆炸中心位置
+      const { startRow, startCol, endRow, endCol } = selection;
+      const centerRow = (startRow + endRow) / 2;
+      const centerCol = (startCol + endCol) / 2;
+      const explosionX = (centerCol - bounds.minCol) * cellSize + cellSize / 2 + 10;
+      const explosionY = (centerRow - bounds.minRow) * cellSize + cellSize / 2 + 10;
+      
+      setExplosionAnimation({ x: explosionX, y: explosionY });
+      
+      // 爆炸动画
+      explosionScale.setValue(0);
+      explosionOpacity.setValue(1);
+      
+      Animated.parallel([
+        Animated.timing(explosionScale, {
+          toValue: 2.5,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(explosionOpacity, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setExplosionAnimation(null);
+      });
+
+      // 选择框动画
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+        onTilesClear(tilePositions);
+      });
+
+    } else if (selectedTiles.length > 0) {
+      // Failure - 蓝色反馈
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.5,
+          duration: 150,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+      });
+    } else {
+      // No tiles selected
+      setSelection(null);
+    }
   };
 
   // 全屏触摸响应器
@@ -174,14 +253,15 @@ export function GameBoard({
     onMoveShouldSetPanResponder: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
       // 移动过程中也要持续检查区域
-      return !disabled && isInsideBoardOnly(pageX, pageY);
+      return !disabled && (isSelecting || isInsideBoardOnly(pageX, pageY));
     },
 
     onPanResponderGrant: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
-      
       // 双重检查：确保在棋盘区域内
+      const { pageX, pageY } = evt.nativeEvent;
       if (!isInsideBoardOnly(pageX, pageY)) return;
+      
+      setIsSelecting(true);
       
       // 计算棋盘在屏幕上的位置
       const boardCenterX = screenWidth / 2;
@@ -273,6 +353,7 @@ export function GameBoard({
         scaleTile(index, 1);
       });
       setHoveredTiles(new Set());
+      setIsSelecting(false);
     },
     
     // 允许其他组件终止画框（按钮优先）
@@ -283,90 +364,6 @@ export function GameBoard({
       resetSelection();
     },
   });
-
-  const handleSelectionComplete = async () => {
-    if (!selection) return;
-
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
-
-    if (sum === 10 && selectedTiles.length > 0) {
-      // Success - 创建爆炸效果
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }
-      
-      // 计算爆炸中心位置
-      const { startRow, startCol, endRow, endCol } = selection;
-      const centerRow = (startRow + endRow) / 2;
-      const centerCol = (startCol + endCol) / 2;
-      const explosionX = (centerCol - bounds.minCol) * cellSize + cellSize / 2 + 10;
-      const explosionY = (centerRow - bounds.minRow) * cellSize + cellSize / 2 + 10;
-      
-      setExplosionAnimation({ x: explosionX, y: explosionY });
-      
-      // 爆炸动画
-      explosionScale.setValue(0);
-      explosionOpacity.setValue(1);
-      
-      Animated.parallel([
-        Animated.timing(explosionScale, {
-          toValue: 2.5,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(explosionOpacity, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setExplosionAnimation(null);
-      });
-
-      // 选择框动画
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.8,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-        onTilesClear(tilePositions);
-      });
-
-    } else if (selectedTiles.length > 0) {
-      // Failure - 蓝色反馈
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.5,
-          duration: 150,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-      });
-    } else {
-      // No tiles selected
-      setSelection(null);
-    }
-  };
 
   const getSelectionStyle = () => {
     if (!selection) return null;
@@ -420,10 +417,10 @@ export function GameBoard({
       isSuccess: sum === 10,
       style: {
         position: 'absolute',
-        left: left - 25,
-        top: top - 25,
         width: 50,
         height: 50,
+        left: left - 25,
+        top: top - 25,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',

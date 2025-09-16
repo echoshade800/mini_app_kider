@@ -26,6 +26,8 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
+}
+)
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -33,6 +35,8 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
+}
+)
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -40,6 +44,8 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
+}
+)
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -47,13 +53,8 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
+}
+)
 export function GameBoard({ 
   board, 
   onTilesClear, 
@@ -62,15 +63,12 @@ export function GameBoard({
   firstSwapTile = null, 
   disabled = false 
 }) {
+  const { settings } = useGameStore();
   const [shakeAnimations, setShakeAnimations] = useState({});
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
-        { translateX: shakeX },
-        { scale: tileScale }
-      ]
-    };
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
   if (!board) {
@@ -236,6 +234,12 @@ export function GameBoard({
         ...prev,
         endRow: clampedEndRow,
         endCol: clampedEndCol,
+      }
+      )
+      )
+    }
+  }
+  )
   const getSelectedTilesForSelection = (sel) => {
     if (!sel) return [];
     

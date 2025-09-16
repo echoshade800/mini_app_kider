@@ -28,7 +28,6 @@ export default function LevelDetailsScreen() {
   const { gameData, updateGameData } = useGameStore();
   const [currentBoard, setCurrentBoard] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showSwapTutorial, setShowSwapTutorial] = useState(false);
   const [clearedTiles, setClearedTiles] = useState(new Set());
   const [swapMode, setSwapMode] = useState(false);
   const [firstSwapTile, setFirstSwapTile] = useState(null);
@@ -77,6 +76,7 @@ export default function LevelDetailsScreen() {
       setSwapMode(false);
       setFirstSwapTile(null);
 
+      Alert.alert('交换完成', '两个数字方块已成功交换位置！');
     }
   };
   const handleTilesClear = (clearedPositions) => {
@@ -133,29 +133,15 @@ export default function LevelDetailsScreen() {
       return;
     }
 
-    // 检查是否是第一次使用交换道具
-    const hasUsedSwapBefore = gameData?.hasUsedSwapBefore || false;
-    
-    if (!hasUsedSwapBefore) {
-      // 第一次使用，显示教程
-      setShowSwapTutorial(true);
-    } else {
-      // 非第一次使用，直接进入交换模式
-      updateGameData({ changeItems: currentItems - 1 });
-      setSwapMode(true);
-      setFirstSwapTile(null);
-    }
-  };
-
-  const handleTutorialConfirm = () => {
-    const currentItems = gameData?.changeItems || 0;
-    updateGameData({ 
-      changeItems: currentItems - 1,
-      hasUsedSwapBefore: true 
-    });
-    setShowSwapTutorial(false);
+    // 消耗道具并进入交换模式
+    updateGameData({ changeItems: currentItems - 1 });
     setSwapMode(true);
     setFirstSwapTile(null);
+    Alert.alert(
+      '交换模式已激活',
+      '请依次点击两个数字方块来交换它们的位置。',
+      [{ text: '确定' }]
+    );
   };
 
   const handleRestart = () => {
@@ -360,44 +346,6 @@ export default function LevelDetailsScreen() {
                 <Text style={styles.backToLevelsButtonText}>Back to Levels</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Swap Tutorial Modal */}
-      <Modal
-        visible={showSwapTutorial}
-        transparent
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.tutorialModal}>
-            <Ionicons name="swap-horizontal" size={60} color="#FF9800" />
-            <Text style={styles.tutorialTitle}>交换道具使用方法</Text>
-            
-            <View style={styles.tutorialSteps}>
-              <View style={styles.tutorialStep}>
-                <Text style={styles.stepNumber}>1</Text>
-                <Text style={styles.stepText}>所有数字方块会显示橙色虚线边框并晃动</Text>
-              </View>
-              
-              <View style={styles.tutorialStep}>
-                <Text style={styles.stepNumber}>2</Text>
-                <Text style={styles.stepText}>点击第一个要交换的数字方块（显示绿色高光）</Text>
-              </View>
-              
-              <View style={styles.tutorialStep}>
-                <Text style={styles.stepNumber}>3</Text>
-                <Text style={styles.stepText}>点击第二个数字方块完成交换</Text>
-              </View>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.tutorialButton}
-              onPress={handleTutorialConfirm}
-            >
-              <Text style={styles.tutorialButtonText}>开始交换</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -615,61 +563,6 @@ const styles = StyleSheet.create({
   },
   backToLevelsButtonText: {
     color: '#666',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  tutorialModal: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-    width: '85%',
-    maxWidth: 400,
-  },
-  tutorialTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  tutorialSteps: {
-    alignSelf: 'stretch',
-    marginBottom: 24,
-  },
-  tutorialStep: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  stepNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FF9800',
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginRight: 12,
-  },
-  stepText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
-  },
-  tutorialButton: {
-    backgroundColor: '#FF9800',
-    paddingVertical: 14,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  tutorialButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },

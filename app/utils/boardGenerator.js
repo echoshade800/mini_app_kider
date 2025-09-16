@@ -1,716 +1,378 @@
 /**
- * GameBoard Component - Enhanced interactive puzzle board with advanced visual effects
- * Purpose: Render game tiles with enhanced touch interactions and explosion animations
- * Features: Flexible touch gestures, tile scaling, explosion effects, improved responsiveness
+ * Board Generator - Deterministic puzzle board creation
+ * Purpose: Generate solvable number puzzles with appropriate difficulty scaling
+ * Features: Fixed board size per level, guaranteed solvability, line selection support
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  PanResponder, 
-  Dimensions, 
-  StyleSheet,
-  Animated,
-  TouchableOpacity
-} from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { useGameStore } from '../store/gameStore';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-}) {
-  const [selection, setSelection] = useState(null);
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const { settings } = useGameStore();
-  const [shakeAnimations, setShakeAnimations] = useState({});
-  
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const tileScales = useRef({}).current;
-  const explosionScale = useRef(new Animated.Value(0)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
-
-  if (!board) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading board...</Text>
-      </View>
-    );
+// Deterministic random number generator
+function seededRandom(seed) {
+  let state = 0;
+  for (let i = 0; i < seed.length; i++) {
+    state = ((state << 5) - state + seed.charCodeAt(i)) & 0xffffffff;
   }
-
-  const { width, height, tiles } = board;
   
-  // 计算格子大小
-  const cellSize = Math.min(
-    (screenWidth - 60) / width, 
-    (screenHeight - 280) / height,
-    50
-  );
+  return function() {
+    state = ((state * 1103515245) + 12345) & 0x7fffffff;
+    return state / 0x7fffffff;
+  };
+}
+
+function getBoardDimensions(level) {
+  // 每个关卡固定棋盘大小，随着关卡增加逐渐变大
+  if (level <= 5) return { width: 4, height: 4 };   // 前5关用4x4
+  if (level <= 15) return { width: 4, height: 4 };  // 6-15关用4x4
+  if (level <= 30) return { width: 5, height: 5 };  // 16-30关用5x5
+  if (level <= 50) return { width: 6, height: 6 };  // 31-50关用6x6
+  if (level <= 80) return { width: 7, height: 7 };  // 51-80关用7x7
+  if (level <= 120) return { width: 8, height: 8 }; // 81-120关用8x8
+  if (level <= 160) return { width: 9, height: 9 }; // 121-160关用9x9
+  if (level <= 200) return { width: 10, height: 10 }; // 161-200关用10x10
+  return { width: 11, height: 11 }; // 200关后用11x11
+}
+
+// 检查两个位置是否可以形成有效的矩形选择（包括线条）
+function canFormRectangle(pos1, pos2, width, height) {
+  const row1 = Math.floor(pos1 / width);
+  const col1 = pos1 % width;
+  const row2 = Math.floor(pos2 / width);
+  const col2 = pos2 % width;
   
-  // 数字方块的实际大小（比格子稍小，留出间距）
-  const tileSize = cellSize * 0.85;
-  const tileMargin = (cellSize - tileSize) / 2;
+  // 必须在同一行或同一列，或者形成矩形
+  return (row1 === row2) || (col1 === col2) || 
+         (Math.abs(row1 - row2) >= 1 && Math.abs(col1 - col2) >= 1);
+}
+
+// 获取矩形内的所有位置（包括线条选择）
+function getRectanglePositions(pos1, pos2, width, height) {
+  const row1 = Math.floor(pos1 / width);
+  const col1 = pos1 % width;
+  const row2 = Math.floor(pos2 / width);
+  const col2 = pos2 % width;
   
-  // 棋盘背景大小
-  const boardWidth = width * cellSize + 20;
-  const boardHeight = height * cellSize + 20;
-
-  // 初始化tile动画
-  const initTileScale = (index) => {
-    if (!tileScales[index]) {
-      tileScales[index] = new Animated.Value(1);
+  const minRow = Math.min(row1, row2);
+  const maxRow = Math.max(row1, row2);
+  const minCol = Math.min(col1, col2);
+  const maxCol = Math.max(col1, col2);
+  
+  const positions = [];
+  for (let row = minRow; row <= maxRow; row++) {
+    for (let col = minCol; col <= maxCol; col++) {
+      positions.push(row * width + col);
     }
-    return tileScales[index];
-  };
+  }
+  
+  return positions;
+}
 
-  // 缩放tile
-  const scaleTile = (index, scale) => {
-    const tileScale = initTileScale(index);
-    Animated.spring(tileScale, {
-      toValue: scale,
-      useNativeDriver: true,
-      tension: 400,
-      friction: 8,
-    }).start();
-  };
-
-  // 晃动动画
-  const startShakeAnimation = (index) => {
-    if (!shakeAnimations[index]) {
-      shakeAnimations[index] = new Animated.Value(0);
-    }
+// 检查棋盘是否可解（所有数字都能通过矩形选择消除）
+function isBoardSolvable(tiles, width, height) {
+  const workingTiles = [...tiles];
+  const size = width * height;
+  let maxIterations = 100; // 防止无限循环
+  
+  while (maxIterations > 0) {
+    let foundSolution = false;
     
-    const shakeLoop = () => {
-      Animated.sequence([
-        Animated.timing(shakeAnimations[index], {
-          toValue: 2,
-          duration: 50,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shakeAnimations[index], {
-          toValue: -2,
-          duration: 50,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shakeAnimations[index], {
-          toValue: 0,
-          duration: 50,
-          useNativeDriver: true,
-        }),
-        Animated.delay(700),
-      ]).start(() => {
-        if (swapMode) {
-          shakeLoop();
-        }
-      });
-    };
-    
-    shakeLoop();
-  };
-
-  // 停止晃动动画
-  const stopShakeAnimation = (index) => {
-    if (shakeAnimations[index]) {
-      shakeAnimations[index].stopAnimation();
-      shakeAnimations[index].setValue(0);
-    }
-  };
-
-  // 当进入交换模式时开始晃动
-  useEffect(() => {
-    if (swapMode) {
-      tiles.forEach((value, index) => {
-        if (value > 0) {
-          startShakeAnimation(index);
-        }
-      });
-    } else {
-      // 退出交换模式时停止所有晃动
-      Object.keys(shakeAnimations).forEach(index => {
-        stopShakeAnimation(parseInt(index));
-      });
-    }
-    
-    return () => {
-      // 清理函数
-      Object.keys(shakeAnimations).forEach(index => {
-        stopShakeAnimation(parseInt(index));
-      });
-    };
-  }, [swapMode]);
-
-  // 处理方块点击
-  const handleTilePress = (row, col) => {
-    if (disabled || !swapMode) return;
-    
-    const index = row * width + col;
-    const value = tiles[index];
-    
-    if (value === 0) return;
-    
-    if (onTileClick) {
-      onTileClick(row, col, value, index);
-    }
-  };
-
-  // 全屏触摸响应器
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !disabled && !swapMode,
-    onMoveShouldSetPanResponder: () => !disabled && !swapMode,
-
-    onPanResponderGrant: (evt) => {
-      const { locationX, locationY } = evt.nativeEvent;
+    // 尝试找到一个可以消除的矩形
+    for (let pos1 = 0; pos1 < size && !foundSolution; pos1++) {
+      if (workingTiles[pos1] === 0) continue;
       
-      // 直接使用相对于棋盘的坐标，减去棋盘内边距
-      const relativeX = locationX - 10;
-      const relativeY = locationY - 10;
-      
-      // 转换为网格坐标
-      const startCol = Math.floor(relativeX / cellSize);
-      const startRow = Math.floor(relativeY / cellSize);
-      
-      // 确保坐标在有效范围内
-      const clampedStartCol = Math.max(0, Math.min(width - 1, startCol));
-      const clampedStartRow = Math.max(0, Math.min(height - 1, startRow));
-      
-      setSelection({
-        startRow: clampedStartRow,
-        startCol: clampedStartCol,
-        endRow: clampedStartRow,
-        endCol: clampedStartCol,
-      });
-      
-      // 开始选择动画
-      Animated.timing(selectionOpacity, {
-        toValue: 0.5,
-        duration: 100,
-        useNativeDriver: false,
-      }).start();
-    },
-
-    onPanResponderMove: (evt) => {
-      if (!selection) return;
-      
-      const { locationX, locationY } = evt.nativeEvent;
-      
-      // 直接使用相对于棋盘的坐标，减去棋盘内边距
-      const relativeX = locationX - 10;
-      const relativeY = locationY - 10;
-      
-      const endCol = Math.floor(relativeX / cellSize);
-      const endRow = Math.floor(relativeY / cellSize);
-      
-      // 确保坐标在有效范围内
-      const clampedEndCol = Math.max(0, Math.min(width - 1, endCol));
-      const clampedEndRow = Math.max(0, Math.min(height - 1, endRow));
-      
-      setSelection(prev => ({
-        ...prev,
-        endRow: clampedEndRow,
-        endCol: clampedEndCol,
-      }));
-    },
-
-    onPanResponderRelease: () => {
-      handleSelectionComplete();
-    },
-  });
-
-  const getSelectedTilesForSelection = (sel) => {
-    if (!sel) return [];
-    
-    const { startRow, startCol, endRow, endCol } = sel;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
-    const selectedTiles = [];
-    
-    // 计算框内所有有数字的方块
-    for (let row = minRow; row <= maxRow; row++) {
-      for (let col = minCol; col <= maxCol; col++) {
-        if (row >= 0 && row < height && col >= 0 && col < width) {
-          const index = row * width + col;
-          const value = tiles[index];
-          if (value > 0) {
-            selectedTiles.push({ row, col, value, index });
+      for (let pos2 = pos1; pos2 < size && !foundSolution; pos2++) {
+        if (workingTiles[pos2] === 0) continue;
+        
+        if (canFormRectangle(pos1, pos2, width, height)) {
+          const positions = getRectanglePositions(pos1, pos2, width, height);
+          const sum = positions.reduce((acc, pos) => acc + workingTiles[pos], 0);
+          
+          if (sum === 10) {
+            // 找到可消除的矩形，清除这些位置
+            positions.forEach(pos => workingTiles[pos] = 0);
+            foundSolution = true;
           }
         }
       }
     }
     
-    return selectedTiles;
-  };
-
-  const getSelectedTiles = () => {
-    return getSelectedTilesForSelection(selection);
-  };
-
-  const handleSelectionComplete = async () => {
-    if (!selection) return;
-
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
-
-    if (sum === 10 && selectedTiles.length > 0) {
-      // Success - 创建爆炸效果
-      if (settings?.hapticsEnabled !== false) {
-        try {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        } catch (error) {
-          console.log('Haptics not available');
-        }
-      }
-      
-      // 计算爆炸中心位置
-      const { startRow, startCol, endRow, endCol } = selection;
-      const centerRow = (startRow + endRow) / 2;
-      const centerCol = (startCol + endCol) / 2;
-      const explosionX = centerCol * cellSize + cellSize / 2 + 10;
-      const explosionY = centerRow * cellSize + cellSize / 2 + 10;
-      
-      setExplosionAnimation({ x: explosionX, y: explosionY });
-      
-      // 爆炸动画
-      explosionScale.setValue(0);
-      explosionOpacity.setValue(1);
-      
-      Animated.parallel([
-        Animated.timing(explosionScale, {
-          toValue: 2.5,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(explosionOpacity, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setExplosionAnimation(null);
-      });
-
-      // 选择框动画
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.8,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-        if (onTilesClear) {
-          onTilesClear(tilePositions);
-        }
-      });
-
-    } else if (selectedTiles.length > 0) {
-      // Failure - 蓝色反馈
-      if (settings?.hapticsEnabled !== false) {
-        try {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        } catch (error) {
-          console.log('Haptics not available');
-        }
-      }
-      
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.5,
-          duration: 150,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-      });
-    } else {
-      // No tiles selected
-      setSelection(null);
-    }
-  };
-
-  const getSelectionStyle = () => {
-    if (!selection) return null;
-    
-    const { startRow, startCol, endRow, endCol } = selection;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const isSuccess = sum === 10;
-    
-    const left = minCol * cellSize + 10;
-    const top = minRow * cellSize + 10;
-    const selectionWidth = (maxCol - minCol + 1) * cellSize;
-    const selectionHeight = (maxRow - minRow + 1) * cellSize;
-    
-    return {
-      position: 'absolute',
-      left,
-      top,
-      width: selectionWidth,
-      height: selectionHeight,
-      backgroundColor: isSuccess ? '#4CAF50' : '#2196F3',
-      opacity: selectionOpacity,
-      borderRadius: 8,
-      borderWidth: 3,
-      borderColor: isSuccess ? '#45a049' : '#1976D2',
-    };
-  };
-
-  const getSelectionSum = () => {
-    if (!selection) return null;
-    
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    
-    if (selectedTiles.length === 0) return null;
-    
-    const { startRow, startCol, endRow, endCol } = selection;
-    const centerRow = (startRow + endRow) / 2;
-    const centerCol = (startCol + endCol) / 2;
-    
-    const left = centerCol * cellSize + 10;
-    const top = centerRow * cellSize + 10;
-    
-    return {
-      sum,
-      isSuccess: sum === 10,
-      style: {
-        position: 'absolute',
-        left: left - 25,
-        top: top - 25,
-        width: 50,
-        height: 50,
-        backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',
-        borderRadius: 25,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 3,
-        borderColor: sum === 10 ? '#FFA000' : '#1976D2',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 8,
-      }
-    };
-  };
-
-  const renderTile = (value, row, col) => {
-    const index = row * width + col;
-    
-    if (row < 0 || row >= height || col < 0 || col >= width) {
-      return null;
-    }
-
-    const left = col * cellSize + 10 + tileMargin;
-    const top = row * cellSize + 10 + tileMargin;
-
-    const tileScale = initTileScale(index);
-    const shakeX = shakeAnimations[index] || new Animated.Value(0);
-
-    // 检查是否是交换模式中被选中的方块
-    const isFirstSwapTile = swapMode && firstSwapTile && firstSwapTile.index === index;
-    // 检查是否在交换模式中且是数字方块
-    const isSwapModeNumberTile = swapMode && value > 0;
-    
-    // 根据是否有数字选择样式
-    let tileStyle;
-    if (value === 0) {
-      tileStyle = styles.emptyTile;
-    } else if (isFirstSwapTile) {
-      tileStyle = styles.selectedSwapTile;
-    } else if (isSwapModeNumberTile) {
-      tileStyle = styles.swapModeNumberTile;
-    } else {
-      tileStyle = styles.tile;
+    if (!foundSolution) {
+      // 检查是否还有剩余数字
+      const hasRemainingNumbers = workingTiles.some(tile => tile > 0);
+      return !hasRemainingNumbers; // 如果没有剩余数字，则可解
     }
     
-    const animatedStyle = {
-      transform: [
-        { translateX: shakeX },
-        { scale: tileScale }
-      ]
-    };
-    
-    return (
-      <Animated.View 
-        key={`${row}-${col}`}
-        style={[
-          tileStyle,
-          { 
-            position: 'absolute',
-            left,
-            top,
-            width: tileSize, 
-            height: tileSize,
-          },
-          animatedStyle
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.tileButton}
-          onPress={() => handleTilePress(row, col)}
-          disabled={!swapMode || value === 0}
-        >
-          {value > 0 && (
-            <Text style={[
-              styles.tileText,
-              isFirstSwapTile && styles.selectedSwapTileText
-            ]}>
-              {value}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  };
-
-  const selectionStyle = getSelectionStyle();
-  const selectionSum = getSelectionSum();
-
-  return (
-    <View style={styles.fullScreenContainer}>
-      <View style={styles.container}>
-        <View 
-          style={[
-            styles.board,
-            {
-              width: boardWidth,
-              height: boardHeight,
-            }
-          ]}
-          {...panResponder.panHandlers}
-        >
-          {/* Render tiles */}
-          {tiles.map((value, index) => {
-            const row = Math.floor(index / width);
-            const col = index % width;
-            return renderTile(value, row, col);
-          })}
-          
-          {/* Selection overlay */}
-          {selectionStyle && (
-            <Animated.View style={selectionStyle} />
-          )}
-          
-          {/* Selection sum display */}
-          {selectionSum && (
-            <View style={selectionSum.style}>
-              <Text style={[
-                styles.sumText,
-                { color: selectionSum.isSuccess ? '#333' : 'white' }
-              ]}>
-                {selectionSum.sum}
-              </Text>
-            </View>
-          )}
-
-          {/* Explosion effect */}
-          {explosionAnimation && (
-            <Animated.View
-              style={[
-                styles.explosion,
-                {
-                  left: explosionAnimation.x - 30,
-                  top: explosionAnimation.y - 30,
-                  transform: [{ scale: explosionScale }],
-                  opacity: explosionOpacity,
-                }
-              ]}
-            >
-              <View style={styles.explosionCenter}>
-                <Text style={styles.explosionText}>10</Text>
-              </View>
-              {/* 爆炸粒子效果 */}
-              {[...Array(12)].map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.explosionParticle,
-                    {
-                      transform: [
-                        { rotate: `${i * 30}deg` },
-                        { translateY: -25 }
-                      ]
-                    }
-                  ]}
-                />
-              ))}
-            </Animated.View>
-          )}
-        </View>
-      </View>
-    </View>
-  );
+    maxIterations--;
+  }
+  
+  return false; // 超过最大迭代次数，认为不可解
 }
 
-const styles = StyleSheet.create({
-  fullScreenContainer: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingContainer: {
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  board: {
-    backgroundColor: '#4CAF50',
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 6,
-    borderColor: '#D4A574',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
-    position: 'relative',
-  },
-  tile: {
-    backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  emptyTile: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  selectedSwapTile: {
-    backgroundColor: '#E8F5E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 4,
-    borderWidth: 3,
-    borderColor: '#4CAF50',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  swapModeNumberTile: {
-    backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#FF9800',
-    borderStyle: 'dashed',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tileButton: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileText: {
-    fontWeight: 'bold',
-    color: '#333',
-    fontSize: 18,
-  },
-  selectedSwapTileText: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  sumText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  explosion: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  explosionCenter: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#FFD700',
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#FFA000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  explosionText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  explosionParticle: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    backgroundColor: '#FF6B35',
-    borderRadius: 4,
-  },
-});
+// 确保棋盘总和为10的倍数
+function ensureSumIsMultipleOf10(tiles) {
+  const nonZeroTiles = tiles.filter(tile => tile > 0);
+  const currentSum = nonZeroTiles.reduce((acc, tile) => acc + tile, 0);
+  const remainder = currentSum % 10;
+  
+  if (remainder === 0) {
+    return tiles; // 已经是10的倍数，无需调整
+  }
+  
+  const adjustment = 10 - remainder;
+  const newTiles = [...tiles];
+  
+  // 找到第一个非零数字进行调整
+  for (let i = 0; i < newTiles.length; i++) {
+    if (newTiles[i] > 0) {
+      // 尝试调整这个数字
+      const newValue = newTiles[i] + adjustment;
+      if (newValue >= 1 && newValue <= 9) {
+        newTiles[i] = newValue;
+        return newTiles;
+      }
+      
+      // 如果调整后超出范围，尝试减少
+      const newValueDown = newTiles[i] - (10 - adjustment);
+      if (newValueDown >= 1 && newValueDown <= 9) {
+        newTiles[i] = newValueDown;
+        return newTiles;
+      }
+    }
+  }
+  
+  // 如果单个数字调整不行，尝试调整多个数字
+  let remainingAdjustment = adjustment;
+  for (let i = 0; i < newTiles.length && remainingAdjustment > 0; i++) {
+    if (newTiles[i] > 0) {
+      const maxIncrease = Math.min(9 - newTiles[i], remainingAdjustment);
+      if (maxIncrease > 0) {
+        newTiles[i] += maxIncrease;
+        remainingAdjustment -= maxIncrease;
+      }
+    }
+  }
+  
+  // 如果还有剩余调整量，尝试减少一些数字
+  if (remainingAdjustment > 0) {
+    for (let i = 0; i < newTiles.length && remainingAdjustment > 0; i++) {
+      if (newTiles[i] > 1) {
+        const maxDecrease = Math.min(newTiles[i] - 1, remainingAdjustment);
+        newTiles[i] -= maxDecrease;
+        remainingAdjustment -= maxDecrease;
+      }
+    }
+  }
+  
+  return newTiles;
+}
+
+export function generateBoard(level, forceNewSeed = false) {
+  // 使用时间戳或固定种子，根据需要生成不同的棋盘
+  const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
+  const seed = `level_${level}_${baseSeed}`;
+  const random = seededRandom(seed);
+  const { width, height } = getBoardDimensions(level);
+  const size = width * height;
+  
+  let attempts = 0;
+  const maxAttempts = 50;
+  
+  while (attempts < maxAttempts) {
+    // 初始化棋盘，填满所有位置
+    const tiles = new Array(size);
+    
+    // 确定难度参数
+    let guaranteedPairs = Math.floor(size * 0.4); // 保证可消除的配对数量
+    let adjacentRatio = 0.8;   // 相邻配对比例
+    let requiredSwaps = 0;     // 需要的道具数量
+    
+    if (level <= 5) {
+      // 前5关：100%可直接消除，不需要道具
+      guaranteedPairs = Math.floor(size * 0.5);
+      adjacentRatio = 1.0;
+      requiredSwaps = 0;
+    } else if (level <= 20) {
+      // 6-20关：大部分可直接消除
+      guaranteedPairs = Math.floor(size * 0.45);
+      adjacentRatio = 0.8;
+      requiredSwaps = 0;
+    } else if (level <= 50) {
+      // 21-50关：开始需要一些策略
+      guaranteedPairs = Math.floor(size * 0.4);
+      adjacentRatio = 0.6;
+      requiredSwaps = Math.random() < 0.3 ? 1 : 0;
+    } else if (level <= 100) {
+      // 51-100关：需要更多策略和道具
+      guaranteedPairs = Math.floor(size * 0.35);
+      adjacentRatio = 0.4;
+      requiredSwaps = Math.floor(Math.random() * 2) + 1;
+    } else {
+      // 100关以上：高难度，需要多个道具
+      guaranteedPairs = Math.floor(size * 0.3);
+      adjacentRatio = 0.2;
+      requiredSwaps = Math.floor(level / 50) + Math.floor(Math.random() * 2);
+    }
+    
+    // 生成目标配对（和为10）
+    const targetPairs = [
+      [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
+    ];
+    
+    // 放置保证可消除的配对
+    const placedPositions = new Set();
+    let pairsPlaced = 0;
+    
+    // 优先放置相邻或线性配对（容易找到）
+    const easyPairsToPlace = Math.floor(guaranteedPairs * adjacentRatio);
+    
+    for (let i = 0; i < easyPairsToPlace && pairsPlaced < guaranteedPairs; i++) {
+      const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
+      const [val1, val2] = pairType;
+      
+      let placed = false;
+      let attempts = 0;
+      
+      while (!placed && attempts < 50) {
+        const pos1 = Math.floor(random() * size);
+        
+        if (placedPositions.has(pos1)) {
+          attempts++;
+          continue;
+        }
+        
+        const row1 = Math.floor(pos1 / width);
+        const col1 = pos1 % width;
+        
+        // 尝试相邻位置和线性位置
+        const candidateOffsets = [
+          // 相邻位置
+          [0, 1], [1, 0], [0, -1], [-1, 0],
+          // 线性位置（同行同列）
+          [0, 2], [2, 0], [0, -2], [-2, 0],
+          [0, 3], [3, 0], [0, -3], [-3, 0]
+        ];
+        
+        for (const [dr, dc] of candidateOffsets) {
+          const row2 = row1 + dr;
+          const col2 = col1 + dc;
+          const pos2 = row2 * width + col2;
+          
+          if (row2 >= 0 && row2 < height && col2 >= 0 && col2 < width &&
+              !placedPositions.has(pos2)) {
+            
+            tiles[pos1] = val1;
+            tiles[pos2] = val2;
+            placedPositions.add(pos1);
+            placedPositions.add(pos2);
+            pairsPlaced++;
+            placed = true;
+            break;
+          }
+        }
+        
+        attempts++;
+      }
+    }
+    
+    // 放置剩余的保证配对
+    while (pairsPlaced < guaranteedPairs) {
+      const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
+      const [val1, val2] = pairType;
+      
+      const availablePositions = [];
+      for (let i = 0; i < size; i++) {
+        if (!placedPositions.has(i)) {
+          availablePositions.push(i);
+        }
+      }
+      
+      if (availablePositions.length >= 2) {
+        const pos1 = availablePositions[Math.floor(random() * availablePositions.length)];
+        const remainingPositions = availablePositions.filter(p => p !== pos1);
+        const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
+        
+        tiles[pos1] = val1;
+        tiles[pos2] = val2;
+        placedPositions.add(pos1);
+        placedPositions.add(pos2);
+        pairsPlaced++;
+      } else {
+        break;
+      }
+    }
+    
+    // 填满剩余所有位置
+    for (let i = 0; i < size; i++) {
+      if (!placedPositions.has(i)) {
+        if (level <= 10) {
+          // 前10关：只使用容易配对的数字
+          const easyNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
+          tiles[i] = easyNumbers[Math.floor(random() * easyNumbers.length)];
+        } else if (level <= 30) {
+          // 简单关卡：避免太多干扰
+          const safeNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
+          tiles[i] = safeNumbers[Math.floor(random() * safeNumbers.length)];
+        } else {
+          // 高级关卡：添加一些干扰数字
+          tiles[i] = Math.floor(random() * 9) + 1;
+        }
+      }
+    }
+    
+    // 确保总和为10的倍数
+    const adjustedTiles = ensureSumIsMultipleOf10(tiles);
+    
+    // 检查棋盘是否可解
+    if (isBoardSolvable(adjustedTiles, width, height)) {
+      return {
+        seed,
+        width,
+        height,
+        tiles: adjustedTiles,
+        requiredSwaps, // 返回建议的道具使用次数
+        level,
+        solvable: true
+      };
+    }
+    
+    attempts++;
+  }
+  
+  // 如果无法生成可解的棋盘，返回一个简单的可解棋盘
+  console.warn(`Failed to generate solvable board for level ${level}, using fallback`);
+  return generateFallbackBoard(level, width, height);
+}
+
+// 生成后备的简单可解棋盘
+function generateFallbackBoard(level, width, height) {
+  const size = width * height;
+  const tiles = new Array(size).fill(0);
+  
+  // 简单地放置一些1-9和9-1的配对
+  let pos = 0;
+  const pairs = [[1, 9], [2, 8], [3, 7], [4, 6]];
+  
+  for (let i = 0; i < Math.min(pairs.length, Math.floor(size / 2)); i++) {
+    if (pos + 1 < size) {
+      tiles[pos] = pairs[i][0];
+      tiles[pos + 1] = pairs[i][1];
+      pos += 2;
+    }
+  }
+  
+  // 填充剩余位置
+  while (pos < size) {
+    tiles[pos] = Math.floor(Math.random() * 9) + 1;
+    pos++;
+  }
+  
+  // 确保后备棋盘的总和也是10的倍数
+  const adjustedTiles = ensureSumIsMultipleOf10(tiles);
+  
+  return {
+    seed: `fallback_${level}_${Date.now()}`,
+    width,
+    height,
+    tiles: adjustedTiles,
+    requiredSwaps: 0,
+    level,
+    solvable: true
+  };
+}

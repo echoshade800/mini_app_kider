@@ -23,10 +23,10 @@ export function GameBoard({
   board, 
   onTilesClear, 
   onTileClick, 
-  isSwapMode = false, 
-  selectedSwapTile = null,
+  itemMode = null, // 'swap' | 'fractal' | null
+  selectedTile = null,
   disabled = false,
-  swapAnimationsProp = new Map()
+  animationsProp = new Map()
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
@@ -121,9 +121,9 @@ export function GameBoard({
     });
   };
 
-  // 开始交换模式时启动晃动
+  // 开始道具模式时启动晃动
   React.useEffect(() => {
-    if (isSwapMode) {
+    if (itemMode) {
       startShakeAnimation();
     } else {
       stopShakeAnimation();
@@ -132,7 +132,7 @@ export function GameBoard({
     return () => {
       stopShakeAnimation();
     };
-  }, [isSwapMode]);
+  }, [itemMode]);
 
   // 缩放tile
   const scaleTile = (index, scale) => {
@@ -233,28 +233,28 @@ export function GameBoard({
   // 全屏触摸响应器
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
-      // 交换模式下不允许画框
-      if (isSwapMode) return false;
+      // 道具模式下不允许画框
+      if (itemMode) return false;
       
       // 检查是否在禁止画框的区域
       if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
       
-      // 交换模式下不允许画框
-      if (isSwapMode) return false;
+      // 道具模式下不允许画框
+      if (itemMode) return false;
       
       const { pageX, pageY } = evt.nativeEvent;
       // 只有在网格区域内才允许启动画框
       return !disabled && isInsideGridArea(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
-      // 交换模式下不允许画框
-      if (isSwapMode) return false;
+      // 道具模式下不允许画框
+      if (itemMode) return false;
       
       // 检查是否在禁止画框的区域
       if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
       
-      // 交换模式下不允许画框
-      if (isSwapMode) return false;
+      // 道具模式下不允许画框
+      if (itemMode) return false;
       
       const { pageX, pageY } = evt.nativeEvent;
       return !disabled && isInsideGridArea(pageX, pageY);
@@ -403,9 +403,9 @@ export function GameBoard({
     },
   });
 
-  // 处理数字方块点击（交换模式）
+  // 处理数字方块点击（道具模式）
   const handleTilePress = (row, col, value) => {
-    if (!isSwapMode || disabled || value === 0) return;
+    if (!itemMode || disabled || value === 0) return;
     
     if (onTileClick) {
       onTileClick(row, col, value);
@@ -585,13 +585,13 @@ export function GameBoard({
 
     const tileScale = initTileScale(index);
     const tileShake = initTileShake(index);
-    const swapAnim = swapAnimationsProp.get(index);
+    const itemAnim = animationsProp.get(index);
     
     // 计算变换 - 修复transform错误
     const transforms = [{ scale: tileScale }];
     
-    if (isSwapMode) {
-      // 交换模式下的晃动效果 - 分别添加translateX和translateY
+    if (itemMode) {
+      // 道具模式下的晃动效果 - 分别添加translateX和translateY
       transforms.push({
         translateX: tileShake.interpolate({
           inputRange: [-1, 0, 1],
@@ -606,18 +606,35 @@ export function GameBoard({
       });
     }
     
-    // 如果有交换动画，添加位置变换
-    if (swapAnim) {
+    // 如果有道具动画，添加位置变换
+    if (itemAnim) {
       transforms.push({
-        translateX: swapAnim.translateX,
+        translateX: itemAnim.translateX,
       });
       transforms.push({
-        translateY: swapAnim.translateY,
+        translateY: itemAnim.translateY,
       });
     }
     
-    // 检查是否是选中的交换方块
-    const isSwapSelected = selectedSwapTile && selectedSwapTile.index === index;
+    // 检查是否是选中的方块
+    const isSelected = selectedTile && selectedTile.index === index;
+    
+    // 根据道具模式设置不同的选中样式
+    let selectedBgColor = '#FFF8E1';
+    let selectedBorderColor = '#E0E0E0';
+    let selectedTextColor = '#333';
+    
+    if (isSelected) {
+      if (itemMode === 'swap') {
+        selectedBgColor = '#FFE082';
+        selectedBorderColor = '#FF9800';
+        selectedTextColor = '#E65100';
+      } else if (itemMode === 'fractal') {
+        selectedBgColor = '#E1F5FE';
+        selectedBorderColor = '#2196F3';
+        selectedTextColor = '#0D47A1';
+      }
+    }
 
     const tileComponent = (
       <Animated.View 
@@ -631,9 +648,9 @@ export function GameBoard({
             width: tileSize, 
             height: tileSize,
             transform: transforms,
-            backgroundColor: isSwapSelected ? '#FFE082' : '#FFF8E1',
-            borderWidth: isSwapSelected ? 3 : 2,
-            borderColor: isSwapSelected ? '#FF9800' : '#E0E0E0',
+            backgroundColor: selectedBgColor,
+            borderWidth: isSelected ? 3 : 2,
+            borderColor: selectedBorderColor,
           }
         ]}
       >
@@ -641,7 +658,7 @@ export function GameBoard({
           styles.tileText,
           { 
             fontSize: tileSize * 0.5,
-            color: isSwapSelected ? '#E65100' : '#333'
+            color: selectedTextColor
           }
         ]}>
           {value}
@@ -649,8 +666,8 @@ export function GameBoard({
       </Animated.View>
     );
     
-    // 如果是交换模式，包装成可点击的组件
-    if (isSwapMode) {
+    // 如果是道具模式，包装成可点击的组件
+    if (itemMode) {
       return (
         <TouchableOpacity
           key={`${row}-${col}`}

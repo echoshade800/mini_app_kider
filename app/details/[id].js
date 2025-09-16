@@ -64,8 +64,6 @@ export function GameBoard({
   // 棋盘背景大小
   const boardWidth = width * cellSize + 20;
   const boardHeight = height * cellSize + 20;
-  const boardOffsetX = 10;
-  const boardOffsetY = 10;
 
   // 初始化tile动画
   const initTileScale = (index) => {
@@ -151,7 +149,6 @@ export function GameBoard({
     };
   }, [swapMode]);
 
-  // 获取网格位置
   const getGridPosition = (x, y) => {
     // 直接使用相对于棋盘的坐标，减去棋盘内边距
     const relativeX = x - 10;
@@ -162,14 +159,12 @@ export function GameBoard({
     const row = Math.floor(relativeY / cellSize);
     
     // 确保坐标在有效范围内
-    if (row < 0 || row >= height || col < 0 || col >= width) {
-      return null;
+    if (row >= 0 && row < height && col >= 0 && col < width) {
+      return { row, col };
     }
-    
-    return { row, col };
+    return null;
   };
 
-  // 更新选择区域
   const updateSelection = (anchor, current) => {
     const minRow = Math.min(anchor.row, current.row);
     const maxRow = Math.max(anchor.row, current.row);
@@ -195,7 +190,6 @@ export function GameBoard({
     }
   };
 
-  // 重置选择
   const resetSelection = () => {
     setSelection(null);
     setAnchorPoint(null);
@@ -299,6 +293,8 @@ export function GameBoard({
       const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
+      const boardOffsetX = 10;
+      const boardOffsetY = 10;
       const explosionX = centerCol * cellSize + cellSize / 2 + boardOffsetX;
       const explosionY = centerRow * cellSize + cellSize / 2 + boardOffsetY;
       

@@ -187,7 +187,7 @@ export function GameBoard({
   // 检查是否在禁止画框的区域（顶部和底部）
   const isInRestrictedArea = (pageY) => {
     const topRestrictedHeight = 200; // 顶部200像素禁止画框
-    const bottomRestrictedHeight = 150; // 底部150像素禁止画框
+    const bottomRestrictedHeight = 200; // 底部200像素禁止画框
     
     return pageY < topRestrictedHeight || 
            pageY > screenHeight - bottomRestrictedHeight;
@@ -388,8 +388,8 @@ export function GameBoard({
     onPanResponderTerminationRequest: (evt) => {
       // 如果触摸点在按钮区域，优先给按钮处理
       const { pageX, pageY } = evt.nativeEvent;
-      const buttonAreaBottom = screenHeight - 20; // 底部按钮区域
-      const buttonAreaTop = screenHeight - 150; // 按钮区域顶部
+      const buttonAreaBottom = screenHeight - 10; // 底部按钮区域
+      const buttonAreaTop = screenHeight - 200; // 按钮区域顶部
       const topRestrictedHeight = 200; // 顶部限制区域
       
       // 如果触摸在按钮区域或限制区域，让其他组件优先处理

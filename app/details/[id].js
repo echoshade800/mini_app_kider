@@ -220,6 +220,7 @@ export default function LevelDetailScreen() {
           onPress={isSwapMode ? handleCancelSwap : handleUseChange}
           disabled={changeItems <= 0 && !isSwapMode}
           activeOpacity={0.7}
+          pointerEvents="box-none"
         >
           <Ionicons 
             name={isSwapMode ? "close" : "swap-horizontal"} 
@@ -331,11 +332,13 @@ const styles = StyleSheet.create({
   },
   floatingButtons: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 40,
     left: 0,
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1000,
+    elevation: 1000,
   },
   bottomSwapButton: {
     width: 70,

@@ -130,7 +130,7 @@ export default function LevelsScreen() {
       <View style={styles.topBar}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.replace('/')}
+          onPress={() => router.replace('/(tabs)')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>

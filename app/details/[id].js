@@ -133,7 +133,7 @@ export default function LevelDetailsScreen() {
       return;
     }
 
-    // 直接进入交换模式
+    // 消耗道具并进入交换模式
     updateGameData({ changeItems: currentItems - 1 });
     setSwapMode(true);
     setFirstSwapTile(null);
@@ -166,7 +166,7 @@ export default function LevelDetailsScreen() {
   };
 
   const handleBackToLevels = () => {
-    router.replace('/');
+    router.replace('/(tabs)');
   };
 
   const getLevelInfo = () => {
@@ -236,7 +236,7 @@ export default function LevelDetailsScreen() {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={handleBackToLevels}
+          onPress={() => router.replace('/(tabs)')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -278,13 +278,23 @@ export default function LevelDetailsScreen() {
       <TouchableOpacity 
         style={[
           styles.changeButton,
-          (changeItems <= 0 || swapMode) && styles.changeButtonDisabled
+          changeItems <= 0 && styles.changeButtonDisabled
         ]}
         onPress={handleUseChange}
-        disabled={changeItems <= 0 || swapMode}
+        disabled={changeItems <= 0}
       >
-        <Text style={styles.changeButtonText}>Change!</Text>
-        <Text style={styles.changeButtonCount}>({changeItems})</Text>
+        <Text style={[
+          styles.changeButtonText,
+          changeItems <= 0 && styles.changeButtonTextDisabled
+        ]}>
+          Change!
+        </Text>
+        <Text style={[
+          styles.changeButtonCount,
+          changeItems <= 0 && styles.changeButtonTextDisabled
+        ]}>
+          ({changeItems})
+        </Text>
       </TouchableOpacity>
 
       {/* Reset Button - Right Bottom */}
@@ -444,6 +454,9 @@ const styles = StyleSheet.create({
   },
   changeButtonDisabled: {
     backgroundColor: '#ccc',
+  },
+  changeButtonTextDisabled: {
+    color: '#999',
   },
   changeButtonText: {
     color: 'white',

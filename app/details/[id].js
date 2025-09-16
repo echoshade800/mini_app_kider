@@ -27,16 +27,10 @@ export function GameBoard({
   firstSwapTile = null, 
   onSwapTiles,
   disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
   

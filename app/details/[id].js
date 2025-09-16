@@ -110,51 +110,23 @@ export default function LevelDetailScreen() {
   const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // 通知GameBoard执行交换动画
-    const gameBoard = currentBoard;
-    if (gameBoard && gameBoard.performSwapAnimation) {
-      gameBoard.performSwapAnimation(tile1, tile2, () => {
-        // 动画完成后的回调
-        completeSwap(tile1, tile2);
-      });
-    } else {
-      // 如果没有动画支持，直接完成交换
-      completeSwap(tile1, tile2);
-    }
-  };
+    // Create new board with swapped values
+    const newTiles = [...currentBoard.tiles];
+    const temp = newTiles[tile1.index];
+    newTiles[tile1.index] = newTiles[tile2.index];
+    newTiles[tile2.index] = temp;
 
-  const completeSwap = (tile1, tile2) => {
-    if (!currentBoard) return;
+    // Update board
+    const updatedBoard = { ...currentBoard, tiles: newTiles };
+    setCurrentBoard(updatedBoard);
 
-    try {
-      // Create new board with swapped values
-      const newTiles = [...currentBoard.tiles];
-      const temp = newTiles[tile1.index];
-      newTiles[tile1.index] = newTiles[tile2.index];
-      newTiles[tile2.index] = temp;
+    // Consume one change item
+    const newChangeItems = Math.max(0, changeItems - 1);
+    updateGameData({ changeItems: newChangeItems });
 
-      // Update board
-      const updatedBoard = { ...currentBoard, tiles: newTiles };
-      setCurrentBoard(updatedBoard);
-
-      // Consume one change item
-      const newChangeItems = Math.max(0, changeItems - 1);
-      updateGameData({ changeItems: newChangeItems });
-
-      // Exit swap mode automatically
-      setIsSwapMode(false);
-      setSelectedSwapTile(null);
-      
-      // Haptic feedback for successful swap
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
-    } catch (error) {
-      console.error('Failed to complete swap:', error);
-      // 如果交换失败，至少退出交换模式
-      setIsSwapMode(false);
-      setSelectedSwapTile(null);
-    }
+    // Exit swap mode
+    setIsSwapMode(false);
+    setSelectedSwapTile(null);
   };
 
   const handleRestart = () => {

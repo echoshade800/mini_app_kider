@@ -154,6 +154,7 @@ export function GameBoard({
     return () => {
       stopShakeAnimation();
     };
+  }, [isSwapMode]);
 
   // 缩放tile
   const scaleTile = (index, scale) => {

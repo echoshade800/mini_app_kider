@@ -25,12 +25,12 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [swapAnimation, setSwapAnimation] = useState(null);
+  const [shakeAnimations, setShakeAnimations] = useState({});
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
-  const swapAnimations = useRef({}).current;
 
   if (!board) {
     return (
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   selectedSwapTileText: {
-    color: '#2196F3',
+    color: '#4CAF50',
     fontWeight: 'bold',
   },
   sumText: {

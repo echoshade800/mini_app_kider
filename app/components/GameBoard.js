@@ -27,31 +27,12 @@ export function GameBoard({
   firstSwapTile = null, 
   onSwapTiles,
   disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
 }) {
   const { settings } = useGameStore();
+  const [selection, setSelection] = useState(null);
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -454,6 +435,7 @@ export function GameBoard({
     const tile2Y = tile2RelativeRow * cellSize + cellSize / 2 + 10;
 
     // 创建交换动画
+    const tile1Anim = {
       x: new Animated.Value(0),
       y: new Animated.Value(0),
     };

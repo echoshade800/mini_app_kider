@@ -571,6 +571,8 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
   return (
     <View style={styles.fullScreenContainer}>
       <View style={styles.touchableArea} {...panResponder.panHandlers}>
+    <View style={styles.fullScreenContainer}>
+      <View style={styles.touchableArea} {...panResponder.panHandlers}>
         <View style={styles.container}>
           <View 
             style={[
@@ -639,78 +641,6 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
               </Animated.View>
             )}
           </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-      <View style={styles.container}>
-        <View 
-          style={[
-            styles.board,
-            {
-              width: boardWidth,
-              height: boardHeight,
-            }
-          ]}
-        >
-          {/* Render tiles */}
-          {tiles.map((value, index) => {
-            const row = Math.floor(index / width);
-            const col = index % width;
-            return renderTile(value, row, col);
-          })}
-          
-          {/* Selection overlay */}
-          {selectionStyle && (
-            <Animated.View style={selectionStyle} />
-          )}
-          
-          {/* Selection sum display */}
-          {selectionSum && (
-            <View style={selectionSum.style}>
-              <Text style={[
-                styles.sumText,
-                { color: selectionSum.isSuccess ? '#333' : 'white' }
-              ]}>
-                {selectionSum.sum}
-              </Text>
-            </View>
-          )}
-
-          {/* Explosion effect */}
-          {explosionAnimation && (
-            <Animated.View
-              style={[
-                styles.explosion,
-                {
-                  left: explosionAnimation.x - 30,
-                  top: explosionAnimation.y - 30,
-                  transform: [{ scale: explosionScale }],
-                  opacity: explosionOpacity,
-                }
-              ]}
-            >
-              <View style={styles.explosionCenter}>
-                <Text style={styles.explosionText}>10</Text>
-              </View>
-              {/* 爆炸粒子效果 */}
-              {[...Array(12)].map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.explosionParticle,
-                    {
-                      transform: [
-                        { rotate: `${i * 30}deg` },
-                        { translateY: -25 }
-                      ]
-                    }
-                  ]}
-                />
-              ))}
-            </Animated.View>
-          )}
         </View>
       </View>
     </View>

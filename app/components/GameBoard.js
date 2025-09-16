@@ -31,6 +31,7 @@ export function GameBoard({
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [swapAnimations, setSwapAnimations] = useState(new Map());
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -104,18 +105,20 @@ export function GameBoard({
 
   // 开始所有数字方块的晃动动画
   const startShakeAnimation = () => {
+    const animations = [];
+    
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i] > 0) {
         const shakeAnim = initTileShake(i);
-        Animated.loop(
+        const shakeAnimation = Animated.loop(
           Animated.sequence([
             Animated.timing(shakeAnim, {
-              toValue: 0.5,
+              toValue: 1,
               duration: 150,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
-              toValue: -0.5,
+              toValue: -1,
               duration: 150,
               useNativeDriver: true,
             }),
@@ -125,7 +128,9 @@ export function GameBoard({
               useNativeDriver: true,
             }),
           ])
-        ).start();
+        );
+        animations.push(shakeAnimation);
+        shakeAnimation.start();
       }
     }
   };
@@ -386,13 +391,12 @@ export function GameBoard({
   const handleTilePress = (row, col, value) => {
     if (!isSwapMode || disabled || value === 0) return;
     
-    // 触觉反馈
-    if (settings?.hapticsEnabled !== false) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    
     if (onTileClick) {
       onTileClick(row, col, value);
+    }
+    
+    if (settings?.hapticsEnabled !== false) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
@@ -567,16 +571,17 @@ export function GameBoard({
 
     const tileScale = initTileScale(index);
     const tileShake = initTileShake(index);
+    const swapAnim = swapAnimations.get(index);
     
     // 计算变换
     const transforms = [{ scale: tileScale }];
     
-    if (isSwapMode) {
+    if (isSwapMode && !swapAnim) {
       // 交换模式下的晃动效果
       transforms.push({
         translateX: tileShake.interpolate({
-          inputRange: [-0.5, 0, 0.5],
-          outputRange: [-1, 0, 1],
+          inputRange: [-1, 0, 1],
+          outputRange: [-3, 0, 3],
         }),
       });
     }
@@ -635,8 +640,8 @@ export function GameBoard({
   const selectionSum = getSelectionSum();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.boardContainer} {...panResponder.panHandlers}>
+    <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
+      <View style={styles.container}>
         <View 
           style={[
             styles.board,
@@ -710,12 +715,16 @@ export function GameBoard({
 }
 
 const styles = StyleSheet.create({
+  fullScreenContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  boardContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },

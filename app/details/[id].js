@@ -110,11 +110,6 @@ export default function LevelDetailScreen() {
   const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // 触觉反馈
-    if (settings?.hapticsEnabled !== false) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
     // Create new board with swapped values
     const newTiles = [...currentBoard.tiles];
     const temp = newTiles[tile1.index];

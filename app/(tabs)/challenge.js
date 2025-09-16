@@ -263,6 +263,19 @@ export default function ChallengeScreen() {
         />
       )}
 
+      {/* Change Button - Left Bottom (Challenge Mode doesn't use change items) */}
+      {gameState === 'playing' && (
+        <View style={styles.challengeButtons}>
+          <TouchableOpacity 
+            style={styles.challengeChangeButton}
+            disabled={true}
+          >
+            <Text style={styles.challengeChangeButtonText}>Change!</Text>
+            <Text style={styles.challengeChangeButtonSubtext}>(N/A)</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Results Modal */}
       <Modal
         visible={showResults}
@@ -446,6 +459,29 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#FF5722',
+  },
+  challengeButtons: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+  },
+  challengeChangeButton: {
+    backgroundColor: '#ccc',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  challengeChangeButtonText: {
+    color: '#999',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  challengeChangeButtonSubtext: {
+    color: '#999',
+    fontSize: 12,
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,

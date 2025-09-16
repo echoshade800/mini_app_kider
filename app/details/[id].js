@@ -166,7 +166,7 @@ export default function LevelDetailsScreen() {
   };
 
   const handleBackToLevels = () => {
-    router.replace('/'); // 返回主界面
+    router.replace('/');
   };
 
   const getLevelInfo = () => {
@@ -274,30 +274,26 @@ export default function LevelDetailsScreen() {
         firstSwapTile={firstSwapTile}
       />
 
-      {/* Bottom Actions - Fixed at bottom */}
-      <View style={styles.bottomActionsContainer}>
-        <TouchableOpacity 
-          style={[
-            styles.bottomActionButton,
-            (changeItems <= 0 || swapMode) && styles.actionButtonDisabled
-          ]}
-          onPress={handleUseChange}
-          disabled={changeItems <= 0 || swapMode}
-        >
-          <Ionicons name="swap-horizontal" size={20} color="white" />
-          <Text style={styles.bottomActionButtonText}>
-            {swapMode ? '交换模式中...' : `Use Change (${changeItems})`}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.bottomActionButton, styles.restartButton]}
-          onPress={handleRestart}
-          disabled={swapMode}
-        >
-          <Ionicons name="refresh" size={20} color="white" />
-          <Text style={styles.bottomActionButtonText}>Reset</Text>
-        </TouchableOpacity>
+      {/* Change Button - Left Bottom */}
+      <TouchableOpacity 
+        style={[
+          styles.changeButton,
+          (changeItems <= 0 || swapMode) && styles.changeButtonDisabled
+        ]}
+        onPress={handleUseChange}
+        disabled={changeItems <= 0 || swapMode}
+      >
+        <Text style={styles.changeButtonText}>Change!</Text>
+        <Text style={styles.changeButtonCount}>({changeItems})</Text>
+      </TouchableOpacity>
+
+      {/* Reset Button - Right Bottom */}
+      <TouchableOpacity 
+        style={[styles.resetButton, swapMode && styles.resetButtonDisabled]}
+        onPress={handleRestart}
+        disabled={swapMode}
+      >
+        <Ionicons name="refresh" size={24} color="white" />
       </View>
 
       {/* Success Modal */}
@@ -429,45 +425,54 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '600',
   },
-  bottomActionsContainer: {
+  changeButton: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 30,
     left: 0,
-    right: 0,
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 32,
-    backgroundColor: 'rgba(240, 248, 255, 0.95)',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    gap: 12,
-  },
-  bottomActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginLeft: 20,
     backgroundColor: '#FF9800',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 8,
+    minWidth: 80,
   },
-  actionButtonDisabled: {
+  changeButtonDisabled: {
     backgroundColor: '#ccc',
   },
-  restartButton: {
-    backgroundColor: '#2196F3',
-  },
-  bottomActionButtonText: {
+  changeButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: 'bold',
+  },
+  changeButtonCount: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  resetButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    backgroundColor: '#2196F3',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  resetButtonDisabled: {
+    backgroundColor: '#ccc',
   },
   backButtonText: {
     color: 'white',

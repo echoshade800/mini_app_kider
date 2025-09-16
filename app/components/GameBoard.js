@@ -640,7 +640,7 @@ export function GameBoard({
   const selectionSum = getSelectionSum();
 
   return (
-    <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
+    <View style={styles.container}>
       <View style={styles.container}>
         <View 
           style={[
@@ -650,6 +650,7 @@ export function GameBoard({
               height: boardHeight,
             }
           ]}
+          {...panResponder.panHandlers}
         >
           {/* Render tiles */}
           {tiles.map((value, index) => {
@@ -715,14 +716,6 @@ export function GameBoard({
 }
 
 const styles = StyleSheet.create({
-  fullScreenContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
   container: {
     flex: 1,
     alignItems: 'center',

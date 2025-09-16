@@ -25,17 +25,33 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
+  const tileScales = useRef({}).current;
   if (!board) {
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -82,6 +98,25 @@ export function GameBoard({
   // 棋盘背景大小
   const boardWidth = actualWidth * cellSize + 20;
   const boardHeight = actualHeight * cellSize + 20;
+
+  // 初始化tile动画
+  const initTileScale = (index) => {
+    if (!tileScales[index]) {
+      tileScales[index] = new Animated.Value(1);
+    }
+    return tileScales[index];
+  };
+
+  // 缩放tile
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.spring(tileScale, {
+      toValue: scale,
+      useNativeDriver: true,
+      tension: 400,
+      friction: 8,
+    }).start();
+  };
 
   // 初始化tile动画
   const initTileScale = (index) => {
@@ -196,12 +231,15 @@ export function GameBoard({
       setHoveredTiles(new Set());
     },
   });
-
+  const isInsideBoardOnly = (pageX, pageY) => {
   const getSelectedTilesForSelection = (sel) => {
     if (!sel) return [];
     
-    const { startRow, startCol, endRow, endCol } = sel;
-    const minRow = Math.min(startRow, endRow);
+    
+    // 严格检查：必须在棋盘内部区域（排除边框）
+    const margin = 10; // 棋盘内边距
+    return pageX >= boardX + margin && pageX < boardX + boardW - margin && 
+           pageY >= boardY + margin && pageY < boardY + boardH - margin;
     const maxRow = Math.max(startRow, endRow);
     const minCol = Math.min(startCol, endCol);
     const maxCol = Math.max(startCol, endCol);
@@ -298,8 +336,8 @@ export function GameBoard({
           duration: 150,
           useNativeDriver: false,
         }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
+      const explosionX = (centerCol - bounds.minCol) * cellSize + cellSize / 2 + 10;
+      const explosionY = (centerRow - bounds.minRow) * cellSize + cellSize / 2 + 10;
           duration: 400,
           useNativeDriver: false,
         }),
@@ -356,29 +394,31 @@ export function GameBoard({
     const centerRow = (startRow + endRow) / 2;
     const centerCol = (startCol + endCol) / 2;
     
-    const left = (centerCol - bounds.minCol) * cellSize + 10;
     const top = (centerRow - bounds.minRow) * cellSize + 10;
     
     return {
       sum,
       isSuccess: sum === 10,
       style: {
-        position: 'absolute',
+  // 严格限制在棋盘区域的触摸响应器
         left: left - 25,
         top: top - 25,
-        width: 50,
-        height: 50,
+      const { pageX, pageY } = evt.nativeEvent;
+      // 严格检查：只有在纯棋盘区域内才允许启动画框
+      return !disabled && isInsideBoardOnly(pageX, pageY);
         backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',
+    
         borderRadius: 25,
-        alignItems: 'center',
-        justifyContent: 'center',
+      const { pageX, pageY } = evt.nativeEvent;
+      // 移动过程中也要持续检查区域
+      return !disabled && (isSelecting || isInsideBoardOnly(pageX, pageY));
         borderWidth: 3,
         borderColor: sum === 10 ? '#FFA000' : '#1976D2',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 8,
+      // 双重检查：确保在棋盘区域内
+      if (!isInsideBoardOnly(pageX, pageY)) return;
       }
     };
   };
@@ -399,6 +439,13 @@ export function GameBoard({
 
     const tileScale = initTileScale(index);
 
+      
+      // 如果移动到棋盘外，终止选择
+      if (!isInsideBoardOnly(pageX, pageY)) {
+        resetSelection();
+        return;
+      }
+      
     return (
       <Animated.View 
         key={`${row}-${col}`}
@@ -413,11 +460,43 @@ export function GameBoard({
             transform: [{ scale: tileScale }]
           }
         ]}
+      
+      // 恢复所有tile的缩放
+      hoveredTiles.forEach(index => {
+        scaleTile(index, 1);
+      });
+      setHoveredTiles(new Set());
       >
+    
+    // 允许其他组件终止画框（按钮优先）
+    onPanResponderTerminationRequest: () => true,
+    
+    // 被其他组件拒绝时清理状态
+    onPanResponderReject: () => {
+      resetSelection();
+    },
         <Text style={[
           styles.tileText,
           { fontSize: tileSize * 0.5 }
         ]}>
+
+    // 更新悬停的tiles
+    const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
+    
+    // 只有被框选中的数字方块才变大
+    newSelectedTiles.forEach(tile => {
+      if (!hoveredTiles.has(tile.index)) {
+        scaleTile(tile.index, 1.2); // 被选中时放大
+      }
+    });
+        <TouchableOpacity 
+          style={styles.changeButton}
+          onPress={handleUseChange}
+        >
+      }
+    });
+    
+    setHoveredTiles(newHoveredSet);
           {value}
         </Text>
       </Animated.View>
@@ -427,17 +506,22 @@ export function GameBoard({
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();
 
+    
+    // 恢复所有tile的缩放
+    hoveredTiles.forEach(index => {
+      scaleTile(index, 1);
+    });
+    setHoveredTiles(new Set());
   return (
     <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
       <View style={styles.container}>
         <View 
           style={[
-            styles.board,
-            {
-              width: boardWidth,
-              height: boardHeight,
-            }
-          ]}
+      {/* 头部区域 */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleBack}
         >
           {/* Render tiles */}
           {tiles.map((value, index) => {
@@ -476,9 +560,10 @@ export function GameBoard({
                 }
               ]}
             >
+    const tileScale = initTileScale(index);
               <View style={styles.explosionCenter}>
-                <Text style={styles.explosionText}>10</Text>
-              </View>
+    return (
+      <Animated.View 
               {/* 爆炸粒子效果 */}
               {[...Array(12)].map((_, i) => (
                 <View
@@ -488,23 +573,14 @@ export function GameBoard({
                     {
                       transform: [
                         { rotate: `${i * 30}deg` },
-                        { translateY: -25 }
-                      ]
-                    }
-                  ]}
-                />
-              ))}
-            </Animated.View>
-          )}
-        </View>
-      </View>
+            transform: [{ scale: tileScale }]
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   fullScreenContainer: {
-    position: 'absolute',
+      {/* 棋盘容器 - 严格限制触摸区域仅在棋盘内 */}
     top: 0,
     left: 0,
     right: 0,
@@ -542,7 +618,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   tile: {
-    backgroundColor: '#FFF9C4',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 6,

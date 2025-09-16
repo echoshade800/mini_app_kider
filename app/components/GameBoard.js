@@ -25,13 +25,15 @@ export function GameBoard({
   onTileClick, 
   isSwapMode = false, 
   selectedSwapTile = null,
-  disabled = false 
+  disabled = false,
+  onSwapAnimation
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
+  const [isSwapping, setIsSwapping] = useState(false);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -103,8 +105,67 @@ export function GameBoard({
     return tileShakeAnimations[index];
   };
 
+  // 创建交换动画
+  const createSwapAnimation = (fromIndex, toIndex) => {
+    const fromRow = Math.floor(fromIndex / width);
+    const fromCol = fromIndex % width;
+    const toRow = Math.floor(toIndex / width);
+    const toCol = toIndex % width;
+    
+    // 计算相对位置差
+    const deltaRow = toRow - fromRow;
+    const deltaCol = toCol - fromCol;
+    const deltaX = deltaCol * cellSize;
+    const deltaY = deltaRow * cellSize;
+    
+    // 创建动画值
+    const animValue = new Animated.ValueXY({ x: 0, y: 0 });
+    
+    return {
+      animValue,
+      animation: Animated.timing(animValue, {
+        toValue: { x: deltaX, y: deltaY },
+        duration: 600,
+        useNativeDriver: true,
+      })
+    };
+  };
+
+  // 执行交换动画
+  const performSwapAnimation = (tile1, tile2, onComplete) => {
+    setIsSwapping(true);
+    stopShakeAnimation(); // 停止晃动
+    
+    // 创建两个方向的动画
+    const swap1 = createSwapAnimation(tile1.index, tile2.index);
+    const swap2 = createSwapAnimation(tile2.index, tile1.index);
+    
+    // 保存动画引用
+    const newSwapAnimations = new Map(swapAnimations);
+    newSwapAnimations.set(tile1.index, swap1.animValue);
+    newSwapAnimations.set(tile2.index, swap2.animValue);
+    setSwapAnimations(newSwapAnimations);
+    
+    // 同时执行两个动画
+    Animated.parallel([
+      swap1.animation,
+      swap2.animation
+    ]).start(() => {
+      // 动画完成后清理
+      const cleanedAnimations = new Map(swapAnimations);
+      cleanedAnimations.delete(tile1.index);
+      cleanedAnimations.delete(tile2.index);
+      setSwapAnimations(cleanedAnimations);
+      
+      setIsSwapping(false);
+      onComplete();
+    });
+  };
+
   // 开始所有数字方块的晃动动画
   const startShakeAnimation = () => {
+    if (isSwapping) return; // 交换过程中不晃动
+    
     const animations = [];
     
     for (let i = 0; i < tiles.length; i++) {
@@ -113,18 +174,18 @@ export function GameBoard({
         const shakeAnimation = Animated.loop(
           Animated.sequence([
             Animated.timing(shakeAnim, {
-              toValue: 1,
-              duration: 150,
+              toValue: 2,
+              duration: 200,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
-              toValue: -1,
-              duration: 150,
+              toValue: -2,
+              duration: 200,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: 0,
-              duration: 150,
+              duration: 200,
               useNativeDriver: true,
             }),
           ])
@@ -389,7 +450,21 @@ export function GameBoard({
 
   // 处理数字方块点击（交换模式）
   const handleTilePress = (row, col, value) => {
-    if (!isSwapMode || disabled || value === 0) return;
+    if (!isSwapMode || disabled || value === 0 || isSwapping) return;
+    
+    const index = row * width + col;
+    const clickedTile = { row, col, value, index };
+    
+    // 如果是第二次点击且不是同一个方块，执行交换动画
+    if (selectedSwapTile && selectedSwapTile.index !== index && onSwapAnimation) {
+      performSwapAnimation(selectedSwapTile, clickedTile, () => {
+        // 动画完成后通知父组件
+        if (onTileClick) {
+          onTileClick(row, col, value);
+        }
+      });
+      return;
+    }
     
     if (onTileClick) {
       onTileClick(row, col, value);
@@ -576,12 +651,20 @@ export function GameBoard({
     // 计算变换
     const transforms = [{ scale: tileScale }];
     
-    if (isSwapMode && !swapAnim) {
+    if (swapAnim) {
+      // 交换动画中
+      transforms.push({
+        translateX: swapAnim.x,
+      });
+      transforms.push({
+        translateY: swapAnim.y,
+      });
+    } else if (isSwapMode && !isSwapping) {
       // 交换模式下的晃动效果
       transforms.push({
         translateX: tileShake.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [-3, 0, 3],
+          outputRange: [-2, 0, 2],
         }),
       });
     }
@@ -640,7 +723,7 @@ export function GameBoard({
   const selectionSum = getSelectionSum();
 
   return (
-    <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
+    <View style={styles.container}>
       <View style={styles.container}>
         <View 
           style={[
@@ -650,6 +733,7 @@ export function GameBoard({
               height: boardHeight,
             }
           ]}
+          {...panResponder.panHandlers}
         >
           {/* Render tiles */}
           {tiles.map((value, index) => {
@@ -709,20 +793,13 @@ export function GameBoard({
             </Animated.View>
           )}
         </View>
+        onSwapAnimation={performSwapAnimation}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fullScreenContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
   container: {
     flex: 1,
     alignItems: 'center',

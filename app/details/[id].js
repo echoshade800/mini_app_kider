@@ -126,8 +126,8 @@ export default function LevelDetailsScreen() {
     const currentItems = gameData?.changeItems || 0;
     if (currentItems <= 0) {
       Alert.alert(
-        '没有交换道具',
-        '您需要交换道具来交换方块位置。完成更多关卡来获得道具！',
+        'No Change Items',
+        'You need Change items to swap tile positions. Complete more levels to earn items!',
         [{ text: 'OK' }]
       );
       return;
@@ -160,12 +160,12 @@ export default function LevelDetailsScreen() {
 
   const handleRestart = () => {
     Alert.alert(
-      '重置关卡',
-      '确定要重新开始这一关吗？',
+      'Reset Level',
+      'Are you sure you want to restart this level?',
       [
-        { text: '取消', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: '确定', 
+          text: 'Confirm', 
           onPress: () => {
             loadLevel(); // 重新生成棋盘
           }
@@ -260,21 +260,13 @@ export default function LevelDetailsScreen() {
           <Text style={styles.stageName} numberOfLines={1}>
             {levelInfo.stageName}
           </Text>
-          {currentBoard?.requiredSwaps > 0 && (
-            <Text style={styles.swapHint}>
-              建议使用 {currentBoard.requiredSwaps} 次交换
-            </Text>
-          )}
-          {swapMode && (
-            <Text style={styles.swapModeHint}>
-              {firstSwapTile ? '请选择第二个方块' : '请选择第一个方块'}
-            </Text>
-          )}
         </View>
         
-        <View style={styles.changeCounter}>
-          <Ionicons name="swap-horizontal" size={16} color="#666" />
-          <Text style={styles.changeCountText}>{changeItems}</Text>
+        <View style={styles.headerRight}>
+          <View style={styles.changeCounter}>
+            <Ionicons name="swap-horizontal" size={16} color="#666" />
+            <Text style={styles.changeCountText}>{changeItems}</Text>
+          </View>
         </View>
       </View>
 
@@ -293,25 +285,18 @@ export default function LevelDetailsScreen() {
       {/* Change Button - Left Bottom */}
       <TouchableOpacity 
         style={[
-          styles.changeButton,
+          styles.itemButton,
           changeItems <= 0 && styles.changeButtonDisabled
         ]}
         onPress={handleUseChange}
         activeOpacity={0.7}
         disabled={changeItems <= 0}
       >
-        <Text style={[
-          styles.changeButtonText,
-          changeItems <= 0 && styles.changeButtonTextDisabled
-        ]}>
-          Change!
-        </Text>
-        <Text style={[
-          styles.changeButtonCount,
-          changeItems <= 0 && styles.changeButtonTextDisabled
-        ]}>
-          ({changeItems})
-        </Text>
+        <Ionicons 
+          name="swap-horizontal" 
+          size={24} 
+          color={changeItems <= 0 ? "#999" : "white"} 
+        />
       </TouchableOpacity>
 
       {/* Reset Button - Right Bottom */}
@@ -339,7 +324,7 @@ export default function LevelDetailsScreen() {
             </Text>
             
             <View style={styles.rewards}>
-              <Text style={styles.rewardText}>+1 Change Item earned!</Text>
+              <Text style={styles.rewardText}>+1 Change Item Earned!</Text>
             </View>
             
             <View style={styles.modalActions}>
@@ -373,22 +358,22 @@ export default function LevelDetailsScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.tutorialModal}>
             <Ionicons name="swap-horizontal" size={60} color="#FF9800" />
-            <Text style={styles.tutorialTitle}>交换道具使用方法</Text>
+            <Text style={styles.tutorialTitle}>How to Use Change Item</Text>
             
             <View style={styles.tutorialSteps}>
               <View style={styles.tutorialStep}>
                 <Text style={styles.stepNumber}>1</Text>
-                <Text style={styles.stepText}>所有数字方块会显示橙色虚线边框并晃动</Text>
+                <Text style={styles.stepText}>All number tiles show orange dashed borders and shake</Text>
               </View>
               
               <View style={styles.tutorialStep}>
                 <Text style={styles.stepNumber}>2</Text>
-                <Text style={styles.stepText}>点击第一个要交换的数字方块（显示绿色高光）</Text>
+                <Text style={styles.stepText}>Tap the first tile to swap (shows green highlight)</Text>
               </View>
               
               <View style={styles.tutorialStep}>
                 <Text style={styles.stepNumber}>3</Text>
-                <Text style={styles.stepText}>点击第二个数字方块完成交换</Text>
+                <Text style={styles.stepText}>Tap the second tile to complete the swap</Text>
               </View>
             </View>
             
@@ -396,7 +381,7 @@ export default function LevelDetailsScreen() {
               style={styles.tutorialButton}
               onPress={handleTutorialConfirm}
             >
-              <Text style={styles.tutorialButtonText}>开始交换</Text>
+              <Text style={styles.tutorialButtonText}>Start Swapping</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -455,6 +440,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
   },
+  headerRight: {
+    alignItems: 'flex-end',
+  },
   levelTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -464,18 +452,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 2,
-  },
-  swapHint: {
-    fontSize: 12,
-    color: '#FF9800',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  swapModeHint: {
-    fontSize: 12,
-    color: '#2196F3',
-    marginTop: 2,
-    fontWeight: '600',
   },
   changeCounter: {
     flexDirection: 'row',
@@ -494,22 +470,21 @@ const styles = StyleSheet.create({
   gameContainer: {
     flex: 1,
   },
-  changeButton: {
+  itemButton: {
     position: 'absolute',
     bottom: 30,
-    left: 0,
-    marginLeft: 20,
+    left: 20,
     backgroundColor: '#FF9800',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-    minWidth: 80,
     zIndex: 10,
   },
   changeButtonDisabled: {
@@ -517,16 +492,6 @@ const styles = StyleSheet.create({
   },
   changeButtonTextDisabled: {
     color: '#999',
-  },
-  changeButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  changeButtonCount: {
-    color: 'white',
-    fontSize: 12,
-    marginTop: 2,
   },
   resetButton: {
     position: 'absolute',

@@ -48,18 +48,16 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
   
   // 计算格子大小
   const cellSize = Math.min(
-    (screenWidth - 80) / actualWidth, 
-    (screenHeight - 300) / actualHeight,
-    45
+    (screenWidth - 60) / actualWidth, 
+    (screenHeight - 280) / actualHeight,
+    50
   );
   
   // 数字方块的实际大小（比格子稍小，留出间距）
-  const tileSize = cellSize * 0.8;
+  const tileSize = cellSize * 0.85;
   const tileMargin = (cellSize - tileSize) / 2;
   
   // 棋盘背景大小
-  const boardWidth = actualWidth * cellSize + 20;
-  const boardHeight = actualHeight * cellSize + 20;
 
   // 初始化tile动画
   const initTileScale = (index) => {
@@ -141,7 +139,7 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
       // 开始选择动画
       Animated.timing(selectionOpacity, {
         toValue: 0.5,
-        duration: 80,
+        duration: 100,
         useNativeDriver: false,
       }).start();
     },
@@ -176,7 +174,7 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
       // 只有被框选中的数字方块才变大
       selectedTiles.forEach(tile => {
         if (!hoveredTiles.has(tile.index)) {
-          scaleTile(tile.index, 1.8); // 被选中时放大
+          scaleTile(tile.index, 1.4); // 被选中时放大
         }
       });
       
@@ -747,6 +745,7 @@ const styles = StyleSheet.create({
   tileText: {
     fontWeight: 'bold',
     color: '#333',
+    fontSize: 18,
   },
   selectedSwapTileText: {
     color: '#4CAF50',

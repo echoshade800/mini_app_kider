@@ -335,14 +335,17 @@ export default function ChallengeScreen() {
         <View style={styles.challengeButtons}>
           <TouchableOpacity 
             style={[
-              styles.challengeChangeButton,
+              styles.challengeItemButton,
               (gameData?.changeItems || 0) <= 0 && styles.challengeChangeButtonDisabled
             ]}
             onPress={handleUseChange}
             disabled={(gameData?.changeItems || 0) <= 0}
           >
-            <Text style={styles.challengeChangeButtonText}>Change!</Text>
-            <Text style={styles.challengeChangeButtonSubtext}>({gameData?.changeItems || 0})</Text>
+            <Ionicons 
+              name="swap-horizontal" 
+              size={24} 
+              color={(gameData?.changeItems || 0) <= 0 ? "#999" : "white"} 
+            />
           </TouchableOpacity>
         </View>
       )}
@@ -536,13 +539,13 @@ const styles = StyleSheet.create({
     bottom: 30,
     left: 20,
   },
-  challengeChangeButton: {
+  challengeItemButton: {
     backgroundColor: '#FF9800',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
-    minWidth: 80,
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -551,16 +554,6 @@ const styles = StyleSheet.create({
   },
   challengeChangeButtonDisabled: {
     backgroundColor: '#ccc',
-  },
-  challengeChangeButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  challengeChangeButtonSubtext: {
-    color: 'white',
-    fontSize: 12,
-    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,

@@ -212,7 +212,7 @@ export default function ChallengeScreen() {
               clearInterval(timerRef.current);
             }
             setGameState('ready');
-            router.replace('/(tabs)');
+            router.replace('/');
           }}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />

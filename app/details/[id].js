@@ -166,7 +166,7 @@ export default function LevelDetailsScreen() {
   };
 
   const handleBackToLevels = () => {
-    router.replace('/(tabs)'); // 返回主界面
+    router.replace('/'); // 返回主界面
   };
 
   const getLevelInfo = () => {

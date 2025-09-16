@@ -4,7 +4,7 @@
  * Features: Board generation, tile clearing, swap mode, progress tracking
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 

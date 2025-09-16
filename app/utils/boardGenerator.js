@@ -26,57 +26,15 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
 }) {
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
+  const [selection, setSelection] = useState(null);
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const { settings } = useGameStore();
   const [shakeAnimations, setShakeAnimations] = useState({});
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
-        { translateX: shakeX },
-        { scale: tileScale }
-      ]
-    };
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
   if (!board) {
@@ -188,6 +146,20 @@ export function GameBoard({
     };
   }, [swapMode]);
 
+  // 处理方块点击
+  const handleTilePress = (row, col) => {
+    if (disabled || !swapMode) return;
+    
+    const index = row * width + col;
+    const value = tiles[index];
+    
+    if (value === 0) return;
+    
+    if (onTileClick) {
+      onTileClick(row, col, value, index);
+    }
+  };
+
   // 全屏触摸响应器
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => !disabled && !swapMode,
@@ -237,11 +209,20 @@ export function GameBoard({
       
       // 确保坐标在有效范围内
       const clampedEndCol = Math.max(0, Math.min(width - 1, endCol));
+      const clampedEndRow = Math.max(0, Math.min(height - 1, endRow));
       
       setSelection(prev => ({
         ...prev,
         endRow: clampedEndRow,
         endCol: clampedEndCol,
+      }));
+    },
+
+    onPanResponderRelease: () => {
+      handleSelectionComplete();
+    },
+  });
+
   const getSelectedTilesForSelection = (sel) => {
     if (!sel) return [];
     

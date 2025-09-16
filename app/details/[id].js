@@ -76,7 +76,6 @@ export default function LevelDetailsScreen() {
       setSwapMode(false);
       setFirstSwapTile(null);
 
-      Alert.alert('交换完成', '两个数字方块已成功交换位置！');
     }
   };
   const handleTilesClear = (clearedPositions) => {
@@ -133,15 +132,10 @@ export default function LevelDetailsScreen() {
       return;
     }
 
-    // 消耗道具并进入交换模式
+    // 消耗道具并直接进入交换模式
     updateGameData({ changeItems: currentItems - 1 });
     setSwapMode(true);
     setFirstSwapTile(null);
-    Alert.alert(
-      '交换模式已激活',
-      '请依次点击两个数字方块来交换它们的位置。',
-      [{ text: '确定' }]
-    );
   };
 
   const handleRestart = () => {

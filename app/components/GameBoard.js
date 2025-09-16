@@ -499,6 +499,8 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
 
     // 检查是否是交换模式中被选中的方块
     const isFirstSwapTile = swapMode && firstSwapTile && firstSwapTile.index === index;
+    // 检查是否在交换模式中且是数字方块
+    const isSwapModeNumberTile = swapMode && value > 0;
     
     // 根据是否有数字选择样式
     let tileStyle;
@@ -506,6 +508,8 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
       tileStyle = styles.emptyTile; // 空格子样式
     } else if (isFirstSwapTile) {
       tileStyle = styles.selectedSwapTile; // 被选中的交换方块
+    } else if (isSwapModeNumberTile) {
+      tileStyle = styles.swapModeNumberTile; // 交换模式中的数字方块（虚线边框）
     } else {
       tileStyle = styles.tile; // 普通数字方块
     }
@@ -708,6 +712,23 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 3,
     borderColor: '#2196F3',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  swapModeNumberTile: {
+    backgroundColor: '#FFF9C4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#FF9800',
+    borderStyle: 'dashed',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

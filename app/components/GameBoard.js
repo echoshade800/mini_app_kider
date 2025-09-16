@@ -122,12 +122,28 @@ export function GameBoard({
   onTileClick, 
   swapMode = false, 
   firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
   disabled = false 
   const { settings } = useGameStore();
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
+  const [selection, setSelection] = useState(null);
+  const [anchorPoint, setAnchorPoint] = useState(null);
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [prefixSum, setPrefixSum] = useState([]);
+  const { settings } = useGameStore();
+  
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef({}).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
     const r1 = row1 + 1;
     const c1 = col1 + 1;
     const r2 = row2 + 1;

@@ -27,6 +27,13 @@ export function GameBoard({
   firstSwapTile = null, 
   onSwapTiles,
   disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
@@ -435,7 +442,6 @@ export function GameBoard({
     const tile2Y = tile2RelativeRow * cellSize + cellSize / 2 + 10;
 
     // 创建交换动画
-    const tile1Anim = {
       x: new Animated.Value(0),
       y: new Animated.Value(0),
     };
@@ -453,22 +459,22 @@ export function GameBoard({
     Animated.parallel([
       Animated.timing(tile1Anim.x, {
         toValue: tile2X - tile1X,
-        duration: 500,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(tile1Anim.y, {
         toValue: tile2Y - tile1Y,
-        duration: 500,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(tile2Anim.x, {
         toValue: tile1X - tile2X,
-        duration: 500,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(tile2Anim.y, {
         toValue: tile1Y - tile2Y,
-        duration: 500,
+        duration: 400,
         useNativeDriver: true,
       }),
     ]).start(() => {

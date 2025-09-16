@@ -29,22 +29,7 @@ export function GameBoard({
 }) {
   const [shakeAnimations, setShakeAnimations] = useState({});
   const [selection, setSelection] = useState(null);
-}
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-}
-)
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
   const { settings } = useGameStore();
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
@@ -138,6 +123,13 @@ export function GameBoard({
     }
   };
 
+  // 停止所有晃动动画
+  const stopAllShakeAnimations = () => {
+    Object.keys(shakeAnimations).forEach(index => {
+      stopShakeAnimation(parseInt(index));
+    });
+  };
+
   // 当进入交换模式时开始晃动
   useEffect(() => {
     if (swapMode) {
@@ -148,16 +140,12 @@ export function GameBoard({
       });
     } else {
       // 退出交换模式时停止所有晃动
-      Object.keys(shakeAnimations).forEach(index => {
-        stopShakeAnimation(parseInt(index));
-      });
+      stopAllShakeAnimations();
     }
     
     return () => {
       // 清理函数
-      Object.keys(shakeAnimations).forEach(index => {
-        stopShakeAnimation(parseInt(index));
-      });
+      stopAllShakeAnimations();
     };
   }, [swapMode]);
 
@@ -235,6 +223,10 @@ export function GameBoard({
   const handleTilePress = (row, col) => {
     if (swapMode && onTileClick) {
       onTileClick(row, col);
+      // 交换完成后停止晃动动画
+      if (firstSwapTile) {
+        stopAllShakeAnimations();
+      }
     }
   };
 
@@ -582,7 +574,6 @@ export function GameBoard({
     </View>
   );
 }
-)
 
 const styles = StyleSheet.create({
   fullScreenContainer: {
@@ -603,11 +594,11 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   board: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#2E7D32',
     padding: 10,
     borderRadius: 12,
     borderWidth: 6,
-    borderColor: '#D4A574',
+    borderColor: '#8D6E63',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

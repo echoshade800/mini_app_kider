@@ -84,7 +84,7 @@ export default function LevelDetailScreen() {
   const handleUseChange = () => {
     if (changeItems <= 0) return;
     
-    // 进入交换模式
+    // Enter swap mode
     setIsSwapMode(true);
     setSelectedSwapTile(null);
   };
@@ -96,13 +96,13 @@ export default function LevelDetailScreen() {
     const clickedTile = { row, col, value, index };
     
     if (!selectedSwapTile) {
-      // 选择第一个方块
+      // Select first tile
       setSelectedSwapTile(clickedTile);
     } else if (selectedSwapTile.index === index) {
-      // 取消选择（点击同一个方块）
+      // Cancel selection (clicked same tile)
       setSelectedSwapTile(null);
     } else {
-      // 选择第二个方块，执行交换
+      // Select second tile and perform swap
       performSwap(selectedSwapTile, clickedTile);
     }
   };
@@ -110,21 +110,21 @@ export default function LevelDetailScreen() {
   const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // 创建新棋盘，交换两个方块的值
+    // Create new board with swapped values
     const newTiles = [...currentBoard.tiles];
     const temp = newTiles[tile1.index];
     newTiles[tile1.index] = newTiles[tile2.index];
     newTiles[tile2.index] = temp;
 
-    // 更新棋盘
+    // Update board
     const updatedBoard = { ...currentBoard, tiles: newTiles };
     setCurrentBoard(updatedBoard);
 
-    // 消耗一个道具
+    // Consume one change item
     const newChangeItems = Math.max(0, changeItems - 1);
     updateGameData({ changeItems: newChangeItems });
 
-    // 退出交换模式
+    // Exit swap mode
     setIsSwapMode(false);
     setSelectedSwapTile(null);
   };
@@ -211,6 +211,7 @@ export default function LevelDetailScreen() {
       {/* Bottom Actions */}
       <View style={styles.bottomActions}>
         {isSwapMode ? (
+          // Swap mode: Show cancel button
           <TouchableOpacity 
             style={[styles.bottomActionButton, styles.cancelButton]}
             onPress={handleCancelSwap}
@@ -219,6 +220,7 @@ export default function LevelDetailScreen() {
             <Text style={styles.bottomActionButtonText}>Cancel Swap</Text>
           </TouchableOpacity>
         ) : (
+          // Normal mode: Show change and reset buttons
           <>
             <TouchableOpacity 
               style={[
@@ -232,7 +234,8 @@ export default function LevelDetailScreen() {
               <Ionicons name="swap-horizontal" size={20} color="white" />
               <Text style={[
                 styles.bottomActionButtonText,
-                changeItems <= 0 && { color: '#ccc' }]}>
+                changeItems <= 0 && { color: '#ccc' }
+              ]}>
                 Use Change ({changeItems})
               </Text>
             </TouchableOpacity>

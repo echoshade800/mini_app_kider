@@ -46,7 +46,7 @@ export const useGameStore = create((set, get) => ({
         gameData = {
           maxLevel: 1,
           maxScore: 0,
-          changeItems: 3,
+          changeItems: 5, // Give more change items for testing
           lastPlayedLevel: 1,
         };
         await StorageUtils.setData(gameData);

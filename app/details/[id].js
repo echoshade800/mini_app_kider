@@ -4,7 +4,7 @@
  * Features: Flexible touch gestures, tile scaling, explosion effects, improved responsiveness
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -25,79 +25,66 @@ export function GameBoard({
   swapMode = false, 
   firstSwapTile = null, 
   disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
-}) {
 }) {
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const tileScales = useRef({}).current;
+  const [selection, setSelection] = useState(null);
+  const [buttonAreas, setButtonAreas] = useState([]);
+  const [tileScales] = useState({});
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+
+  const { tiles, width, height, settings } = useGameStore();
 
   if (!board) {
     return (
-    // 第一步：必须在棋盘内部区域（排除边框）
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading board...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
-  const { width, height, tiles } = board;
-  
-  // 计算实际有数字的区域边界
+  // 第一步：必须在棋盘内部区域（排除边框）
+  // 更新按钮区域信息
+  const updateButtonAreas = () => {
+    const areas = [
+      // 返回按钮区域 (左上角)
+      {
+        name: 'backButton',
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 80
+      },
+      // Change按钮区域 (底部中央)
+      {
+        name: 'changeButton',
+        x: screenWidth / 2 - 60,
+        y: screenHeight - 120,
+        width: 120,
+        height: 80
+      }
+    ];
+    setButtonAreas(areas);
+  };
+
+  const isInsideButtonArea = (pageX, pageY) => {
+    return buttonAreas.some(area => 
+      pageX >= area.x && pageX < area.x + area.width &&
+      pageY >= area.y && pageY < area.y + area.height
+    );
+  };
+
+  useEffect(() => {
+    updateButtonAreas();
+    
+    // 监听屏幕方向变化
+    const subscription = Dimensions.addEventListener('change', updateButtonAreas);
+    
+    return () => subscription?.remove();
+  }, []);
+
   const getActualBoardBounds = () => {
     let minRow = height, maxRow = -1, minCol = width, maxCol = -1;
     
@@ -558,6 +545,8 @@ export function GameBoard({
           {/* Selection overlay */}
           {selectionStyle && (
             <Animated.View style={selectionStyle} />
+          )}
+          
           {/* Selection sum display */}
           {selectionSum && (
             <View style={selectionSum.style}>
@@ -632,10 +621,46 @@ function ButtonAreaCollector({ onButtonAreasUpdate }) {
         x: changeButtonLayout.x,
         y: changeButtonLayout.y,
         width: changeButtonLayout.width,
+        height: changeButtonLayout.height
       });
     }
     onButtonAreasUpdate(areas);
   }, [backButtonLayout, changeButtonLayout, onButtonAreasUpdate]);
+
+  // 通过全局事件或其他方式收集按钮布局信息
+  useEffect(() => {
+    // 这里可以通过全局事件监听按钮布局变化
+    // 或者通过其他方式获取按钮的布局信息
+    
+    // 临时方案：设置一些常见的按钮区域
+    const updateButtonAreas = () => {
+      // 返回按钮通常在左上角
+      setBackButtonLayout({
+        x: 0,
+        y: 0, 
+        width: 80,
+        height: 80
+      });
+      
+      // Change按钮通常在底部中央
+      setChangeButtonLayout({
+        x: screenWidth / 2 - 50,
+        y: screenHeight - 120,
+        width: 100,
+        height: 60
+      });
+    };
+    
+    updateButtonAreas();
+    
+    // 监听屏幕方向变化
+    const subscription = Dimensions.addEventListener('change', updateButtonAreas);
+    
+    return () => subscription?.remove();
+  }, []);
+
+  return null; // 不渲染任何内容
+}
 
 const styles = StyleSheet.create({
   fullScreenContainer: {

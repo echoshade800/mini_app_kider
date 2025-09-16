@@ -39,38 +39,19 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
 
   const { width, height, tiles } = board;
   
-  // 计算实际有数字的区域边界
-  const getActualBoardBounds = () => {
-    let minRow = height, maxRow = -1, minCol = width, maxCol = -1;
-    
-    for (let row = 0; row < height; row++) {
-      for (let col = 0; col < width; col++) {
-        const index = row * width + col;
-        if (tiles[index] > 0) {
-          minRow = Math.min(minRow, row);
-          maxRow = Math.max(maxRow, row);
-          minCol = Math.min(minCol, col);
-          maxCol = Math.max(maxCol, col);
-        }
-      }
-    }
-    
-    return { minRow, maxRow, minCol, maxCol };
-  };
+  // 使用完整的棋盘尺寸，不根据数字分布调整
+  const actualWidth = width;
+  const actualHeight = height;
   
-  const bounds = getActualBoardBounds();
-  const actualWidth = bounds.maxCol - bounds.minCol + 1;
-  const actualHeight = bounds.maxRow - bounds.minRow + 1;
-  
-  // 计算格子大小，数字方块更小
+  // 计算格子大小
   const cellSize = Math.min(
     (screenWidth - 80) / actualWidth, 
     (screenHeight - 300) / actualHeight,
-    50
+    45
   );
   
-  // 数字方块的实际大小（比格子小，留出间距）
-  const tileSize = cellSize * 0.7;
+  // 数字方块的实际大小（比格子稍小，留出间距）
+  const tileSize = cellSize * 0.8;
   const tileMargin = (cellSize - tileSize) / 2;
   
   // 棋盘背景大小
@@ -115,8 +96,8 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
       const relativeY = pageY - boardTop - 10;
       
       // 转换为网格坐标
-      const startCol = Math.floor(relativeX / cellSize) + bounds.minCol;
-      const startRow = Math.floor(relativeY / cellSize) + bounds.minRow;
+      const startCol = Math.floor(relativeX / cellSize);
+      const startRow = Math.floor(relativeY / cellSize);
       
       setSelection({
         startRow,
@@ -147,8 +128,8 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
       const relativeX = pageX - boardLeft - 10;
       const relativeY = pageY - boardTop - 10;
       
-      const endCol = Math.floor(relativeX / cellSize) + bounds.minCol;
-      const endRow = Math.floor(relativeY / cellSize) + bounds.minRow;
+      const endCol = Math.floor(relativeX / cellSize);
+      const endRow = Math.floor(relativeY / cellSize);
       
       setSelection(prev => ({
         ...prev,
@@ -324,8 +305,8 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    const left = (minCol - bounds.minCol) * cellSize + 10;
-    const top = (minRow - bounds.minRow) * cellSize + 10;
+    const left = minCol * cellSize + 10;
+    const top = minRow * cellSize + 10;
     const width = (maxCol - minCol + 1) * cellSize;
     const height = (maxRow - minRow + 1) * cellSize;
     
@@ -355,8 +336,8 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
     const centerRow = (startRow + endRow) / 2;
     const centerCol = (startCol + endCol) / 2;
     
-    const left = (centerCol - bounds.minCol) * cellSize + 10;
-    const top = (centerRow - bounds.minRow) * cellSize + 10;
+    const left = centerCol * cellSize + 10;
+    const top = centerRow * cellSize + 10;
     
     return {
       sum,
@@ -385,22 +366,29 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
   const renderTile = (value, row, col) => {
     const index = row * width + col;
     
-    // 只渲染实际内容区域内的方块
-    if (row < bounds.minRow || row > bounds.maxRow || 
-        col < bounds.minCol || col > bounds.maxCol || value === 0) {
+    // 渲染所有位置的格子，但只有非零值才显示数字
+    if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
     }
 
-    const relativeRow = row - bounds.minRow;
-    const relativeCol = col - bounds.minCol;
-    const left = relativeCol * cellSize + 10 + tileMargin;
-    const top = relativeRow * cellSize + 10 + tileMargin;
+    const left = col * cellSize + 10 + tileMargin;
+    const top = row * cellSize + 10 + tileMargin;
 
     const tileScale = initTileScale(index);
 
     // 检查是否是交换模式中被选中的方块
     const isFirstSwapTile = swapMode && firstSwapTile && firstSwapTile.index === index;
-    const tileStyle = isFirstSwapTile ? styles.selectedSwapTile : styles.tile;
+    
+    // 根据是否有数字选择样式
+    let tileStyle;
+    if (value === 0) {
+      tileStyle = styles.emptyTile; // 空格子样式
+    } else if (isFirstSwapTile) {
+      tileStyle = styles.selectedSwapTile; // 被选中的交换方块
+    } else {
+      tileStyle = styles.tile; // 普通数字方块
+    }
+    
     return (
       <Animated.View 
         key={`${row}-${col}`}
@@ -419,15 +407,17 @@ export function GameBoard({ board, onTilesClear, onTileClick, swapMode = false, 
         <TouchableOpacity
           style={styles.tileButton}
           onPress={() => handleTilePress(row, col)}
-          disabled={!swapMode}
+          disabled={!swapMode || value === 0}
         >
-          <Text style={[
-            styles.tileText,
-            { fontSize: tileSize * 0.5 },
-            isFirstSwapTile && styles.selectedSwapTileText
-          ]}>
-            {value}
-          </Text>
+          {value > 0 && (
+            <Text style={[
+              styles.tileText,
+              { fontSize: tileSize * 0.5 },
+              isFirstSwapTile && styles.selectedSwapTileText
+            ]}>
+              {value}
+            </Text>
+          )}
         </TouchableOpacity>
       </Animated.View>
     );
@@ -563,6 +553,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 4,
+  },
+  emptyTile: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   selectedSwapTile: {
     backgroundColor: '#E3F2FD',

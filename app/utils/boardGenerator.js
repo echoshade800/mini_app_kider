@@ -18,16 +18,16 @@ function seededRandom(seed) {
 }
 
 function getBoardDimensions(level) {
-  // 每个关卡固定棋盘大小，但随着关卡增加逐渐变大
-  if (level <= 5) return { width: 3, height: 3 };   // 前5关用3x3
+  // 每个关卡固定棋盘大小，随着关卡增加逐渐变大
+  if (level <= 5) return { width: 4, height: 4 };   // 前5关用4x4
   if (level <= 15) return { width: 4, height: 4 };  // 6-15关用4x4
-  if (level <= 30) return { width: 5, height: 4 };  // 16-30关用5x4长方形
-  if (level <= 50) return { width: 6, height: 5 };  // 31-50关用6x5长方形
-  if (level <= 80) return { width: 7, height: 6 };  // 51-80关用7x6长方形
-  if (level <= 120) return { width: 8, height: 7 }; // 81-120关用8x7长方形
-  if (level <= 160) return { width: 9, height: 8 }; // 121-160关用9x8长方形
-  if (level <= 200) return { width: 10, height: 9 }; // 161-200关用10x9长方形
-  return { width: 11, height: 10 }; // 200关后用11x10长方形
+  if (level <= 30) return { width: 5, height: 5 };  // 16-30关用5x5
+  if (level <= 50) return { width: 6, height: 6 };  // 31-50关用6x6
+  if (level <= 80) return { width: 7, height: 7 };  // 51-80关用7x7
+  if (level <= 120) return { width: 8, height: 8 }; // 81-120关用8x8
+  if (level <= 160) return { width: 9, height: 9 }; // 121-160关用9x9
+  if (level <= 200) return { width: 10, height: 10 }; // 161-200关用10x10
+  return { width: 11, height: 11 }; // 200关后用11x11
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）

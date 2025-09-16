@@ -1,461 +1,756 @@
 /**
- * Level Detail Screen - Individual level gameplay with board and controls
- * Purpose: Play specific levels with progress tracking and item usage
- * Extend: Add hints, level-specific challenges, or social sharing
+ * GameBoard Component - Enhanced interactive puzzle board with advanced visual effects
+ * Purpose: Render game tiles with enhanced touch interactions and explosion animations
+ * Features: Flexible touch gestures, tile scaling, explosion effects, improved responsiveness
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
-  TouchableOpacity, 
+  PanResponder, 
+  Dimensions, 
   StyleSheet,
-  Alert,
-  Modal
+  Animated,
+  TouchableOpacity
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
-import { GameBoard } from '../components/GameBoard';
-import { generateBoard } from '../utils/boardGenerator';
-import { STAGE_NAMES } from '../utils/stageNames';
 
-export default function LevelDetailScreen() {
-  const { id } = useLocalSearchParams();
-  const level = parseInt(id);
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+}) {
+  const { settings } = useGameStore();
+  const [shakeAnimations, setShakeAnimations] = useState({});
   
-  const { gameData, updateGameData } = useGameStore();
-  const [currentBoard, setCurrentBoard] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [swapMode, setSwapMode] = useState(false);
-  const [firstSwapTile, setFirstSwapTile] = useState(null);
-  const [showTutorial, setShowTutorial] = useState(false);
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef({}).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    initializeLevel();
-  }, [level]);
-
-  const initializeLevel = async () => {
-    try {
-      setIsLoading(true);
-      const board = generateBoard(level);
-      setCurrentBoard(board);
-    } catch (error) {
-      console.error('Failed to initialize level:', error);
-      Alert.alert('Error', 'Failed to load level. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleTilesClear = (clearedPositions) => {
-    if (!currentBoard) return;
-    
-    // Create new board with cleared tiles
-    const newTiles = [...currentBoard.tiles];
-    clearedPositions.forEach(({ row, col }) => {
-      const index = row * currentBoard.width + col;
-      newTiles[index] = 0;
-    });
-    
-    const updatedBoard = { ...currentBoard, tiles: newTiles };
-    setCurrentBoard(updatedBoard);
-    
-    // Check if level is complete
-    const hasRemainingTiles = newTiles.some(tile => tile > 0);
-    
-    if (!hasRemainingTiles) {
-      // Level completed
-      setTimeout(() => {
-        handleLevelComplete();
-      }, 1000);
-    }
-  };
-
-  const handleLevelComplete = () => {
-    const currentMaxLevel = gameData?.maxLevel || 0;
-    const newMaxLevel = Math.max(currentMaxLevel, level);
-    const changeItemsReward = level > currentMaxLevel ? 1 : 0;
-    const currentChangeItems = gameData?.changeItems || 0;
-    
-    updateGameData({
-      maxLevel: newMaxLevel,
-      changeItems: currentChangeItems + changeItemsReward,
-      lastPlayedLevel: level,
-    });
-    
-    Alert.alert(
-      'Level Complete!',
-      `Congratulations! ${changeItemsReward > 0 ? `You earned ${changeItemsReward} Change item!` : ''}`,
-      [
-        {
-          text: 'Next Level',
-          onPress: () => {
-            if (level < 200) {
-              router.replace(`/details/${level + 1}`);
-            } else {
-              router.back();
-            }
-          }
-        },
-        {
-          text: 'Back to Levels',
-          onPress: () => router.back()
-        }
-      ]
-    );
-  };
-
-  const handleTileClick = (row, col) => {
-    if (!swapMode || !currentBoard) return;
-
-    const index = row * currentBoard.width + col;
-    const tileValue = currentBoard.tiles[index];
-    
-    // Only allow clicking on number tiles
-    if (tileValue === 0) return;
-
-    if (!firstSwapTile) {
-      // Select first tile
-      setFirstSwapTile({ row, col, index, value: tileValue });
-    } else {
-      // Select second tile and perform swap
-      if (firstSwapTile.index === index) {
-        // Clicking same tile, deselect
-        setFirstSwapTile(null);
-        return;
-      }
-
-      // Perform swap
-      const newTiles = [...currentBoard.tiles];
-      newTiles[firstSwapTile.index] = tileValue;
-      newTiles[index] = firstSwapTile.value;
-
-      const updatedBoard = { ...currentBoard, tiles: newTiles };
-      setCurrentBoard(updatedBoard);
-
-      // Reset swap state
-      setSwapMode(false);
-      setFirstSwapTile(null);
-    }
-  };
-
-  const handleUseChange = () => {
-    const currentItems = gameData?.changeItems || 0;
-    if (currentItems <= 0) {
-      Alert.alert('No Items', 'You don\'t have any Change items. Complete levels to earn more!');
-      return;
-    }
-
-    // Check if this is the first time using swap
-    const hasUsedSwapBefore = gameData?.hasUsedSwapBefore || false;
-    
-    if (!hasUsedSwapBefore) {
-      // Show tutorial for first time
-      setShowTutorial(true);
-    } else {
-      // Direct swap mode
-      updateGameData({ changeItems: currentItems - 1 });
-      setSwapMode(true);
-      setFirstSwapTile(null);
-    }
-  };
-
-  const handleTutorialComplete = () => {
-    setShowTutorial(false);
-    const currentItems = gameData?.changeItems || 0;
-    updateGameData({ 
-      changeItems: currentItems - 1,
-      hasUsedSwapBefore: true 
-    });
-    setSwapMode(true);
-    setFirstSwapTile(null);
-  };
-
-  const handleReset = () => {
-    Alert.alert(
-      'Reset Level',
-      'Are you sure you want to reset this level?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset', onPress: initializeLevel }
-      ]
-    );
-  };
-
-  const handleBack = () => {
-    router.back();
-  };
-
-  if (isLoading) {
+  if (!board) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading Level {level}...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading board...</Text>
+      </View>
     );
   }
 
-  const stageName = STAGE_NAMES[level] || `Level ${level}`;
-  const currentChangeItems = gameData?.changeItems || 0;
+  const { width, height, tiles } = board;
+  
+  // 计算格子大小
+  const cellSize = Math.min(
+    (screenWidth - 60) / width, 
+    (screenHeight - 280) / height,
+    50
+  );
+  
+  // 数字方块的实际大小（比格子稍小，留出间距）
+  const tileSize = cellSize * 0.85;
+  const tileMargin = (cellSize - tileSize) / 2;
+  
+  // 棋盘背景大小
+  const boardWidth = width * cellSize + 20;
+  const boardHeight = height * cellSize + 20;
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.levelNumber}>Level {level}</Text>
-          <Text style={styles.stageName}>{stageName}</Text>
-        </View>
-        <View style={styles.placeholder} />
-      </View>
+  // 初始化tile动画
+  const initTileScale = (index) => {
+    if (!tileScales[index]) {
+      tileScales[index] = new Animated.Value(1);
+    }
+    return tileScales[index];
+  };
 
-      {/* Game Board */}
-      {currentBoard && (
-        <GameBoard 
-          board={currentBoard}
-          onTilesClear={handleTilesClear}
-          onTileClick={handleTileClick}
-          swapMode={swapMode}
-          firstSwapTile={firstSwapTile}
-        />
-      )}
+  // 缩放tile
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.spring(tileScale, {
+      toValue: scale,
+      useNativeDriver: true,
+      tension: 400,
+      friction: 8,
+    }).start();
+  };
 
-      {/* Game Controls */}
-      <View style={styles.controls}>
-        {/* Change Item Button */}
-        <TouchableOpacity 
-          style={[
-            styles.itemButton,
-            currentChangeItems <= 0 && styles.itemButtonDisabled
-          ]}
-          onPress={handleUseChange}
-          disabled={currentChangeItems <= 0}
+  // 晃动动画
+  const startShakeAnimation = (index) => {
+    if (!shakeAnimations[index]) {
+      shakeAnimations[index] = new Animated.Value(0);
+    }
+    
+    const shakeLoop = () => {
+      Animated.sequence([
+        Animated.timing(shakeAnimations[index], {
+          toValue: 2,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnimations[index], {
+          toValue: -2,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnimations[index], {
+          toValue: 0,
+          duration: 50,
+          useNativeDriver: true,
+        }),
+        Animated.delay(700),
+      ]).start(() => {
+        if (swapMode) {
+          shakeLoop();
+        }
+      });
+    };
+    
+    shakeLoop();
+  };
+
+  // 停止晃动动画
+  const stopShakeAnimation = (index) => {
+    if (shakeAnimations[index]) {
+      shakeAnimations[index].stopAnimation();
+      shakeAnimations[index].setValue(0);
+    }
+  };
+
+  // 当进入交换模式时开始晃动
+  useEffect(() => {
+    if (swapMode) {
+      tiles.forEach((value, index) => {
+        if (value > 0) {
+          startShakeAnimation(index);
+        }
+      });
+    } else {
+      // 退出交换模式时停止所有晃动
+      Object.keys(shakeAnimations).forEach(index => {
+        stopShakeAnimation(parseInt(index));
+      });
+    }
+    
+    return () => {
+      // 清理函数
+      Object.keys(shakeAnimations).forEach(index => {
+        stopShakeAnimation(parseInt(index));
+      });
+    };
+  }, [swapMode]);
+
+  // 全屏触摸响应器
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => !disabled && !swapMode,
+    onMoveShouldSetPanResponder: () => !disabled && !swapMode,
+
+    onPanResponderGrant: (evt) => {
+      const { locationX, locationY } = evt.nativeEvent;
+      
+      // 直接使用相对于棋盘的坐标，减去棋盘内边距
+      const relativeX = locationX - 10;
+      const relativeY = locationY - 10;
+      
+      // 转换为网格坐标
+      const startCol = Math.floor(relativeX / cellSize);
+      const startRow = Math.floor(relativeY / cellSize);
+      
+      // 确保坐标在有效范围内
+      const clampedStartCol = Math.max(0, Math.min(width - 1, startCol));
+      const clampedStartRow = Math.max(0, Math.min(height - 1, startRow));
+      
+      setSelection({
+        startRow: clampedStartRow,
+        startCol: clampedStartCol,
+        endRow: clampedStartRow,
+        endCol: clampedStartCol,
+      });
+      
+      // 开始选择动画
+      Animated.timing(selectionOpacity, {
+        toValue: 0.5,
+        duration: 100,
+        useNativeDriver: false,
+      }).start();
+    },
+
+    onPanResponderMove: (evt) => {
+      if (!selection) return;
+      
+      const { locationX, locationY } = evt.nativeEvent;
+      
+      // 直接使用相对于棋盘的坐标，减去棋盘内边距
+      const relativeX = locationX - 10;
+      const relativeY = locationY - 10;
+      
+      const endCol = Math.floor(relativeX / cellSize);
+      const endRow = Math.floor(relativeY / cellSize);
+      
+      // 确保坐标在有效范围内
+      const clampedEndCol = Math.max(0, Math.min(width - 1, endCol));
+      const clampedEndRow = Math.max(0, Math.min(height - 1, endRow));
+      
+      setSelection(prev => ({
+        ...prev,
+        endRow: clampedEndRow,
+        endCol: clampedEndCol,
+      }));
+
+      // 更新悬停的tiles
+      const newSelection = { ...selection, endRow: clampedEndRow, endCol: clampedEndCol };
+      const selectedTiles = getSelectedTilesForSelection(newSelection);
+      const newHoveredSet = new Set(selectedTiles.map(tile => tile.index));
+      
+      // 只有被框选中的数字方块才变大
+      selectedTiles.forEach(tile => {
+        if (!hoveredTiles.has(tile.index)) {
+          scaleTile(tile.index, 1.4);
+        }
+      });
+      
+      // 恢复不再悬停的tiles到原始大小
+      hoveredTiles.forEach(index => {
+        if (!newHoveredSet.has(index)) {
+          scaleTile(index, 1);
+        }
+      });
+      
+      setHoveredTiles(newHoveredSet);
+    },
+
+    onPanResponderRelease: () => {
+      if (selection && !disabled) {
+        handleSelectionComplete();
+      }
+      
+      // 恢复所有tile的缩放
+      hoveredTiles.forEach(index => {
+        scaleTile(index, 1);
+      });
+      setHoveredTiles(new Set());
+    },
+  });
+  
+  const handleTilePress = (row, col) => {
+    if (swapMode && onTileClick) {
+      onTileClick(row, col);
+    }
+  };
+
+  const getSelectedTilesForSelection = (sel) => {
+    if (!sel) return [];
+    
+    const { startRow, startCol, endRow, endCol } = sel;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = [];
+    
+    // 计算框内所有有数字的方块
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value > 0) {
+            selectedTiles.push({ row, col, value, index });
+          }
+        }
+      }
+    }
+    
+    return selectedTiles;
+  };
+
+  const getSelectedTiles = () => {
+    return getSelectedTilesForSelection(selection);
+  };
+
+  const handleSelectionComplete = async () => {
+    if (!selection) return;
+
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+
+    if (sum === 10 && selectedTiles.length > 0) {
+      // Success - 创建爆炸效果
+      if (settings?.hapticsEnabled !== false) {
+        try {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        } catch (error) {
+          console.log('Haptics not available');
+        }
+      }
+      
+      // 计算爆炸中心位置
+      const { startRow, startCol, endRow, endCol } = selection;
+      const centerRow = (startRow + endRow) / 2;
+      const centerCol = (startCol + endCol) / 2;
+      const explosionX = centerCol * cellSize + cellSize / 2 + 10;
+      const explosionY = centerRow * cellSize + cellSize / 2 + 10;
+      
+      setExplosionAnimation({ x: explosionX, y: explosionY });
+      
+      // 爆炸动画
+      explosionScale.setValue(0);
+      explosionOpacity.setValue(1);
+      
+      Animated.parallel([
+        Animated.timing(explosionScale, {
+          toValue: 2.5,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(explosionOpacity, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setExplosionAnimation(null);
+      });
+
+      // 选择框动画
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+        if (onTilesClear) {
+          onTilesClear(tilePositions);
+        }
+      });
+
+    } else if (selectedTiles.length > 0) {
+      // Failure - 蓝色反馈
+      if (settings?.hapticsEnabled !== false) {
+        try {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } catch (error) {
+          console.log('Haptics not available');
+        }
+      }
+      
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.5,
+          duration: 150,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+      });
+    } else {
+      // No tiles selected
+      setSelection(null);
+    }
+  };
+
+  const getSelectionStyle = () => {
+    if (!selection) return null;
+    
+    const { startRow, startCol, endRow, endCol } = selection;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const isSuccess = sum === 10;
+    
+    const left = minCol * cellSize + 10;
+    const top = minRow * cellSize + 10;
+    const selectionWidth = (maxCol - minCol + 1) * cellSize;
+    const selectionHeight = (maxRow - minRow + 1) * cellSize;
+    
+    return {
+      position: 'absolute',
+      left,
+      top,
+      width: selectionWidth,
+      height: selectionHeight,
+      backgroundColor: isSuccess ? '#4CAF50' : '#2196F3',
+      opacity: selectionOpacity,
+      borderRadius: 8,
+      borderWidth: 3,
+      borderColor: isSuccess ? '#45a049' : '#1976D2',
+    };
+  };
+
+  const getSelectionSum = () => {
+    if (!selection) return null;
+    
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    
+    if (selectedTiles.length === 0) return null;
+    
+    const { startRow, startCol, endRow, endCol } = selection;
+    const centerRow = (startRow + endRow) / 2;
+    const centerCol = (startCol + endCol) / 2;
+    
+    const left = centerCol * cellSize + 10;
+    const top = centerRow * cellSize + 10;
+    
+    return {
+      sum,
+      isSuccess: sum === 10,
+      style: {
+        position: 'absolute',
+        left: left - 25,
+        top: top - 25,
+        width: 50,
+        height: 50,
+        backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',
+        borderRadius: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 3,
+        borderColor: sum === 10 ? '#FFA000' : '#1976D2',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 8,
+      }
+    };
+  };
+
+  const renderTile = (value, row, col) => {
+    const index = row * width + col;
+    
+    if (row < 0 || row >= height || col < 0 || col >= width) {
+      return null;
+    }
+
+    const left = col * cellSize + 10 + tileMargin;
+    const top = row * cellSize + 10 + tileMargin;
+
+    const tileScale = initTileScale(index);
+    const shakeX = shakeAnimations[index] || new Animated.Value(0);
+
+    // 检查是否是交换模式中被选中的方块
+    const isFirstSwapTile = swapMode && firstSwapTile && firstSwapTile.index === index;
+    // 检查是否在交换模式中且是数字方块
+    const isSwapModeNumberTile = swapMode && value > 0;
+    
+    // 根据是否有数字选择样式
+    let tileStyle;
+    if (value === 0) {
+      tileStyle = styles.emptyTile;
+    } else if (isFirstSwapTile) {
+      tileStyle = styles.selectedSwapTile;
+    } else if (isSwapModeNumberTile) {
+      tileStyle = styles.swapModeNumberTile;
+    } else {
+      tileStyle = styles.tile;
+    }
+    
+    const animatedStyle = {
+      transform: [
+        { translateX: shakeX },
+        { scale: tileScale }
+      ]
+    };
+    
+    return (
+      <Animated.View 
+        key={`${row}-${col}`}
+        style={[
+          tileStyle,
+          { 
+            position: 'absolute',
+            left,
+            top,
+            width: tileSize, 
+            height: tileSize,
+          },
+          animatedStyle
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.tileButton}
+          onPress={() => handleTilePress(row, col)}
+          disabled={!swapMode || value === 0}
         >
-          <Ionicons 
-            name="swap-horizontal" 
-            size={24} 
-            color={currentChangeItems <= 0 ? "#999" : "white"} 
-          />
-          {currentChangeItems > 0 && (
-            <Text style={styles.itemCount}>{currentChangeItems}</Text>
+          {value > 0 && (
+            <Text style={[
+              styles.tileText,
+              isFirstSwapTile && styles.selectedSwapTileText
+            ]}>
+              {value}
+            </Text>
           )}
         </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
-        {/* Reset Button */}
-        <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
-          <Ionicons name="refresh" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
+  const selectionStyle = getSelectionStyle();
+  const selectionSum = getSelectionSum();
 
-      {/* Tutorial Modal */}
-      <Modal
-        visible={showTutorial}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowTutorial(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.tutorialModal}>
-            <Text style={styles.tutorialTitle}>How to Use Change Item</Text>
-            
-            <View style={styles.tutorialSteps}>
-              <View style={styles.tutorialStep}>
-                <Text style={styles.stepNumber}>1</Text>
-                <Text style={styles.stepText}>
-                  All number tiles will shake and show orange dashed borders
-                </Text>
-              </View>
-              
-              <View style={styles.tutorialStep}>
-                <Text style={styles.stepNumber}>2</Text>
-                <Text style={styles.stepText}>
-                  Tap the first tile you want to swap (it will turn green)
-                </Text>
-              </View>
-              
-              <View style={styles.tutorialStep}>
-                <Text style={styles.stepNumber}>3</Text>
-                <Text style={styles.stepText}>
-                  Tap the second tile to complete the swap
-                </Text>
-              </View>
+  return (
+    <View style={styles.fullScreenContainer}>
+      <View style={styles.container}>
+        <View 
+          style={[
+            styles.board,
+            {
+              width: boardWidth,
+              height: boardHeight,
+            }
+          ]}
+          {...panResponder.panHandlers}
+        >
+          {/* Render tiles */}
+          {tiles.map((value, index) => {
+            const row = Math.floor(index / width);
+            const col = index % width;
+            return renderTile(value, row, col);
+          })}
+          
+          {/* Selection overlay */}
+          {selectionStyle && (
+            <Animated.View style={selectionStyle} />
+          )}
+          
+          {/* Selection sum display */}
+          {selectionSum && (
+            <View style={selectionSum.style}>
+              <Text style={[
+                styles.sumText,
+                { color: selectionSum.isSuccess ? '#333' : 'white' }
+              ]}>
+                {selectionSum.sum}
+              </Text>
             </View>
-            
-            <TouchableOpacity 
-              style={styles.tutorialButton}
-              onPress={handleTutorialComplete}
+          )}
+
+          {/* Explosion effect */}
+          {explosionAnimation && (
+            <Animated.View
+              style={[
+                styles.explosion,
+                {
+                  left: explosionAnimation.x - 30,
+                  top: explosionAnimation.y - 30,
+                  transform: [{ scale: explosionScale }],
+                  opacity: explosionOpacity,
+                }
+              ]}
             >
-              <Text style={styles.tutorialButtonText}>Got it!</Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.explosionCenter}>
+                <Text style={styles.explosionText}>10</Text>
+              </View>
+              {/* 爆炸粒子效果 */}
+              {[...Array(12)].map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.explosionParticle,
+                    {
+                      transform: [
+                        { rotate: `${i * 30}deg` },
+                        { translateY: -25 }
+                      ]
+                    }
+                  ]}
+                />
+              ))}
+            </Animated.View>
+          )}
         </View>
-      </Modal>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  fullScreenContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    height: 200,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#666',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  levelNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  stageName: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  placeholder: {
-    width: 40,
-  },
-  controls: {
-    position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  itemButton: {
-    backgroundColor: '#FF9800',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+  board: {
+    backgroundColor: '#4CAF50',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 6,
+    borderColor: '#D4A574',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.4,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 10,
     position: 'relative',
   },
-  itemButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  itemCount: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#f44336',
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
-    textAlign: 'center',
-  },
-  resetButton: {
-    backgroundColor: '#f44336',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  tile: {
+    backgroundColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  emptyTile: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  selectedSwapTile: {
+    backgroundColor: '#E8F5E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    borderWidth: 3,
+    borderColor: '#4CAF50',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  swapModeNumberTile: {
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#FF9800',
+    borderStyle: 'dashed',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tileButton: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileText: {
+    fontWeight: 'bold',
+    color: '#333',
+    fontSize: 18,
+  },
+  selectedSwapTileText: {
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  sumText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  explosion: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  explosionCenter: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#FFD700',
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#FFA000',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 8,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tutorialModal: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 24,
-    width: '85%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  tutorialTitle: {
+  explosionText: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    textAlign: 'center',
-    marginBottom: 20,
   },
-  tutorialSteps: {
-    marginBottom: 24,
-  },
-  tutorialStep: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  stepNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#4CAF50',
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginRight: 12,
-  },
-  stepText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-    lineHeight: 24,
-  },
-  tutorialButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  tutorialButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+  explosionParticle: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    backgroundColor: '#FF6B35',
+    borderRadius: 4,
   },
 });

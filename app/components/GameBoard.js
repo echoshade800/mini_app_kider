@@ -26,13 +26,12 @@ export function GameBoard({
   isSwapMode = false, 
   selectedSwapTile = null,
   disabled = false,
-  swapAnimations = new Map()
+  swapAnimationsProp = new Map()
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [swapAnimations, setSwapAnimations] = useState(new Map());
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -588,7 +587,7 @@ export function GameBoard({
 
     const tileScale = initTileScale(index);
     const tileShake = initTileShake(index);
-    const swapAnim = swapAnimations.get(index);
+    const swapAnim = swapAnimationsProp.get(index);
     
     // 计算变换
     const transforms = [{ scale: tileScale }];

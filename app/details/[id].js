@@ -27,13 +27,6 @@ export function GameBoard({
   firstSwapTile = null, 
   onSwapTiles,
   disabled = false 
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onTileClick, 
-  swapMode = false, 
-  firstSwapTile = null, 
-  disabled = false 
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
@@ -50,4 +43,7 @@ export function GameBoard({
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
-}) {
+      </View>
+    );
+  }
+}

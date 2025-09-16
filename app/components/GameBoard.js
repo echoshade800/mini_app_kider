@@ -151,6 +151,9 @@ export function GameBoard({
 
   // 检查触摸点是否在棋盘网格区域内
   const isInsideGridArea = (pageX, pageY) => {
+    // 先检查是否在禁止画框的区域
+    if (isInRestrictedArea(pageY)) return false;
+    
     // 计算棋盘在屏幕上的位置
     const boardCenterX = screenWidth / 2;
     const boardCenterY = screenHeight / 2;
@@ -179,6 +182,15 @@ export function GameBoard({
     
     return row >= bounds.minRow && row <= bounds.maxRow &&
            col >= bounds.minCol && col <= bounds.maxCol;
+  };
+
+  // 检查是否在禁止画框的区域（顶部和底部）
+  const isInRestrictedArea = (pageY) => {
+    const topRestrictedHeight = 200; // 顶部200像素禁止画框
+    const bottomRestrictedHeight = 150; // 底部150像素禁止画框
+    
+    return pageY < topRestrictedHeight || 
+           pageY > screenHeight - bottomRestrictedHeight;
   };
 
   const getSelectedTilesForSelection = (sel) => {
@@ -228,6 +240,9 @@ export function GameBoard({
       // 交换模式下不允许画框
       if (isSwapMode) return false;
       
+      // 检查是否在禁止画框的区域
+      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
+      
       // 交换模式下不允许画框
       if (isSwapMode) return false;
       
@@ -238,6 +253,9 @@ export function GameBoard({
     onMoveShouldSetPanResponder: (evt) => {
       // 交换模式下不允许画框
       if (isSwapMode) return false;
+      
+      // 检查是否在禁止画框的区域
+      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
       
       // 交换模式下不允许画框
       if (isSwapMode) return false;
@@ -370,12 +388,13 @@ export function GameBoard({
     onPanResponderTerminationRequest: (evt) => {
       // 如果触摸点在按钮区域，优先给按钮处理
       const { pageX, pageY } = evt.nativeEvent;
-      const screenHeight = Dimensions.get('window').height;
       const buttonAreaBottom = screenHeight - 20; // 底部按钮区域
       const buttonAreaTop = screenHeight - 150; // 按钮区域顶部
+      const topRestrictedHeight = 200; // 顶部限制区域
       
-      // 如果触摸在按钮区域，让按钮优先处理
-      if (pageY >= buttonAreaTop && pageY <= buttonAreaBottom) {
+      // 如果触摸在按钮区域或限制区域，让其他组件优先处理
+      if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
+          pageY < topRestrictedHeight) {
         return true;
       }
       

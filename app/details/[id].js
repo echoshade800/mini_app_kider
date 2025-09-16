@@ -210,10 +210,10 @@ export default function LevelDetailScreen() {
 
       {/* Floating Action Buttons */}
       <View style={styles.floatingButtons}>
-        {/* Swap Mode Button */}
+        {/* Swap Mode Button - Now at bottom center */}
         <TouchableOpacity 
           style={[
-            styles.floatingButton,
+            styles.bottomSwapButton,
             isSwapMode ? styles.cancelSwapButton : styles.swapButton,
             changeItems <= 0 && !isSwapMode && styles.floatingButtonDisabled
           ]}
@@ -232,17 +232,6 @@ export default function LevelDetailScreen() {
             </View>
           )}
         </TouchableOpacity>
-        
-        {/* Reset Button */}
-        {!isSwapMode && (
-          <TouchableOpacity 
-            style={[styles.floatingButton, styles.resetButton]}
-            onPress={handleRestart}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="refresh" size={24} color="white" />
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Success Modal */}
@@ -342,10 +331,24 @@ const styles = StyleSheet.create({
   },
   floatingButtons: {
     position: 'absolute',
-    bottom: 30,
-    right: 20,
+    bottom: 20,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'center',
+  },
+  bottomSwapButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    position: 'relative',
   },
   floatingButton: {
     width: 60,
@@ -362,9 +365,6 @@ const styles = StyleSheet.create({
   },
   swapButton: {
     backgroundColor: '#FF9800',
-  },
-  resetButton: {
-    backgroundColor: '#2196F3',
   },
   cancelSwapButton: {
     backgroundColor: '#f44336',

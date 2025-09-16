@@ -31,7 +31,6 @@ export function GameBoard({
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [swapAnimations, setSwapAnimations] = useState(new Map());
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -105,32 +104,28 @@ export function GameBoard({
 
   // 开始所有数字方块的晃动动画
   const startShakeAnimation = () => {
-    const animations = [];
-    
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i] > 0) {
         const shakeAnim = initTileShake(i);
-        const shakeAnimation = Animated.loop(
+        Animated.loop(
           Animated.sequence([
             Animated.timing(shakeAnim, {
               toValue: 1,
-              duration: 150,
+              duration: 200,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: -1,
-              duration: 150,
+              duration: 200,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: 0,
-              duration: 150,
+              duration: 200,
               useNativeDriver: true,
             }),
           ])
-        );
-        animations.push(shakeAnimation);
-        shakeAnimation.start();
+        ).start();
       }
     }
   };
@@ -391,12 +386,13 @@ export function GameBoard({
   const handleTilePress = (row, col, value) => {
     if (!isSwapMode || disabled || value === 0) return;
     
-    if (onTileClick) {
-      onTileClick(row, col, value);
-    }
-    
+    // 触觉反馈
     if (settings?.hapticsEnabled !== false) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    
+    if (onTileClick) {
+      onTileClick(row, col, value);
     }
   };
 
@@ -571,17 +567,16 @@ export function GameBoard({
 
     const tileScale = initTileScale(index);
     const tileShake = initTileShake(index);
-    const swapAnim = swapAnimations.get(index);
     
     // 计算变换
     const transforms = [{ scale: tileScale }];
     
-    if (isSwapMode && !swapAnim) {
+    if (isSwapMode) {
       // 交换模式下的晃动效果
       transforms.push({
         translateX: tileShake.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [-3, 0, 3],
+          outputRange: [-2, 0, 2],
         }),
       });
     }

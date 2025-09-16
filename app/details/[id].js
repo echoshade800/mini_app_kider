@@ -294,7 +294,7 @@ export default function LevelDetailsScreen() {
         disabled={swapMode}
       >
         <Ionicons name="refresh" size={24} color="white" />
-      </View>
+      </TouchableOpacity>
 
       {/* Success Modal */}
       <Modal

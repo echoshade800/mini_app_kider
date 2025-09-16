@@ -61,8 +61,8 @@ export function GameBoard({
     50
   );
   
-  // 数字方块的实际大小（比格子小，留出间距）
-  const tileSize = cellSize * 0.7;
+  // 数字方块的实际大小（减少间距，让方块更紧密）
+  const tileSize = cellSize * 0.85;
   const tileMargin = (cellSize - tileSize) / 2;
   
   // 棋盘背景大小
@@ -94,17 +94,17 @@ export function GameBoard({
           Animated.sequence([
             Animated.timing(shakeAnim, {
               toValue: 1,
-              duration: 100,
+              duration: 150,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: -1,
-              duration: 100,
+              duration: 150,
               useNativeDriver: true,
             }),
             Animated.timing(shakeAnim, {
               toValue: 0,
-              duration: 100,
+              duration: 150,
               useNativeDriver: true,
             }),
           ])
@@ -589,21 +589,21 @@ export function GameBoard({
     const tileShake = initTileShake(index);
     const swapAnim = swapAnimationsProp.get(index);
     
-    // 计算变换
+    // 计算变换 - 修复transform错误
     const transforms = [{ scale: tileScale }];
     
     if (isSwapMode) {
-      // 交换模式下的晃动效果
+      // 交换模式下的晃动效果 - 分别添加translateX和translateY
       transforms.push({
         translateX: tileShake.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [-2, 0, 2],
+          outputRange: [-1.5, 0, 1.5],
         }),
       });
       transforms.push({
         translateY: tileShake.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [-1, 0, 1],
+          outputRange: [-0.8, 0, 0.8],
         }),
       });
     }
@@ -613,6 +613,7 @@ export function GameBoard({
       transforms.push({
         translateX: swapAnim.translateX,
         translateY: swapAnim.translateY,
+      transforms.push({
       });
     }
     

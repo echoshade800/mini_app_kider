@@ -149,22 +149,22 @@ export default function LevelDetailScreen() {
     Animated.parallel([
       Animated.timing(swapAnim1.translateX, {
         toValue: deltaX,
-        duration: 300,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(swapAnim1.translateY, {
         toValue: deltaY,
-        duration: 300,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(swapAnim2.translateX, {
         toValue: -deltaX,
-        duration: 300,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(swapAnim2.translateY, {
         toValue: -deltaY,
-        duration: 300,
+        duration: 400,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -186,7 +186,6 @@ export default function LevelDetailScreen() {
       setIsSwapMode(false);
       setSelectedSwapTile(null);
     });
-  };
   };
 
   const handleRestart = () => {

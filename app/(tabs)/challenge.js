@@ -112,14 +112,33 @@ export default function ChallengeScreen() {
     // Award 3 IQ points per clear
     setCurrentIQ(prev => prev + 3);
     
-    // 挑战模式中立即生成新棋盘
-    generateNewBoard();
+    // 创建新棋盘，清除指定位置的方块
+    if (!currentBoard) return;
+    
+    const newTiles = [...currentBoard.tiles];
+    clearedPositions.forEach(({ row, col }) => {
+      const index = row * currentBoard.width + col;
+      newTiles[index] = 0;
+    });
+    
+    const updatedBoard = { ...currentBoard, tiles: newTiles };
+    setCurrentBoard(updatedBoard);
+    
+    // 检查是否所有数字方块都被消除
+    const hasRemainingTiles = newTiles.some(tile => tile > 0);
+    
+    if (!hasRemainingTiles) {
+      // 所有方块都消除了，延迟生成新棋盘
+      setTimeout(() => {
+        generateNewBoard();
+      }, 500);
+    }
   };
 
   const handleBackToHome = () => {
     setShowResults(false);
     setGameState('ready');
-    router.replace('/');
+    router.replace('/(tabs)');
   };
 
   const getIQTitle = (iq) => {
@@ -184,26 +203,17 @@ export default function ChallengeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* 游戏中的返回按钮 */}
-      <View style={styles.gameTopBar}>
+      {/* 返回按钮 */}
+      <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.gameBackButton}
+          style={styles.backButton}
           onPress={() => {
             if (timerRef.current) {
               clearInterval(timerRef.current);
             }
             setGameState('ready');
-            router.replace('/');
+            router.replace('/(tabs)');
           }}
-        >
-          <Ionicons name="arrow-back" size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
-      
-      {/* 返回按钮 */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.replace('/')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -251,6 +261,19 @@ export default function ChallengeScreen() {
           onTilesClear={handleTilesClear}
           disabled={gameState !== 'playing'}
         />
+      )}
+
+      {/* Change Button - Left Bottom (Challenge Mode doesn't use change items) */}
+      {gameState === 'playing' && (
+        <View style={styles.challengeButtons}>
+          <TouchableOpacity 
+            style={styles.challengeChangeButton}
+            disabled={true}
+          >
+            <Text style={styles.challengeChangeButtonText}>Change!</Text>
+            <Text style={styles.challengeChangeButtonSubtext}>(N/A)</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Results Modal */}
@@ -436,6 +459,29 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#FF5722',
+  },
+  challengeButtons: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+  },
+  challengeChangeButton: {
+    backgroundColor: '#ccc',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  challengeChangeButtonText: {
+    color: '#999',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  challengeChangeButtonSubtext: {
+    color: '#999',
+    fontSize: 12,
+    marginTop: 2,
   },
   modalOverlay: {
     flex: 1,

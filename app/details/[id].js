@@ -1,7 +1,7 @@
 /**
- * Level Details Screen - Individual level gameplay and metadata
- * Purpose: Show level info and provide gameplay interface
- * Extend: Add level statistics, hints, or social sharing features
+ * Level Detail Screen - Individual level gameplay
+ * Purpose: Play a specific level with board generation and progress tracking
+ * Extend: Add level-specific hints, time tracking, or move counting
  */
 
 import React, { useState, useEffect } from 'react';
@@ -14,273 +14,263 @@ import {
   Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
 import { STAGE_NAMES, getStageGroup } from '../utils/stageNames';
 
-export default function LevelDetailsScreen() {
+export default function LevelDetailScreen() {
   const { id } = useLocalSearchParams();
   const level = parseInt(id);
   
   const { gameData, updateGameData } = useGameStore();
   const [currentBoard, setCurrentBoard] = useState(null);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [clearedTiles, setClearedTiles] = useState(new Set());
+  const [swapMode, setSwapMode] = useState(false);
+  const [firstSwapTile, setFirstSwapTile] = useState(null);
+  const [showVictory, setShowVictory] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadLevel();
+    if (level && !isNaN(level)) {
+      generateNewBoard();
+    }
   }, [level]);
 
-  const loadLevel = () => {
-    const board = generateBoard(level, true); // 强制生成新的棋盘
-    setCurrentBoard(board);
-    setClearedTiles(new Set());
+  const generateNewBoard = () => {
+    try {
+      setIsLoading(true);
+      const board = generateBoard(level);
+      setCurrentBoard(board);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to generate board:', error);
+      Alert.alert('错误', '无法生成棋盘，请重试');
+      setIsLoading(false);
+    }
   };
 
   const handleTilesClear = (clearedPositions) => {
     if (!currentBoard) return;
-
-    // Create new board with cleared tiles
-    const newTiles = [...currentBoard.tiles];
-    const newClearedSet = new Set(clearedTiles);
     
+    // 创建新棋盘，清除指定位置的方块
+    const newTiles = [...currentBoard.tiles];
     clearedPositions.forEach(({ row, col }) => {
       const index = row * currentBoard.width + col;
       newTiles[index] = 0;
-      newClearedSet.add(index);
     });
-
+    
     const updatedBoard = { ...currentBoard, tiles: newTiles };
     setCurrentBoard(updatedBoard);
-    setClearedTiles(newClearedSet);
-
-    // Check if level is complete
+    
+    // 检查是否所有数字方块都被消除
     const hasRemainingTiles = newTiles.some(tile => tile > 0);
     
     if (!hasRemainingTiles) {
+      // 关卡完成
       setTimeout(() => {
         handleLevelComplete();
-      }, 500);
+      }, 1000);
     }
   };
 
   const handleLevelComplete = () => {
-    // Update progress
-    const currentMax = gameData?.maxLevel || 0;
-    const currentItems = gameData?.changeItems || 0;
+    // 更新游戏数据
+    const newMaxLevel = Math.max(gameData?.maxLevel || 0, level);
+    const newChangeItems = (gameData?.changeItems || 0) + 1; // 完成关卡获得1个交换道具
     
-    if (level > currentMax) {
-      updateGameData({ 
-        maxLevel: level,
-        changeItems: currentItems + 1, // Award change item
-        lastPlayedLevel: level + 1
-      });
-    }
+    updateGameData({
+      maxLevel: newMaxLevel,
+      changeItems: newChangeItems,
+      lastPlayedLevel: level
+    });
     
-    setShowSuccess(true);
-  };
-
-  const handleUseChange = () => {
-    const currentItems = gameData?.changeItems || 0;
-    if (currentItems <= 0) {
-      Alert.alert(
-        'No Change Items',
-        'You need change items to swap tiles. Complete more levels to earn them!',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Use Change Item',
-      'This feature allows you to swap any two tiles on the board. Would you like to use one change item?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Use Item', 
-          onPress: () => {
-            updateGameData({ changeItems: currentItems - 1 });
-            Alert.alert('Change Item Used', 'Select two tiles to swap their positions.');
-          }
-        }
-      ]
-    );
-  };
-
-  const handleRestart = () => {
-    loadLevel(); // 直接重新生成棋盘，不需要确认
+    setShowVictory(true);
   };
 
   const handleNextLevel = () => {
-    setShowSuccess(false);
-    router.replace(`/details/${level + 1}`);
+    setShowVictory(false);
+    const nextLevel = level + 1;
+    router.replace(`/details/${nextLevel}`);
+  };
+
+  const handleRestart = () => {
+    setShowVictory(false);
+    generateNewBoard();
   };
 
   const handleBackToLevels = () => {
-    router.replace('/');
+    router.replace('/(tabs)/levels');
   };
 
-  const getLevelInfo = () => {
-    const stageName = level <= 200 ? STAGE_NAMES[level] : `The Last Horizon+${level - 200}`;
-    const group = getStageGroup(level);
-    const boardSize = getBoardSize(level);
-    const difficulty = getDifficulty(level);
+  const handleSwapModeToggle = () => {
+    if (swapMode) {
+      // 退出交换模式
+      setSwapMode(false);
+      setFirstSwapTile(null);
+    } else {
+      // 进入交换模式
+      if ((gameData?.changeItems || 0) > 0) {
+        setSwapMode(true);
+        setFirstSwapTile(null);
+      } else {
+        Alert.alert('道具不足', '你没有交换道具了！完成关卡可以获得更多道具。');
+      }
+    }
+  };
+
+  const handleTileClick = (row, col) => {
+    if (!swapMode || !currentBoard) return;
     
-    return { stageName, group, boardSize, difficulty };
+    const index = row * currentBoard.width + col;
+    const value = currentBoard.tiles[index];
+    
+    // 只能选择有数字的方块
+    if (value === 0) return;
+    
+    if (!firstSwapTile) {
+      // 选择第一个方块
+      setFirstSwapTile({ row, col, index, value });
+    } else {
+      // 选择第二个方块，执行交换
+      if (firstSwapTile.index === index) {
+        // 点击同一个方块，取消选择
+        setFirstSwapTile(null);
+        return;
+      }
+      
+      // 执行交换
+      const newTiles = [...currentBoard.tiles];
+      newTiles[firstSwapTile.index] = value;
+      newTiles[index] = firstSwapTile.value;
+      
+      setCurrentBoard({ ...currentBoard, tiles: newTiles });
+      
+      // 消耗道具
+      updateGameData({
+        changeItems: (gameData?.changeItems || 0) - 1
+      });
+      
+      // 退出交换模式
+      setSwapMode(false);
+      setFirstSwapTile(null);
+    }
   };
 
-  const getBoardSize = (level) => {
-    if (level <= 10) return '4×4 (16 tiles)';
-    if (level <= 20) return '5×5 (25 tiles)';
-    if (level <= 40) return '6×6 (36 tiles)';
-    if (level <= 60) return '7×7 (49 tiles)';
-    if (level <= 90) return '8×8 (64 tiles)';
-    if (level <= 120) return '9×9 (81 tiles)';
-    if (level <= 150) return '10×10 (100 tiles)';
-    if (level <= 180) return '11×11 (121 tiles)';
-    return '12×11 (132 tiles)';
-  };
-
-  const getDifficulty = (level) => {
-    if (level <= 40) return { label: 'Easy', color: '#4CAF50' };
-    if (level <= 90) return { label: 'Intermediate', color: '#FF9800' };
-    return { label: 'Hard', color: '#f44336' };
-  };
-
-  if (!currentBoard) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading level {level}...</Text>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const levelInfo = getLevelInfo();
-  const isUnlocked = level <= (gameData?.maxLevel || 0) + 1;
-  const changeItems = gameData?.changeItems || 0;
-
-  if (!isUnlocked) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.lockedContainer}>
-          <Ionicons name="lock-closed" size={80} color="#ccc" />
-          <Text style={styles.lockedTitle}>Level Locked</Text>
-          <Text style={styles.lockedText}>
-            Complete previous levels to unlock this stage.
-          </Text>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={handleBackToLevels}
-          >
-            <Text style={styles.backButtonText}>Back to Levels</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const stageName = STAGE_NAMES[level] || `Level ${level}`;
+  const stageGroup = getStageGroup(level);
+  const progress = Math.min(level / 200, 1); // 进度条基于200关
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.push('/')}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+      {/* 顶部栏 */}
+      <View style={styles.topBar}>
+        {/* 左侧设置按钮 */}
+        <TouchableOpacity style={styles.settingsButton}>
+          <View style={styles.settingsIcon}>
+            <Ionicons name="settings" size={24} color="#333" />
+          </View>
         </TouchableOpacity>
         
-        <View style={styles.headerContent}>
-          <Text style={styles.levelTitle}>Level {level}</Text>
-          <Text style={styles.stageName} numberOfLines={1}>
-            {levelInfo.stageName}
-          </Text>
-          {currentBoard?.requiredSwaps > 0 && (
-            <Text style={styles.swapHint}>
-              建议使用 {currentBoard.requiredSwaps} 次交换
-            </Text>
-          )}
+        {/* 中间进度区域 */}
+        <View style={styles.progressArea}>
+          {/* 头像 */}
+          <View style={styles.avatar}>
+            <Text style={styles.avatarEmoji}>👶</Text>
+          </View>
+          
+          {/* 进度条 */}
+          <View style={styles.progressBarContainer}>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+            </View>
+            {/* 阶段标签 */}
+            <View style={styles.stageLabel}>
+              <Text style={styles.stageLabelText}>{stageGroup}</Text>
+            </View>
+          </View>
         </View>
         
-        <View style={styles.changeCounter}>
-          <Ionicons name="swap-horizontal" size={16} color="#666" />
-          <Text style={styles.changeCountText}>{changeItems}</Text>
+        {/* 右侧关卡数字 */}
+        <View style={styles.levelNumber}>
+          <Text style={styles.levelNumberText}>{level}</Text>
         </View>
       </View>
 
+      {/* 游戏棋盘 */}
+      {currentBoard && (
+        <GameBoard 
+          board={currentBoard}
+          onTilesClear={handleTilesClear}
+          onTileClick={handleTileClick}
+          swapMode={swapMode}
+          firstSwapTile={firstSwapTile}
+        />
+      )}
 
-      {/* Game Board */}
-      <GameBoard 
-        board={currentBoard}
-        onTilesClear={handleTilesClear}
-      />
-
-      {/* Bottom Actions - Fixed at bottom */}
-      <View style={styles.bottomActionsContainer}>
+      {/* 底部交换按钮 */}
+      <View style={styles.bottomControls}>
         <TouchableOpacity 
-          style={[
-            styles.bottomActionButton,
-            changeItems <= 0 && styles.actionButtonDisabled
-          ]}
-          onPress={handleUseChange}
-          disabled={changeItems <= 0}
+          style={[styles.swapButton, swapMode && styles.swapButtonActive]}
+          onPress={handleSwapModeToggle}
         >
-          <Ionicons name="swap-horizontal" size={20} color="white" />
-          <Text style={styles.bottomActionButtonText}>
-            Use Change ({changeItems})
+          <Ionicons 
+            name="swap-horizontal" 
+            size={24} 
+            color={swapMode ? "white" : "#666"} 
+          />
+          <Text style={[styles.swapButtonText, swapMode && styles.swapButtonTextActive]}>
+            交换 ({gameData?.changeItems || 0})
           </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.bottomActionButton, styles.restartButton]}
-          onPress={handleRestart}
-        >
-          <Ionicons name="refresh" size={20} color="white" />
-          <Text style={styles.bottomActionButtonText}>Reset</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Success Modal */}
+      {/* 胜利弹窗 */}
       <Modal
-        visible={showSuccess}
+        visible={showVictory}
         transparent
         animationType="fade"
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.successModal}>
+          <View style={styles.victoryModal}>
             <Ionicons name="trophy" size={60} color="#FFD700" />
-            <Text style={styles.successTitle}>Level Complete!</Text>
-            <Text style={styles.successSubtitle}>
-              {levelInfo.stageName}
-            </Text>
+            <Text style={styles.victoryTitle}>关卡完成！</Text>
+            <Text style={styles.victorySubtitle}>{stageName}</Text>
+            <Text style={styles.rewardText}>获得 1 个交换道具！</Text>
             
-            <View style={styles.rewards}>
-              <Text style={styles.rewardText}>+1 Change Item earned!</Text>
-            </View>
-            
-            <View style={styles.modalActions}>
+            <View style={styles.victoryButtons}>
+              <TouchableOpacity 
+                style={styles.restartButton}
+                onPress={handleRestart}
+              >
+                <Text style={styles.restartButtonText}>重新开始</Text>
+              </TouchableOpacity>
+              
               <TouchableOpacity 
                 style={styles.nextButton}
                 onPress={handleNextLevel}
               >
-                <Text style={styles.nextButtonText}>Next Level</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.backToLevelsButton}
-                onPress={() => {
-                  setShowSuccess(false);
-                  handleBackToLevels();
-                }}
-              >
-                <Text style={styles.backToLevelsButtonText}>Back to Levels</Text>
+                <Text style={styles.nextButtonText}>下一关</Text>
               </TouchableOpacity>
             </View>
+            
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={handleBackToLevels}
+            >
+              <Text style={styles.backButtonText}>返回关卡选择</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -291,7 +281,7 @@ export default function LevelDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff',
+    backgroundColor: '#8FA8B2', // 灰蓝色背景
   },
   loadingContainer: {
     flex: 1,
@@ -302,116 +292,111 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#666',
   },
-  lockedContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
-  },
-  lockedTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#666',
-    marginTop: 20,
-    marginBottom: 12,
-  },
-  lockedText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    backgroundColor: 'transparent',
   },
-  backButton: {
-    padding: 8,
+  settingsButton: {
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  headerContent: {
+  settingsIcon: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#FFD700', // 黄色背景
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressArea: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
   },
-  levelTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  stageName: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  swapHint: {
-    fontSize: 12,
-    color: '#FF9800',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  changeCounter: {
-    flexDirection: 'row',
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFB74D',
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 8,
+    marginRight: 12,
+  },
+  avatarEmoji: {
+    fontSize: 20,
+  },
+  progressBarContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#333',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+  },
+  stageLabel: {
+    position: 'absolute',
+    right: 0,
+    top: -25,
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  changeCountText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
+  stageLabelText: {
+    color: 'white',
+    fontSize: 12,
     fontWeight: '600',
   },
-  bottomActionsContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingBottom: 32,
-    backgroundColor: 'rgba(240, 248, 255, 0.95)',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    gap: 12,
+  levelNumber: {
+    width: 50,
+    alignItems: 'center',
   },
-  bottomActionButton: {
-    flex: 1,
+  levelNumberText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  bottomControls: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+  },
+  swapButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF9800',
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: 'white',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 25,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  actionButtonDisabled: {
-    backgroundColor: '#ccc',
+  swapButtonActive: {
+    backgroundColor: '#FF9800',
   },
-  restartButton: {
-    backgroundColor: '#2196F3',
-  },
-  bottomActionButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+  swapButtonText: {
     marginLeft: 8,
-  },
-  backButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
+    color: '#666',
+  },
+  swapButtonTextActive: {
+    color: 'white',
   },
   modalOverlay: {
     flex: 1,
@@ -419,7 +404,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  successModal: {
+  victoryModal: {
     backgroundColor: 'white',
     borderRadius: 16,
     padding: 30,
@@ -427,55 +412,58 @@ const styles = StyleSheet.create({
     width: '80%',
     maxWidth: 350,
   },
-  successTitle: {
-    fontSize: 24,
+  victoryTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
     marginTop: 16,
     marginBottom: 8,
   },
-  successSubtitle: {
-    fontSize: 16,
+  victorySubtitle: {
+    fontSize: 18,
     color: '#666',
+    marginBottom: 8,
     textAlign: 'center',
-    marginBottom: 20,
-  },
-  rewards: {
-    backgroundColor: '#E8F5E8',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 24,
   },
   rewardText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#4CAF50',
     fontWeight: '600',
+    marginBottom: 24,
   },
-  modalActions: {
-    width: '100%',
+  victoryButtons: {
+    flexDirection: 'row',
     gap: 12,
+    marginBottom: 16,
+  },
+  restartButton: {
+    backgroundColor: '#FF9800',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  restartButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   nextButton: {
     backgroundColor: '#4CAF50',
-    paddingVertical: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 8,
-    alignItems: 'center',
   },
   nextButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
-  backToLevelsButton: {
-    backgroundColor: '#f5f5f5',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
+  backButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
-  backToLevelsButtonText: {
+  backButtonText: {
     color: '#666',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
   },
 });

@@ -29,12 +29,65 @@ export function GameBoard({
 }) {
   const [shakeAnimations, setShakeAnimations] = useState({});
   const [selection, setSelection] = useState(null);
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onTileClick, 
+  swapMode = false, 
+  firstSwapTile = null, 
+  disabled = false 
+}) {
   const { settings } = useGameStore();
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
+    const r1 = row1 + 1;
+    const c1 = col1 + 1;
+    const r2 = row2 + 1;
+    const c2 = col2 + 1;
+    
+    return prefixSum[r2][c2] - prefixSum[r1-1][c2] - prefixSum[r2][c1-1] + prefixSum[r1-1][c1-1];
+  };
+  
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
   if (!board) {
@@ -123,13 +176,6 @@ export function GameBoard({
     }
   };
 
-  // 停止所有晃动动画
-  const stopAllShakeAnimations = () => {
-    Object.keys(shakeAnimations).forEach(index => {
-      stopShakeAnimation(parseInt(index));
-    });
-  };
-
   // 当进入交换模式时开始晃动
   useEffect(() => {
     if (swapMode) {
@@ -140,12 +186,16 @@ export function GameBoard({
       });
     } else {
       // 退出交换模式时停止所有晃动
-      stopAllShakeAnimations();
+      Object.keys(shakeAnimations).forEach(index => {
+        stopShakeAnimation(parseInt(index));
+      });
     }
     
     return () => {
       // 清理函数
-      stopAllShakeAnimations();
+      Object.keys(shakeAnimations).forEach(index => {
+        stopShakeAnimation(parseInt(index));
+      });
     };
   }, [swapMode]);
 
@@ -223,10 +273,6 @@ export function GameBoard({
   const handleTilePress = (row, col) => {
     if (swapMode && onTileClick) {
       onTileClick(row, col);
-      // 交换完成后停止晃动动画
-      if (firstSwapTile) {
-        stopAllShakeAnimations();
-      }
     }
   };
 
@@ -246,7 +292,6 @@ export function GameBoard({
       for (let col = minCol; col <= maxCol; col++) {
         if (row >= 0 && row < height && col >= 0 && col < width) {
           const index = row * width + col;
-          const value = tiles[index];
           if (value > 0) {
             selectedTiles.push({ row, col, value, index });
           }
@@ -268,7 +313,6 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
 
-    if (sum === 10 && selectedTiles.length > 0) {
       // Success - 创建爆炸效果
       if (settings?.hapticsEnabled !== false) {
         try {
@@ -279,7 +323,6 @@ export function GameBoard({
       }
       
       // 计算爆炸中心位置
-      const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
       const explosionX = centerCol * cellSize + cellSize / 2 + 10;
@@ -329,6 +372,7 @@ export function GameBoard({
       // Failure - 蓝色反馈
       if (settings?.hapticsEnabled !== false) {
         try {
+          // 短震动反馈
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         } catch (error) {
           console.log('Haptics not available');
@@ -405,7 +449,6 @@ export function GameBoard({
     return {
       sum,
       isSuccess: sum === 10,
-      style: {
         position: 'absolute',
         left: left - 20,
         top: top - 20,
@@ -594,11 +637,11 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   board: {
-    backgroundColor: '#2E7D32',
+    backgroundColor: '#4CAF50',
     padding: 10,
     borderRadius: 12,
     borderWidth: 6,
-    borderColor: '#8D6E63',
+    borderColor: '#D4A574',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

@@ -49,28 +49,10 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // 计算实际有数字的区域边界
-  const getActualBoardBounds = () => {
-    let minRow = height, maxRow = -1, minCol = width, maxCol = -1;
-    
-    for (let row = 0; row < height; row++) {
-      for (let col = 0; col < width; col++) {
-        const index = row * width + col;
-        if (tiles[index] > 0) {
-          minRow = Math.min(minRow, row);
-          maxRow = Math.max(maxRow, row);
-          minCol = Math.min(minCol, col);
-          maxCol = Math.max(maxCol, col);
-        }
-      }
-    }
-    
-    return { minRow, maxRow, minCol, maxCol };
-  };
-  
-  const bounds = getActualBoardBounds();
-  const actualWidth = bounds.maxCol - bounds.minCol + 1;
-  const actualHeight = bounds.maxRow - bounds.minRow + 1;
+  // 使用完整的棋盘尺寸，不随数字方块消除而改变
+  const bounds = { minRow: 0, maxRow: height - 1, minCol: 0, maxCol: width - 1 };
+  const actualWidth = width;
+  const actualHeight = height;
   
   // 计算格子大小，数字方块更小
   const cellSize = Math.min(
@@ -585,8 +567,8 @@ export function GameBoard({
 
     const relativeRow = row - bounds.minRow;
     const relativeCol = col - bounds.minCol;
-    const left = relativeCol * cellSize + 10 + tileMargin;
-    const top = relativeRow * cellSize + 10 + tileMargin;
+    const left = col * cellSize + 10 + tileMargin;
+    const top = row * cellSize + 10 + tileMargin;
 
     const tileScale = initTileScale(index);
     const tileShake = initTileShake(index);

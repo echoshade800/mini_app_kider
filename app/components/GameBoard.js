@@ -246,11 +246,17 @@ export function GameBoard({
       // 交换模式下不允许画框
       if (isSwapMode) return false;
       
+      // 交换模式下不允许画框
+      if (isSwapMode) return false;
+      
       const { pageX, pageY } = evt.nativeEvent;
       // 只有在网格区域内才允许启动画框
       return !disabled && isInsideGridArea(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
+      // 交换模式下不允许画框
+      if (isSwapMode) return false;
+      
       // 交换模式下不允许画框
       if (isSwapMode) return false;
       
@@ -379,7 +385,20 @@ export function GameBoard({
     },
     
     // 允许其他组件终止画框（按钮优先）
-    onPanResponderTerminationRequest: () => true,
+    onPanResponderTerminationRequest: (evt) => {
+      // 如果触摸点在按钮区域，优先给按钮处理
+      const { pageX, pageY } = evt.nativeEvent;
+      const screenHeight = Dimensions.get('window').height;
+      const buttonAreaBottom = screenHeight - 20; // 底部按钮区域
+      const buttonAreaTop = screenHeight - 150; // 按钮区域顶部
+      
+      // 如果触摸在按钮区域，让按钮优先处理
+      if (pageY >= buttonAreaTop && pageY <= buttonAreaBottom) {
+        return true;
+      }
+      
+      return true;
+    },
     
     // 被其他组件拒绝时清理状态
     onPanResponderReject: () => {

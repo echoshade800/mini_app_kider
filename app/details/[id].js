@@ -219,6 +219,7 @@ export default function LevelDetailScreen() {
           ]}
           onPress={isSwapMode ? handleCancelSwap : handleUseChange}
           disabled={changeItems <= 0 && !isSwapMode}
+          activeOpacity={0.7}
         >
           <Ionicons 
             name={isSwapMode ? "close" : "swap-horizontal"} 
@@ -226,7 +227,9 @@ export default function LevelDetailScreen() {
             color="white" 
           />
           {!isSwapMode && (
-            <Text style={styles.floatingButtonBadge}>{changeItems}</Text>
+            <View style={styles.floatingButtonBadge}>
+              <Text style={styles.floatingButtonBadgeText}>{changeItems}</Text>
+            </View>
           )}
         </TouchableOpacity>
         
@@ -235,6 +238,7 @@ export default function LevelDetailScreen() {
           <TouchableOpacity 
             style={[styles.floatingButton, styles.resetButton]}
             onPress={handleRestart}
+            activeOpacity={0.7}
           >
             <Ionicons name="refresh" size={24} color="white" />
           </TouchableOpacity>

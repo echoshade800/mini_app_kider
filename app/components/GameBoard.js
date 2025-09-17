@@ -113,7 +113,20 @@ export function GameBoard({
 
   // 检查是否需要救援
   const checkForRescue = React.useCallback(() => {
-    if (!board || disabled) return;
+  const { 
+    tileSize, 
+    tileWidth, 
+    tileHeight, 
+    gap, 
+    padding, 
+    boardWidth, 
+    boardHeight, 
+    boardX, 
+    boardY, 
+    innerWidth,
+    innerHeight,
+    getTilePosition 
+  } = boardMetrics;
     
     const { tiles, width, height } = board;
     
@@ -552,8 +565,8 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    if (!boardLayout) return null;
-
+    const cellWidth = tileWidth + gap;
+    const cellHeight = tileHeight + gap;
     const { layout } = boardLayout;
     const cellWidth = layout.tile + layout.gap;
     const cellHeight = layout.tile + layout.gap;
@@ -594,14 +607,14 @@ export function GameBoard({
     const maxRow = Math.max(startRow, endRow);
     const maxCol = Math.max(startCol, endCol);
     
-    if (!boardLayout) return null;
-
+    const cellWidth = tileWidth + gap;
+    const cellHeight = tileHeight + gap;
     const { layout } = boardLayout;
     const cellWidth = layout.tile + layout.gap;
     const cellHeight = layout.tile + layout.gap;
 
-    const left = maxCol * cellWidth + layout.tile;
-    const top = maxRow * cellHeight + layout.tile;
+    const left = maxCol * cellWidth + tileWidth;
+    const top = maxRow * cellHeight + tileHeight;
     
     return {
       sum,
@@ -706,8 +719,8 @@ export function GameBoard({
           
           return (
             <Animated.View 
-              key={tempKey}
-              style={[
+                  width: tileWidth,
+                  height: tileHeight,
                 { 
                   position: 'absolute',
                   left: x,
@@ -724,7 +737,7 @@ export function GameBoard({
               <View style={styles.tileInner}>
                 <Text style={[
                   styles.tileText,
-                  { 
+                  { fontSize: Math.max(14, tileWidth * 0.45) }
                     fontSize: Math.max(14, layout.tile * 0.45),
                     lineHeight: layout.tile,
                   }
@@ -799,8 +812,8 @@ export function GameBoard({
         tileStyle = [styles.tileInner, styles.tileSwapSelected];
       } else if (itemMode === 'fractalSplit') {
         tileStyle = [styles.tileInner, styles.tileFractalSelected];
-      }
-    }
+          width: tileWidth,
+          height: tileHeight,
 
     let opacity = 1;
     if (fractalAnim && fractalAnim.opacity) {
@@ -838,8 +851,8 @@ export function GameBoard({
           <Text style={[
             styles.tileText,
             { 
-              fontSize: Math.max(14, layout.tile * 0.45),
-              lineHeight: layout.tile,
+              fontSize: Math.max(14, tileWidth * 0.45),
+              lineHeight: tileHeight,
             }
           ]}>
             {value}
@@ -884,8 +897,10 @@ export function GameBoard({
     left: 0,
     right: 0,
     bottom: 0,
-  } : {
-    width: 320,
+              width: innerWidth,
+              height: innerHeight,
+              left: padding,
+              top: padding,
     height: 400,
   };
 
@@ -904,7 +919,7 @@ export function GameBoard({
                 height: boardLayout.layout.innerHeight,
                 left: (boardLayout.boardWidth - boardLayout.layout.innerWidth) / 2,
                 top: (boardLayout.boardHeight - boardLayout.layout.innerHeight) / 2,
-              }}
+          {/* 棋盘内容区域 - 确保所有方块都在内部 */}
             >
               {/* Grid lines */}
               {renderGridLines(boardLayout.layout)}

@@ -72,11 +72,11 @@ export function GameBoard({
   // 计算单元格大小，优先适配宽度（长方形布局）
   const cellSizeByWidth = maxBoardWidth / width;
   const cellSizeByHeight = maxBoardHeight / height;
-  const cellSize = Math.max(Math.min(cellSizeByWidth, cellSizeByHeight, 45), 25);
+  const cellSize = Math.max(Math.min(cellSizeByWidth, cellSizeByHeight, 35), 20); // 减小方块尺寸
   
   // Sticky note tile size - 更接近参考图的比例
-  const tileWidth = cellSize * 0.88; // 增加占比，更饱满
-  const tileHeight = cellSize * 0.88; // 保持接近正方形，但稍微紧凑
+  const tileWidth = cellSize * 0.82; // 减小占比，参考第二张图的密集度
+  const tileHeight = cellSize * 0.82; // 保持紧凑布局
   const tileMarginX = (cellSize - tileWidth) / 2;
   const tileMarginY = (cellSize - tileHeight) / 2;
   
@@ -540,6 +540,59 @@ export function GameBoard({
     const index = row * width + col;
     
     if (value === 0) {
+      // 检查是否有临时跳跃动画
+      const tempAnimKeys = Array.from(fractalAnimations ? fractalAnimations.keys() : [])
+        .filter(key => key.toString().startsWith(`temp_${index}_`));
+      
+      if (tempAnimKeys.length > 0) {
+        // 渲染跳跃中的临时方块
+        return tempAnimKeys.map(tempKey => {
+          const tempAnim = fractalAnimations.get(tempKey);
+          if (!tempAnim) return null;
+          
+          const left = col * cellSize + 20 + tileMarginX;
+          const top = row * cellSize + 20 + tileMarginY;
+          const rotation = getTileRotation(row, col);
+          
+          const transforms = [
+            { scale: tempAnim.scale },
+            { rotate: `${rotation}deg` },
+            { translateX: tempAnim.translateX },
+            { translateY: tempAnim.translateY },
+          ];
+          
+          return (
+            <Animated.View 
+              key={tempKey}
+              style={[
+                styles.stickyNote,
+                { 
+                  position: 'absolute',
+                  left,
+                  top,
+                  width: tileWidth, 
+                  height: tileHeight,
+                  transform: transforms,
+                  opacity: tempAnim.opacity,
+                  backgroundColor: '#FFF9E6',
+                  borderColor: '#333',
+                }
+              ]}
+            >
+              <Text style={[
+                styles.stickyNoteText,
+                { 
+                  fontSize: Math.min(tileWidth, tileHeight) * 0.4,
+                  color: '#111'
+                }
+              ]}>
+                {/* 从tempKey中提取原始值 */}
+                {Math.floor(Math.random() * 9) + 1}
+              </Text>
+            </Animated.View>
+          );
+        });
+      }
       return null;
     }
 

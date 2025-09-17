@@ -218,6 +218,8 @@ export default function LevelDetailScreen() {
     if (!currentBoard) return;
 
     const { value, index } = tile;
+    const row = Math.floor(index / currentBoard.width);
+    const col = index % currentBoard.width;
 
     // 寻找可以整除的分割方案，优先级：4 → 3 → 2
     const divisors = [4, 3, 2];
@@ -251,6 +253,7 @@ export default function LevelDetailScreen() {
     // 计算分裂值
     const splitValue = value / splitCount;
     const newTiles = [...currentBoard.tiles];
+    const animationPromises = [];
     
     // 原位置保留一个分裂值
     newTiles[index] = splitValue;
@@ -259,6 +262,48 @@ export default function LevelDetailScreen() {
     const selectedEmptyPositions = emptyPositions.slice(0, splitCount - 1);
     selectedEmptyPositions.forEach(pos => {
       newTiles[pos] = splitValue;
+    });
+
+    // 创建分裂动画 - 小方块跳跃到目标位置
+    const cellSize = Math.min(
+      (screenWidth - 80) / currentBoard.width, 
+      (screenHeight - 300) / currentBoard.height,
+      35
+    );
+    
+    selectedEmptyPositions.forEach((targetPos, i) => {
+      const targetRow = Math.floor(targetPos / currentBoard.width);
+      const targetCol = targetPos % currentBoard.width;
+      
+      // 计算跳跃距离
+      const deltaX = (targetCol - col) * cellSize;
+      const deltaY = (targetRow - row) * cellSize;
+      
+      // 创建跳跃动画
+      const jumpAnim = {
+        translateX: new Animated.Value(0),
+        translateY: new Animated.Value(0),
+        scale: new Animated.Value(0.3),
+        opacity: new Animated.Value(1),
+      };
+      
+      // 设置临时动画状态
+      const tempIndex = `temp_${index}_${i}`;
+      fractalAnimationsRef.current.set(tempIndex, jumpAnim);
+      
+      // 执行跳跃动画
+      const jumpPromise = new Promise((resolve) => {
+        Animated.parallel([
+          Animated.timing(jumpAnim.translateX, { toValue: deltaX, duration: 500, useNativeDriver: true }),
+          Animated.timing(jumpAnim.translateY, { toValue: deltaY, duration: 500, useNativeDriver: true }),
+          Animated.timing(jumpAnim.scale, { toValue: 1, duration: 500, useNativeDriver: true }),
+        ]).start(() => {
+          fractalAnimationsRef.current.delete(tempIndex);
+          resolve();
+        });
+      });
+      
+      animationPromises.push(jumpPromise);
     });
 
     // 创建爆裂动画
@@ -271,21 +316,28 @@ export default function LevelDetailScreen() {
     fractalAnimationsRef.current.set(index, fractalAnim);
     setAnimationTrigger(prev => prev + 1);
     
-    // 执行爆裂动画
-    Animated.parallel([
-      Animated.timing(fractalAnim.scale, {
-        toValue: 2,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fractalAnim.opacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      // 动画完成后更新棋盘
-      setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
+    // 同时执行爆裂动画和跳跃动画
+    const explodePromise = new Promise((resolve) => {
+      Animated.parallel([
+        Animated.timing(fractalAnim.scale, {
+          toValue: 2,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fractalAnim.opacity, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start(resolve);
+    });
+    
+    // 等待所有动画完成
+    Promise.all([explodePromise, ...animationPromises]).then(() => {
+      // 所有动画完成后更新棋盘
+      setTimeout(() => {
+        setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
+      }, 100);
       
       // 清除动画状态
       fractalAnimationsRef.current.delete(index);

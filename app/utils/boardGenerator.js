@@ -392,6 +392,6 @@ function generateFallbackBoard(level, width, height, isChallengeMode = false) {
     requiredSwaps: 0,
     level,
     solvable: true,
-    isChallengeMode
+    isChallengeMode,
   };
 }

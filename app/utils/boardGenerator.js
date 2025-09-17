@@ -346,7 +346,8 @@ export function generateBoard(level, forceNewSeed = false) {
   
   // 如果无法生成可解的棋盘，返回一个简单的可解棋盘
   console.warn(`Failed to generate solvable board for level ${level}, using fallback`);
-  return generateFallbackBoard(level, width, height);
+  const { width: fallbackWidth, height: fallbackHeight } = getBoardDimensions(level);
+  return generateFallbackBoard(level, fallbackWidth, fallbackHeight);
 }
 
 // 生成后备的简单可解棋盘

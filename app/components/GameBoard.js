@@ -408,14 +408,11 @@ export function GameBoard({
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
 
-      if (!boardLayout) return;
+      const cellWidth = boardMetrics.tileWidth + boardMetrics.gap;
+      const cellHeight = boardMetrics.tileHeight + boardMetrics.gap;
 
-      const { layout } = boardLayout;
-      const cellWidth = layout.tile + layout.gap;
-      const cellHeight = layout.tile + layout.gap;
-
-      const explosionX = centerCol * cellWidth + layout.tile / 2;
-      const explosionY = centerRow * cellHeight + layout.tile / 2;
+      const explosionX = centerCol * cellWidth + boardMetrics.tileWidth / 2;
+      const explosionY = centerRow * cellHeight + boardMetrics.tileHeight / 2;
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
@@ -797,7 +794,8 @@ export function GameBoard({
 
   // 处理棋盘布局
   const handleBoardLayout = (event) => {
-    // Handle board layout logic here
+    // Board layout is now handled by useBoardMetrics hook
+    // No additional layout logic needed here
   };
 
   // 挑战模式使用全屏尺寸，闯关模式使用固定尺寸

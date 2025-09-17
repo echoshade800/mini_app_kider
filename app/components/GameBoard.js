@@ -127,12 +127,12 @@ export function GameBoard({
   
   const tileWidth = cellSize * tileRatio;
   const tileHeight = cellSize * tileRatio;
-  const tileMarginX = (cellSize - tileWidth) / 2;
-  const tileMarginY = (cellSize - tileHeight) / 2;
+  const tileMargin = (cellSize - tileWidth) / 2; // 统一间距
   
   // Board background size with wooden frame
-  const boardWidth = width * cellSize + 40; // 20px padding on each side  
-  const boardHeight = height * cellSize + 40;
+  const boardPadding = 20; // 统一内边距
+  const boardWidth = width * cellSize + (boardPadding * 2);
+  const boardHeight = height * cellSize + (boardPadding * 2);
 
   // Initialize tile scale animation
   const initTileScale = (index) => {
@@ -163,13 +163,13 @@ export function GameBoard({
     const boardLeft = boardCenterX - boardWidth / 2;
     const boardTop = boardCenterY - boardHeight / 2;
     
-    if (pageX < boardLeft + 20 || pageX > boardLeft + boardWidth - 20 ||
-        pageY < boardTop + 20 || pageY > boardTop + boardHeight - 20) {
+    if (pageX < boardLeft + boardPadding || pageX > boardLeft + boardWidth - boardPadding ||
+        pageY < boardTop + boardPadding || pageY > boardTop + boardHeight - boardPadding) {
       return false;
     }
     
-    const relativeX = pageX - boardLeft - 20;
-    const relativeY = pageY - boardTop - 20;
+    const relativeX = pageX - boardLeft - boardPadding;
+    const relativeY = pageY - boardTop - boardPadding;
     
     if (relativeX < 0 || relativeX >= width * cellSize ||
         relativeY < 0 || relativeY >= height * cellSize) {
@@ -253,8 +253,8 @@ export function GameBoard({
       const boardLeft = boardCenterX - boardWidth / 2;
       const boardTop = boardCenterY - boardHeight / 2;
       
-      const relativeX = pageX - boardLeft - 20;
-      const relativeY = pageY - boardTop - 20;
+      const relativeX = pageX - boardLeft - boardPadding;
+      const relativeY = pageY - boardTop - boardPadding;
       
       const startCol = Math.floor(relativeX / cellSize);
       const startRow = Math.floor(relativeY / cellSize);
@@ -283,13 +283,13 @@ export function GameBoard({
       const boardLeft = boardCenterX - boardWidth / 2;
       const boardTop = boardCenterY - boardHeight / 2;
       
-      if (pageX < boardLeft + 20 || pageX > boardLeft + boardWidth - 20 ||
-          pageY < boardTop + 20 || pageY > boardTop + boardHeight - 20) {
+      if (pageX < boardLeft + boardPadding || pageX > boardLeft + boardWidth - boardPadding ||
+          pageY < boardTop + boardPadding || pageY > boardTop + boardHeight - boardPadding) {
         return;
       }
       
-      const relativeX = pageX - boardLeft - 20;
-      const relativeY = pageY - boardTop - 20;
+      const relativeX = pageX - boardLeft - boardPadding;
+      const relativeY = pageY - boardTop - boardPadding;
       
       if (relativeX < 0 || relativeX >= width * cellSize ||
           relativeY < 0 || relativeY >= height * cellSize) {
@@ -404,8 +404,8 @@ export function GameBoard({
       const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
-      const explosionX = centerCol * cellSize + cellSize / 2 + 20;
-      const explosionY = centerRow * cellSize + cellSize / 2 + 20;
+      const explosionX = centerCol * cellSize + cellSize / 2 + boardPadding;
+      const explosionY = centerRow * cellSize + cellSize / 2 + boardPadding;
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
@@ -499,8 +499,8 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    const left = minCol * cellSize + 20;
-    const top = minRow * cellSize + 20;
+    const left = minCol * cellSize + boardPadding;
+    const top = minRow * cellSize + boardPadding;
     const width = (maxCol - minCol + 1) * cellSize;
     const height = (maxRow - minRow + 1) * cellSize;
     
@@ -535,8 +535,8 @@ export function GameBoard({
     const maxRow = Math.max(startRow, endRow);
     const maxCol = Math.max(startCol, endCol);
     
-    const left = maxCol * cellSize + cellSize + 20;
-    const top = maxRow * cellSize + cellSize + 20;
+    const left = maxCol * cellSize + cellSize + boardPadding;
+    const top = maxRow * cellSize + cellSize + boardPadding;
     
     return {
       sum,
@@ -574,8 +574,8 @@ export function GameBoard({
           style={[
             styles.gridLine,
             {
-              left: i * cellSize + 20, // 20px是棋盘内边距
-              top: 20,
+              left: i * cellSize + boardPadding,
+              top: boardPadding,
               width: 1,
               height: height * cellSize,
             }
@@ -592,8 +592,8 @@ export function GameBoard({
           style={[
             styles.gridLine,
             {
-              left: 20, // 20px是棋盘内边距
-              top: i * cellSize + 20,
+              left: boardPadding,
+              top: i * cellSize + boardPadding,
               width: width * cellSize,
               height: 1,
             }
@@ -687,8 +687,8 @@ export function GameBoard({
       return null;
     }
 
-    const left = col * cellSize + 20 + tileMarginX; // 20px是棋盘内边距
-    const top = row * cellSize + 20 + tileMarginY;
+    const left = col * cellSize + boardPadding + tileMargin;
+    const top = row * cellSize + boardPadding + tileMargin;
 
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
@@ -878,7 +878,7 @@ const styles = StyleSheet.create({
   },
   chalkboard: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
-    padding: 20, // 增加内边距，确保数字方块在棋盘中央
+    padding: 20, // 统一内边距，确保数字方块在棋盘中央
     borderRadius: 16,
     borderWidth: 8,
     borderColor: '#8B5A2B', // Wooden frame
@@ -891,7 +891,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 10,
     position: 'relative',
-    // 确保长方形棋盘也能很好地居中显示
     alignSelf: 'center',
   },
   gridLine: {

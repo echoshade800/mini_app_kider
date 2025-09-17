@@ -279,7 +279,7 @@ export default function ChallengeScreen() {
   };
 
   const handleUseFractalSplit = () => {
-    if (gameData?.fractalSplitItems <= 0) return;
+    if (gameData?.splitItems <= 0) return;
     setItemMode('fractalSplit');
     setSelectedSwapTile(null);
   };
@@ -336,7 +336,7 @@ export default function ChallengeScreen() {
           newTiles[emptyPositions[1]] = splitValues[1];
           
           setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
-          updateGameData({ fractalSplitItems: (gameData?.fractalSplitItems || 0) - 1 });
+          updateGameData({ splitItems: (gameData?.splitItems || 0) - 1 });
           setItemMode(null);
           setSelectedSwapTile(null);
         }
@@ -499,20 +499,20 @@ export default function ChallengeScreen() {
             style={[
               styles.itemButton,
               itemMode === 'fractalSplit' ? styles.itemButtonActive : styles.fractalSplitButton,
-              (gameData?.fractalSplitItems || 0) <= 0 && itemMode !== 'fractalSplit' && styles.itemButtonDisabled
+              (gameData?.splitItems || 0) <= 0 && itemMode !== 'fractalSplit' && styles.itemButtonDisabled
             ]}
             onPress={itemMode === 'fractalSplit' ? handleCancelItem : handleUseFractalSplit}
-            disabled={(gameData?.fractalSplitItems || 0) <= 0 && itemMode !== 'fractalSplit'}
+            disabled={(gameData?.splitItems || 0) <= 0 && itemMode !== 'fractalSplit'}
             activeOpacity={0.7}
           >
             <Ionicons 
-              name={itemMode === 'fractalSplit' ? "close" : "git-branch"} 
+              name={itemMode === 'fractalSplit' ? "close" : "cut"} 
               size={24} 
               color="white" 
             />
             {itemMode !== 'fractalSplit' && (
               <View style={styles.itemBadge}>
-                <Text style={styles.itemBadgeText}>{gameData?.fractalSplitItems || 0}</Text>
+                <Text style={styles.itemBadgeText}>{gameData?.splitItems || 0}</Text>
               </View>
             )}
           </TouchableOpacity>

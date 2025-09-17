@@ -40,7 +40,7 @@ export default function LevelDetailScreen() {
   const [animationTrigger, setAnimationTrigger] = useState(0); // 用于触发重新渲染
 
   const swapMasterItems = gameData?.swapMasterItems || 0;
-  const fractalSplitItems = gameData?.fractalSplitItems || 0;
+  const fractalSplitItems = gameData?.splitItems || 0;
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
 
   useEffect(() => {
@@ -75,12 +75,12 @@ export default function LevelDetailScreen() {
       const currentMaxLevel = gameData?.maxLevel || 0;
       const newMaxLevel = Math.max(currentMaxLevel, level);
       const newSwapMasterItems = swapMasterItems + 1; // Award 1 SwapMaster item
-      const newFractalSplitItems = fractalSplitItems + 1; // Award 1 FractalSplit item
+      const newSplitItems = fractalSplitItems + 1; // Award 1 Split item
       
       updateGameData({
         maxLevel: newMaxLevel,
         swapMasterItems: newSwapMasterItems,
-        fractalSplitItems: newFractalSplitItems,
+        splitItems: newSplitItems,
         lastPlayedLevel: level
       });
     } else {
@@ -407,8 +407,8 @@ export default function LevelDetailScreen() {
       setAnimationTrigger(prev => prev + 1);
       
       // 消耗道具并退出分裂模式
-      const newFractalSplitItems = Math.max(0, fractalSplitItems - 1);
-      updateGameData({ fractalSplitItems: newFractalSplitItems });
+      const newSplitItems = Math.max(0, fractalSplitItems - 1);
+      updateGameData({ splitItems: newSplitItems });
       setItemMode(null);
       setSelectedSwapTile(null);
     });
@@ -491,7 +491,7 @@ export default function LevelDetailScreen() {
         <View style={styles.itemsContainer}>
           <Ionicons name="shuffle" size={20} color="#2196F3" style={styles.itemIcon} />
           <Text style={styles.itemText}>{swapMasterItems}</Text>
-          <Ionicons name="git-branch" size={20} color="#9C27B0" style={styles.itemIcon} />
+          <Ionicons name="cut" size={20} color="#9C27B0" style={styles.itemIcon} />
           <Text style={styles.itemText}>{fractalSplitItems}</Text>
         </View>
       </View>
@@ -547,7 +547,7 @@ export default function LevelDetailScreen() {
           activeOpacity={0.7}
         >
           <Ionicons 
-            name={itemMode === 'fractalSplit' ? "close" : "git-branch"} 
+            name={itemMode === 'fractalSplit' ? "close" : "cut"} 
             size={24} 
             color="white" 
           />
@@ -573,7 +573,7 @@ export default function LevelDetailScreen() {
               Congratulations! You've completed {stageName}
             </Text>
             <Text style={styles.rewardText}>
-              +1 SwapMaster & +1 FractalSplit Earned!
+              +1 SwapMaster & +1 Split Earned!
             </Text>
             
             <View style={styles.modalButtons}>

@@ -436,42 +436,36 @@ export default function ChallengeScreen() {
             </View>
           )}
           
-          {/* Always render the board, but disable interaction when ready */}
-          {!currentBoard && generateNewBoard()}
           {currentBoard && (
-            <View style={styles.fullScreenBoard}>
-              <GameBoard 
-                board={currentBoard}
-                onTilesClear={handleTilesClear}
-                onTileClick={handleTileClick}
-                itemMode={itemMode}
-                selectedSwapTile={selectedSwapTile}
-                swapAnimations={swapAnimationsRef.current}
-                fractalAnimations={fractalAnimationsRef.current}
-                onBoardRefresh={handleBoardRefresh}
-                disabled={gameState !== 'playing'}
-                isChallenge={true}
-              />
-            </View>
+            <GameBoard 
+              board={currentBoard}
+              onTilesClear={handleTilesClear}
+              onTileClick={handleTileClick}
+              itemMode={itemMode}
+              selectedSwapTile={selectedSwapTile}
+              swapAnimations={swapAnimationsRef.current}
+              fractalAnimations={fractalAnimationsRef.current}
+              onBoardRefresh={handleBoardRefresh}
+              disabled={gameState !== 'playing'}
+              isChallenge={true}
+            />
           )}
         </>
       )}
 
       {gameState === 'finished' && currentBoard && (
-        <View style={styles.fullScreenBoard}>
-          <GameBoard 
-            board={currentBoard}
-            onTilesClear={handleTilesClear}
-            onTileClick={handleTileClick}
-            itemMode={itemMode}
-            selectedSwapTile={selectedSwapTile}
-            swapAnimations={swapAnimationsRef.current}
-            fractalAnimations={fractalAnimationsRef.current}
-            onBoardRefresh={handleBoardRefresh}
-            disabled={true}
-            isChallenge={true}
-          />
-        </View>
+        <GameBoard 
+          board={currentBoard}
+          onTilesClear={handleTilesClear}
+          onTileClick={handleTileClick}
+          itemMode={itemMode}
+          selectedSwapTile={selectedSwapTile}
+          swapAnimations={swapAnimationsRef.current}
+          fractalAnimations={fractalAnimationsRef.current}
+          onBoardRefresh={handleBoardRefresh}
+          disabled={true}
+          isChallenge={true}
+        />
       )}
 
       {/* 底部道具栏 - 固定在屏幕最底部 */}

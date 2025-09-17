@@ -29,20 +29,20 @@ function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
 function getChallengeModeDimensions(screenWidth = 390, screenHeight = 844) {
   // 挑战模式使用更大的尺寸以充分利用屏幕空间
   // 考虑到顶部HUD(约80px)和底部道具栏(约100px)，剩余空间约664px
-  // 在常见手机屏幕上可以容纳更多行列
-  const availableHeight = screenHeight - 180; // 预留顶部和底部空间
+  // 考虑到顶部HUD(约120px)和底部道具栏(约120px)，剩余空间
+  const availableHeight = screenHeight - 240; // 预留顶部和底部空间
   const availableWidth = screenWidth - 40; // 预留左右边距
   
   // 基于可用空间计算最优行列数
-  const idealTileSize = 32; // 挑战模式使用稍小的方块
-  const gap = 4; // 更紧密的间距
+  const idealTileSize = 28; // 挑战模式使用更小的方块以容纳更多
+  const gap = 3; // 更紧密的间距
   
   const maxCols = Math.floor((availableWidth - 24) / (idealTileSize + gap));
   const maxRows = Math.floor((availableHeight - 24) / (idealTileSize + gap));
   
   // 限制在合理范围内，确保可玩性
-  const cols = Math.min(Math.max(maxCols, 8), 12);
-  const rows = Math.min(Math.max(maxRows, 12), 18);
+  const cols = Math.min(Math.max(maxCols, 10), 14);
+  const rows = Math.min(Math.max(maxRows, 15), 20);
   
   return { width: cols, height: rows };
 }

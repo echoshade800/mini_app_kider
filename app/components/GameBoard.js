@@ -853,11 +853,9 @@ export function GameBoard({
   const handleBoardLayout = (event) => {
     const { width: boardWidth, height: boardHeight } = event.nativeEvent.layout;
     
-    // 计算棋盘在屏幕中的位置
-    const boardCenterX = screenWidth / 2;
-    const boardCenterY = screenHeight / 2;
-    const boardLeft = boardCenterX - boardWidth / 2;
-    const boardTop = boardCenterY - boardHeight / 2;
+    // 计算棋盘在屏幕中的位置（挑战模式使用全屏定位）
+    const boardLeft = isChallenge ? 0 : screenWidth / 2 - boardWidth / 2;
+    const boardTop = isChallenge ? 0 : screenHeight / 2 - boardHeight / 2;
     
     // 计算网格布局
     const layout = computeGridLayout({
@@ -879,14 +877,23 @@ export function GameBoard({
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();
 
+  // 挑战模式使用全屏尺寸，闯关模式使用固定尺寸
+  const boardContainerStyle = isChallenge ? {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  } : {
+    width: 320,
+    height: 400,
+  };
+
   return (
     <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
       <View style={styles.container}>
         <View 
-          style={[
-            styles.chalkboard,
-            { width: 320, height: 400 } // 固定尺寸，等待 onLayout
-          ]}
+          style={[styles.chalkboard, boardContainerStyle]}
           onLayout={handleBoardLayout}
         >
           {boardLayout && (

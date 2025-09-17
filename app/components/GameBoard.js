@@ -119,18 +119,25 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // 使用固定的方块大小（参考28关）
-  const cellSize = 45; // 固定大小，不再动态计算
+  // 动态计算方块大小和间距
+  const availableWidth = screenWidth - 80; // 左右各40px边距
+  const availableHeight = maxBoardHeight || (screenHeight - 300); // 预留顶部和底部空间
+  
+  const cellSize = Math.min(
+    availableWidth / width,
+    availableHeight / height,
+    50 // 最大方块大小
+  );
   
   // 方块尺寸调整 - 固定比例
   const tileRatio = 0.88;
   
   const tileWidth = cellSize * tileRatio;
   const tileHeight = cellSize * tileRatio;
-  const tileMargin = (cellSize - tileWidth) / 2; // 统一间距
+  const tileMargin = (cellSize - tileWidth) / 2; // 方块在单元格中的居中间距
   
-  // Board background size with wooden frame
-  const boardPadding = 20; // 统一内边距
+  // 动态计算棋盘内边距 - 确保上下左右一致
+  const boardPadding = Math.max(15, Math.min(30, cellSize * 0.4)); // 根据方块大小动态调整
   const boardWidth = width * cellSize + (boardPadding * 2);
   const boardHeight = height * cellSize + (boardPadding * 2);
 

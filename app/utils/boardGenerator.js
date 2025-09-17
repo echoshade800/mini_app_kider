@@ -38,11 +38,11 @@ function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
   // 获取最大可容纳尺寸
   const maxDimensions = getMaxBoardDimensions(screenWidth, screenHeight);
   
-  // 按照具体的增长规律：每5关一个阶段
+  // 按照教育阶段的增长规律
   let width = 4;
   let height = 4;
   
-  // 具体的增长规律 - 不强制正方形
+  // 教育阶段增长规律 - 平滑递增
   if (level >= 1 && level <= 5) {
     width = 4; height = 4;
   } else if (level >= 6 && level <= 10) {
@@ -91,9 +91,27 @@ function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
     width = 15; height = 15;
   } else if (level >= 116 && level <= 120) {
     width = 16; height = 15;
+  } else if (level >= 121 && level <= 130) {
+    width = 16; height = 16;
+  } else if (level >= 131 && level <= 140) {
+    width = 17; height = 16;
+  } else if (level >= 141 && level <= 150) {
+    width = 17; height = 17;
+  } else if (level >= 151 && level <= 160) {
+    width = 18; height = 17;
+  } else if (level >= 161 && level <= 170) {
+    width = 18; height = 18;
+  } else if (level >= 171 && level <= 180) {
+    width = 19; height = 18;
+  } else if (level >= 181 && level <= 190) {
+    width = 19; height = 19;
+  } else if (level >= 191 && level <= 200) {
+    width = 20; height = 19;
   } else {
-    // 121关及以后达到最大尺寸 10x16 = 160格
-    width = 10; height = 16;
+    // 200关以后继续增长
+    const extraLevels = Math.floor((level - 200) / 10);
+    width = Math.min(20 + extraLevels, maxDimensions.width);
+    height = Math.min(19 + extraLevels, maxDimensions.height);
   }
   
   // 确保不超过最大尺寸

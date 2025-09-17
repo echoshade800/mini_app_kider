@@ -104,7 +104,7 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // Use level 170 configuration for challenge mode
+    // 使用170关配置，但确保棋盘尺寸适合屏幕
     const board = generateBoard(170, true, true);
     setCurrentBoard(board);
   };
@@ -321,6 +321,7 @@ export default function ChallengeScreen() {
           fractalAnimations={fractalAnimationsRef.current}
           disabled={gameState !== 'playing'}
           isChallenge={true}
+          maxBoardHeight={screenHeight - 200}
           maxBoardHeight={screenHeight - 200}
         />
       )}

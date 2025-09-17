@@ -178,8 +178,9 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
   const seed = `level_${level}_${baseSeed}`;
   const random = seededRandom(seed);
   
-  // 挑战模式直接使用150关配置
-  const actualLevel = isChallengeMode ? 150 : level;
+  // 挑战模式使用28关的棋盘尺寸，但使用130关的难度
+  const actualLevel = isChallengeMode ? 28 : level;
+  const difficultyLevel = isChallengeMode ? 130 : level;
   const { width, height } = getBoardDimensions(actualLevel);
   const size = width * height;
   
@@ -191,37 +192,37 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
     const tiles = new Array(size);
     
     // 确定难度参数
-    let guaranteedPairs = Math.floor(size * 0.45); // 增加保证可消除的配对数量
+    let guaranteedPairs = Math.floor(size * 0.45);
     let adjacentRatio = 0.9;   // 提高相邻配对比例，让玩家更容易找到组合
     let requiredSwaps = 0;     // 前期不需要道具
     
-    if (level <= 5) {
+    if (difficultyLevel <= 5) {
       // 前5关：非常简单，大量可直接消除的组合
       guaranteedPairs = Math.floor(size * 0.6);
       adjacentRatio = 1.0;
       requiredSwaps = 0;
-    } else if (level <= 15) {
+    } else if (difficultyLevel <= 15) {
       // 6-15关：简单，大部分可直接消除
       guaranteedPairs = Math.floor(size * 0.55);
       adjacentRatio = 0.9;
       requiredSwaps = 0;
-    } else if (level <= 40) {
+    } else if (difficultyLevel <= 40) {
       // 16-40关：中等难度，开始需要框选较远的数字
       guaranteedPairs = Math.floor(size * 0.5);
       adjacentRatio = 0.7; // 降低相邻比例，鼓励框选较远的数字
       requiredSwaps = 0; // 仍然不需要道具
-    } else if (level <= 80) {
+    } else if (difficultyLevel <= 80) {
       // 41-80关：需要更多策略，框选更大的区域
       guaranteedPairs = Math.floor(size * 0.45);
       adjacentRatio = 0.5; // 进一步降低相邻比例
       requiredSwaps = Math.random() < 0.2 ? 1 : 0; // 偶尔需要道具
-    } else if (level <= 120) {
+    } else if (difficultyLevel <= 120) {
       // 81-120关：高难度，需要大范围框选
       guaranteedPairs = Math.floor(size * 0.4);
       adjacentRatio = 0.3;
       requiredSwaps = Math.random() < 0.4 ? 1 : 0;
     } else {
-      // 120关以上：最高难度
+      // 120关以上：最高难度（挑战模式使用130关难度）
       guaranteedPairs = Math.floor(size * 0.35);
       adjacentRatio = 0.2;
       requiredSwaps = Math.floor(Math.random() * 2) + 1;
@@ -318,17 +319,28 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
     // 填满剩余所有位置
     for (let i = 0; i < size; i++) {
       if (!placedPositions.has(i)) {
-        if (level <= 10) {
+        if (difficultyLevel <= 10) {
           // 前10关：只使用容易配对的数字
           const easyNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
           tiles[i] = easyNumbers[Math.floor(random() * easyNumbers.length)];
-        } else if (level <= 30) {
+        } else if (difficultyLevel <= 30) {
           // 简单关卡：避免太多干扰
           const safeNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
           tiles[i] = safeNumbers[Math.floor(random() * safeNumbers.length)];
         } else {
-          // 高级关卡：添加一些干扰数字
-          tiles[i] = Math.floor(random() * 9) + 1;
+          // 高级关卡：添加一些干扰数字（挑战模式使用高频低频分布）
+          if (isChallengeMode) {
+            // 挑战模式：70%高频数字，30%低频数字
+            const highFreqNumbers = [5, 6, 7, 8, 9];
+            const lowFreqNumbers = [1, 2, 3, 4];
+            if (random() < 0.7) {
+              tiles[i] = highFreqNumbers[Math.floor(random() * highFreqNumbers.length)];
+            } else {
+              tiles[i] = lowFreqNumbers[Math.floor(random() * lowFreqNumbers.length)];
+            }
+          } else {
+            tiles[i] = Math.floor(random() * 9) + 1;
+          }
         }
       }
     }

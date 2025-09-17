@@ -26,8 +26,8 @@ export function useBoardMetrics({
 }) {
   return useMemo(() => {
     // 根据模式设置安全区域
-    const safeTop = isChallenge ? 120 : 100; // 状态栏/HUD安全区域
-    const safeBottom = isChallenge ? 140 : 120; // 道具栏安全区域
+    const safeTop = isChallenge ? 110 : 100; // 状态栏/HUD安全区域 - 挑战模式减少10px
+    const safeBottom = isChallenge ? 130 : 120; // 道具栏安全区域 - 挑战模式减少10px
     const safeHorizontal = 20; // 左右安全边距
     
     // 计算可用区域

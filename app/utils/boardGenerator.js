@@ -44,9 +44,9 @@ function getChallengeModeDimensions() {
   const maxCols = Math.floor((usableWidth + gap) / (tileSize + gap));
   const maxRows = Math.floor((usableHeight + gap) / (tileSize + gap));
   
-  // 限制在合理范围内，确保性能和可玩性
-  const cols = Math.max(8, Math.min(maxCols, 12)); // 最少8列，最多12列
-  const rows = Math.max(8, Math.min(maxRows, 14)); // 最少8行，最多14行
+  // 增加一圈数字方块 - 扩大网格范围
+  const cols = Math.max(10, Math.min(maxCols, 14)); // 最少10列，最多14列
+  const rows = Math.max(12, Math.min(maxRows, 16)); // 最少12行，最多16行
   
   return { width: cols, height: rows };
 }
@@ -196,8 +196,8 @@ export function generateChallengeBoard() {
   // 初始化棋盘，填满所有位置
   const tiles = new Array(size);
   
-  // 挑战模式高难度设置
-  const guaranteedPairs = Math.floor(size * 0.35); // 35%保证可解配对
+  // 挑战模式高难度设置 - 增加方块后调整配对比例
+  const guaranteedPairs = Math.floor(size * 0.4); // 40%保证可解配对，增加可玩性
   const adjacentRatio = 0.2; // 20%相邻配对，80%需要大范围框选
   
   // 生成目标配对（和为10）

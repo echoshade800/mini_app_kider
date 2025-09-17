@@ -1,6 +1,6 @@
 /**
- * Board Metrics Hook - 统一的棋盘布局计算
- * Purpose: 为闯关模式和挑战模式提供一致的自适应布局计算
+ * Board Metrics Hook - 固定方块大小的棋盘布局计算
+ * Purpose: 为闯关模式和挑战模式提供固定方块大小的布局计算
  */
 
 import { useMemo } from 'react';
@@ -8,10 +8,11 @@ import { Dimensions, PixelRatio } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// 布局常量
-const MIN_TILE_SIZE = 28; // 最小可读方块尺寸
-const IDEAL_TILE_SIZE = 36; // 理想方块尺寸
-const MAX_TILE_SIZE = 42; // 最大方块尺寸
+// 固定方块大小常量
+const FIXED_TILE_SIZE = 36; // 固定方块大小 36px
+const TILE_HEIGHT_RATIO = 0.9; // 纸片效果：高度为宽度的90%
+const GAP_SIZE = 6; // 固定间距
+const BOARD_PADDING = 12; // 固定棋盘内边距
 
 // 像素对齐函数
 function roundPx(value) {
@@ -24,54 +25,45 @@ export function useBoardMetrics({
   safeTop = 80, 
   safeBottom = 80, 
   safeHorizontalPadding = 20,
-  isChallenge = false,
-  fixedTileSize = 36 // 固定方块大小为36px
+  isChallenge = false
 }) {
   return useMemo(() => {
-    // 挑战模式使用更大的安全区域
-    const actualSafeTop = isChallenge ? 120 : safeTop;
-    const actualSafeBottom = isChallenge ? 140 : safeBottom;
+    // 挑战模式和闯关模式的安全区域
+    const actualSafeTop = isChallenge ? 140 : 100; // 为状态栏/HUD留出更多空间
+    const actualSafeBottom = isChallenge ? 160 : 120; // 为道具栏留出更多空间
     
     // 计算可用区域
     const usableWidth = screenWidth - 2 * safeHorizontalPadding;
     const usableHeight = screenHeight - actualSafeTop - actualSafeBottom;
     
-    // 基础边距和间距
-    let padding = 12;
-    let gap = 8;
-    
-    // 超大网格启用紧凑模式
-    const totalCells = rows * cols;
-    if (totalCells > 100) {
-      padding = Math.max(8, padding * 0.85);
-      gap = Math.max(4, gap * 0.85);
-    }
-    
-    // 使用固定方块大小
-    const tileSize = fixedTileSize;
+    // 固定尺寸
+    const tileWidth = FIXED_TILE_SIZE;
+    const tileHeight = roundPx(FIXED_TILE_SIZE * TILE_HEIGHT_RATIO);
+    const gap = GAP_SIZE;
+    const padding = BOARD_PADDING;
     
     // 像素对齐
-    const tile = roundPx(tileSize);
+    const tileWidthPx = roundPx(tileWidth);
+    const tileHeightPx = roundPx(tileHeight);
     const gapPx = roundPx(gap);
     const paddingPx = roundPx(padding);
     
-    // 方块尺寸（纸片效果）
-    const tileWidth = tile;
-    const tileHeight = roundPx(tile * 0.9);
+    // 计算内容区域尺寸（方块实际占用的空间）
+    const innerWidth = cols * tileWidthPx + (cols - 1) * gapPx;
+    const innerHeight = rows * tileHeightPx + (rows - 1) * gapPx;
     
-    // 计算内容区域尺寸
-    const innerWidth = cols * tileWidth + (cols - 1) * gapPx;
-    const innerHeight = rows * tileHeight + (rows - 1) * gapPx;
-    
-    // 计算棋盘总尺寸
+    // 计算棋盘总尺寸（包含边距）
     const boardWidth = innerWidth + 2 * paddingPx;
     const boardHeight = innerHeight + 2 * paddingPx;
     
-    // 居中定位 - 确保棋盘不超出屏幕
+    // 检查棋盘是否超出可用区域
+    const fitsInScreen = boardWidth <= usableWidth && boardHeight <= usableHeight;
+    
+    // 计算棋盘位置 - 优先居中，如果超出则贴边
     let boardX = (screenWidth - boardWidth) / 2;
     let boardY = actualSafeTop + (usableHeight - boardHeight) / 2;
     
-    // 边界检查 - 确保棋盘完全在屏幕内
+    // 水平边界检查
     if (boardX < safeHorizontalPadding) {
       boardX = safeHorizontalPadding;
     }
@@ -79,6 +71,7 @@ export function useBoardMetrics({
       boardX = screenWidth - safeHorizontalPadding - boardWidth;
     }
     
+    // 垂直边界检查 - 确保不与状态栏和道具栏重叠
     if (boardY < actualSafeTop) {
       boardY = actualSafeTop;
     }
@@ -88,33 +81,44 @@ export function useBoardMetrics({
     
     // 方块位置计算函数
     const getTilePosition = (row, col) => ({
-      x: roundPx(col * (tileWidth + gapPx)),
-      y: roundPx(row * (tileHeight + gapPx)),
+      x: roundPx(col * (tileWidthPx + gapPx)),
+      y: roundPx(row * (tileHeightPx + gapPx)),
     });
     
     return {
-      tileSize: tile,
-      tileWidth,
-      tileHeight,
+      // 固定尺寸
+      tileSize: FIXED_TILE_SIZE,
+      tileWidth: tileWidthPx,
+      tileHeight: tileHeightPx,
       gap: gapPx,
       padding: paddingPx,
+      
+      // 计算尺寸
       boardWidth: roundPx(boardWidth),
       boardHeight: roundPx(boardHeight),
       boardX: roundPx(boardX),
       boardY: roundPx(boardY),
       innerWidth: roundPx(innerWidth),
       innerHeight: roundPx(innerHeight),
+      
+      // 可用区域
       usableWidth: roundPx(usableWidth),
       usableHeight: roundPx(usableHeight),
+      
+      // 工具函数
       getTilePosition,
-      // 添加调试信息
+      
+      // 调试信息
       debug: {
         rows,
         cols,
-        totalCells,
+        totalCells: rows * cols,
+        fixedTileSize: FIXED_TILE_SIZE,
         calculatedBoardSize: `${Math.round(boardWidth)}×${Math.round(boardHeight)}`,
         screenSize: `${screenWidth}×${screenHeight}`,
-        fitsInScreen: boardWidth <= usableWidth && boardHeight <= usableHeight,
+        safeArea: `top:${actualSafeTop} bottom:${actualSafeBottom}`,
+        fitsInScreen,
+        boardPosition: `(${Math.round(boardX)}, ${Math.round(boardY)})`,
       }
     };
   }, [rows, cols, safeTop, safeBottom, safeHorizontalPadding, isChallenge]);

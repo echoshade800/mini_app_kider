@@ -46,7 +46,7 @@ export default function LevelDetailScreen() {
   useEffect(() => {
     if (level && level > 0 && level <= 200) {
       try {
-        const board = generateBoard(level);
+        const board = generateBoard(level, true, false); // Force new board
         setCurrentBoard(board);
       } catch (error) {
         console.error('Failed to generate board:', error);

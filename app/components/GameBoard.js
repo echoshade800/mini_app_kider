@@ -800,9 +800,6 @@ export function GameBoard({
     // Handle board layout logic here
   };
 
-  const selectionSum = getSelectionSum();
-  const selectionStyle = getSelectionStyle();
-
   // 挑战模式使用全屏尺寸，闯关模式使用固定尺寸
   const boardContainerStyle = isChallenge ? {
     position: 'absolute',
@@ -817,6 +814,9 @@ export function GameBoard({
     width: boardMetrics.boardWidth,
     height: boardMetrics.boardHeight,
   };
+
+  const selectionStyle = getSelectionStyle();
+  const selectionSum = getSelectionSum();
 
   return (
     <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>

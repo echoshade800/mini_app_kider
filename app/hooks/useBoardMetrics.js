@@ -10,8 +10,6 @@ import { getCompleteLayout, getTilePosition } from '../utils/layout';
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export function useBoardMetrics({ 
-  rows, 
-  cols, 
   isChallenge = false,
   level = 1,
   topUsed = 100,
@@ -66,5 +64,5 @@ export function useBoardMetrics({
       // 调试信息
       debug: layout.debug
     };
-  }, [rows, cols, isChallenge, level, topUsed, bottomUsed]);
+  }, [isChallenge, level, topUsed, bottomUsed]);
 }

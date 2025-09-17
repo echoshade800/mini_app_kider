@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
-import { generateBoard } from '../utils/boardGenerator';
+import { generateBoard, generateChallengeBoard } from '../utils/boardGenerator';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CHALLENGE_DURATION = 60; // 60 seconds

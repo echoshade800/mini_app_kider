@@ -506,6 +506,7 @@ export default function LevelDetailScreen() {
         selectedSwapTile={selectedSwapTile}
         swapAnimations={swapAnimationsRef.current}
         fractalAnimations={fractalAnimationsRef.current}
+        level={level}
         isChallenge={false}
       />
 

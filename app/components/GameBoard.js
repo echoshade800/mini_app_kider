@@ -33,7 +33,7 @@ export function GameBoard({
   swapAnimations,
   fractalAnimations,
   isChallenge = false,
-  maxBoardHeight = null
+  level = 1
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
@@ -54,9 +54,8 @@ export function GameBoard({
   const boardMetrics = useBoardMetrics({
     rows: height,
     cols: width,
-    safeTop: isChallenge ? 120 : 80,
-    safeBottom: isChallenge ? 140 : 80,
-    isChallenge
+    isChallenge,
+    level
   });
 
   const getTileRotation = (row, col) => {
@@ -816,8 +815,9 @@ export function GameBoard({
       {__DEV__ && (
         <View style={styles.debugInfo}>
           <Text style={styles.debugText}>
-            网格: {boardMetrics.debug.rows}×{boardMetrics.debug.cols} | 方块数: {boardMetrics.debug.totalCells} | 棋盘: {boardMetrics.debug.calculatedBoardSize}
+            {boardMetrics.debug.spacingInfo} | 棋盘: {boardMetrics.debug.calculatedBoardSize}
             {'\n'}位置: {boardMetrics.debug.boardPosition} | 居中: {boardMetrics.debug.isCentered ? '✅' : '❌'} | 适配: {boardMetrics.debug.fitsInScreen ? '✅' : '❌'}
+            {'\n'}边距范围: {boardMetrics.debug.marginRange} | 当前边距: {boardMetrics.debug.dynamicMargin}px
           </Text>
         </View>
       )}

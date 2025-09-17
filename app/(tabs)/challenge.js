@@ -447,6 +447,7 @@ export default function ChallengeScreen() {
               fractalAnimations={fractalAnimationsRef.current}
               onBoardRefresh={handleBoardRefresh}
               disabled={gameState !== 'playing'}
+              level={130} // 挑战模式使用高难度等级
               isChallenge={true}
             />
           )}
@@ -464,6 +465,7 @@ export default function ChallengeScreen() {
           fractalAnimations={fractalAnimationsRef.current}
           onBoardRefresh={handleBoardRefresh}
           disabled={true}
+          level={130}
           isChallenge={true}
         />
       )}

@@ -19,8 +19,6 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
-import { generateBoard } from '../utils/boardGenerator';
-import { router } from 'expo-router';
 
 const CHALLENGE_DURATION = 60000; // 60 seconds
 

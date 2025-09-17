@@ -180,8 +180,8 @@ export function GameBoard({
   };
 
   const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = 120; // 减少顶部限制区域
-    const bottomRestrictedHeight = 120; // 减少底部限制区域
+    const topRestrictedHeight = boardMetrics.safeTop;
+    const bottomRestrictedHeight = boardMetrics.safeBottom;
     
     return pageY < topRestrictedHeight || 
            pageY > screenHeight - bottomRestrictedHeight;
@@ -799,13 +799,7 @@ export function GameBoard({
   };
 
   // 挑战模式使用全屏尺寸，闯关模式使用固定尺寸
-  const boardContainerStyle = isChallenge ? {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  } : {
+  const boardContainerStyle = {
     position: 'absolute',
     left: boardMetrics.boardX,
     top: boardMetrics.boardY,
@@ -822,9 +816,8 @@ export function GameBoard({
       {__DEV__ && (
         <View style={styles.debugInfo}>
           <Text style={styles.debugText}>
-            网格: {boardMetrics.debug.rows}×{boardMetrics.debug.cols} | 
-            棋盘: {boardMetrics.debug.calculatedBoardSize} | 
-            适配: {boardMetrics.debug.fitsInScreen ? '✅' : '❌'}
+            网格: {boardMetrics.debug.rows}×{boardMetrics.debug.cols} | 棋盘: {boardMetrics.debug.calculatedBoardSize}
+            {'\n'}位置: {boardMetrics.debug.boardPosition} | 居中: {boardMetrics.debug.isCentered ? '✅' : '❌'} | 适配: {boardMetrics.debug.fitsInScreen ? '✅' : '❌'}
           </Text>
         </View>
       )}

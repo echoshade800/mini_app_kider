@@ -18,38 +18,38 @@ const BOARD_PAD  = 12;     // 棋盘内边距
 export function getGridByLevel(level) {
   // 关卡 → 行列增长表（1–200）
   if (level >= 1 && level <= 10) {
-    return { rows: 4, cols: 4 };    // 新手引导，格子大、留白多
+    return { rows: 4, cols: 4 };
   }
   if (level >= 11 && level <= 20) {
-    return { rows: 5, cols: 5 };    // 尺寸不变，仅增一行一列
+    return { rows: 5, cols: 5 };
   }
   if (level >= 21 && level <= 30) {
     return { rows: 6, cols: 6 };
   }
   if (level >= 31 && level <= 40) {
-    return { rows: 7, cols: 7 };
+    return { rows: 6, cols: 7 };  // 开始使用矩形布局
   }
   if (level >= 41 && level <= 50) {
-    return { rows: 8, cols: 8 };    // 简单上限
+    return { rows: 7, cols: 8 };
   }
   if (level >= 51 && level <= 60) {
-    return { rows: 9, cols: 9 };    // 过渡到中期
+    return { rows: 8, cols: 9 };
   }
   if (level >= 61 && level <= 80) {
-    return { rows: 10, cols: 10 };  // 中期稳态（保持 tile 尺寸基本不变）
+    return { rows: 9, cols: 10 };
   }
   if (level >= 81 && level <= 100) {
-    return { rows: 12, cols: 10 };  // 宽 10 列固定，行数先到 12
+    return { rows: 10, cols: 10 };
   }
   if (level >= 101 && level <= 120) {
-    return { rows: 14, cols: 10 };
+    return { rows: 11, cols: 10 };
   }
   if (level >= 121 && level <= 200) {
-    return { rows: 16, cols: 10 };  // 行数封顶（最大铺满屏）
+    return { rows: 12, cols: 10 };  // 最大网格
   }
   
-  // 200关以后继续使用 16×10
-  return { rows: 16, cols: 10 };    // 持续使用 16×10（仅增加难度，不再加格子）
+  // 200关以后继续使用 12×10
+  return { rows: 12, cols: 10 };
 }
 
 /**

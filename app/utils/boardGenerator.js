@@ -27,9 +27,26 @@ function getBoardDimensions(level) {
 
 // 挑战模式：直接使用最大尺寸铺满屏幕
 function getChallengeModeDimensions() {
-  // 挑战模式使用固定的大网格尺寸
-  const cols = 12; // 固定12列
-  const rows = 16; // 固定16行
+  // 挑战模式：计算能铺满屏幕的最大网格
+  const { width: screenWidth, height: screenHeight } = require('react-native').Dimensions.get('window');
+  
+  const safeTop = 120;
+  const safeBottom = 140;
+  const safeHorizontal = 20;
+  const tileSize = 36;
+  const gap = 6;
+  const padding = 12;
+  
+  const usableWidth = screenWidth - 2 * safeHorizontal - 2 * padding;
+  const usableHeight = screenHeight - safeTop - safeBottom - 2 * padding;
+  
+  // 计算最大可容纳的行列数
+  const maxCols = Math.floor((usableWidth + gap) / (tileSize + gap));
+  const maxRows = Math.floor((usableHeight + gap) / (tileSize + gap));
+  
+  // 限制在合理范围内，确保性能
+  const cols = Math.min(maxCols, 12);
+  const rows = Math.min(maxRows, 16);
   
   return { width: cols, height: rows };
 }

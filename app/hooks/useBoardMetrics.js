@@ -1,6 +1,6 @@
 /**
- * Board Metrics Hook - 固定方块大小的棋盘布局计算
- * Purpose: 为闯关模式和挑战模式提供固定方块大小的布局计算
+ * Board Metrics Hook - 棋盘居中布局计算，确保不超出安全边界
+ * Purpose: 计算棋盘在屏幕中的居中位置，避免与状态栏和道具栏重叠
  */
 
 import { useMemo } from 'react';
@@ -22,19 +22,17 @@ function roundPx(value) {
 export function useBoardMetrics({ 
   rows, 
   cols, 
-  safeTop = 80, 
-  safeBottom = 80, 
-  safeHorizontalPadding = 20,
   isChallenge = false
 }) {
   return useMemo(() => {
-    // 挑战模式和闯关模式的安全区域
-    const actualSafeTop = isChallenge ? 140 : 100; // 为状态栏/HUD留出更多空间
-    const actualSafeBottom = isChallenge ? 160 : 120; // 为道具栏留出更多空间
+    // 根据模式设置安全区域
+    const safeTop = isChallenge ? 120 : 100; // 状态栏/HUD安全区域
+    const safeBottom = isChallenge ? 140 : 120; // 道具栏安全区域
+    const safeHorizontal = 20; // 左右安全边距
     
     // 计算可用区域
-    const usableWidth = screenWidth - 2 * safeHorizontalPadding;
-    const usableHeight = screenHeight - actualSafeTop - actualSafeBottom;
+    const usableWidth = screenWidth - 2 * safeHorizontal;
+    const usableHeight = screenHeight - safeTop - safeBottom;
     
     // 固定尺寸
     const tileWidth = FIXED_TILE_SIZE;
@@ -59,24 +57,24 @@ export function useBoardMetrics({
     // 检查棋盘是否超出可用区域
     const fitsInScreen = boardWidth <= usableWidth && boardHeight <= usableHeight;
     
-    // 计算棋盘位置 - 优先居中，如果超出则贴边
-    let boardX = (screenWidth - boardWidth) / 2;
-    let boardY = actualSafeTop + (usableHeight - boardHeight) / 2;
+    // 计算棋盘位置 - 在可用区域内居中
+    let boardX = safeHorizontal + (usableWidth - boardWidth) / 2;
+    let boardY = safeTop + (usableHeight - boardHeight) / 2;
     
-    // 水平边界检查
-    if (boardX < safeHorizontalPadding) {
-      boardX = safeHorizontalPadding;
+    // 水平边界检查 - 确保不超出安全区域
+    if (boardX < safeHorizontal) {
+      boardX = safeHorizontal;
     }
-    if (boardX + boardWidth > screenWidth - safeHorizontalPadding) {
-      boardX = screenWidth - safeHorizontalPadding - boardWidth;
+    if (boardX + boardWidth > screenWidth - safeHorizontal) {
+      boardX = screenWidth - safeHorizontal - boardWidth;
     }
     
     // 垂直边界检查 - 确保不与状态栏和道具栏重叠
-    if (boardY < actualSafeTop) {
-      boardY = actualSafeTop;
+    if (boardY < safeTop) {
+      boardY = safeTop;
     }
-    if (boardY + boardHeight > screenHeight - actualSafeBottom) {
-      boardY = screenHeight - actualSafeBottom - boardHeight;
+    if (boardY + boardHeight > screenHeight - safeBottom) {
+      boardY = screenHeight - safeBottom - boardHeight;
     }
     
     // 方块位置计算函数
@@ -105,6 +103,11 @@ export function useBoardMetrics({
       usableWidth: roundPx(usableWidth),
       usableHeight: roundPx(usableHeight),
       
+      // 安全区域
+      safeTop,
+      safeBottom,
+      safeHorizontal,
+      
       // 工具函数
       getTilePosition,
       
@@ -116,10 +119,12 @@ export function useBoardMetrics({
         fixedTileSize: FIXED_TILE_SIZE,
         calculatedBoardSize: `${Math.round(boardWidth)}×${Math.round(boardHeight)}`,
         screenSize: `${screenWidth}×${screenHeight}`,
-        safeArea: `top:${actualSafeTop} bottom:${actualSafeBottom}`,
+        usableArea: `${Math.round(usableWidth)}×${Math.round(usableHeight)}`,
+        safeArea: `top:${safeTop} bottom:${safeBottom} sides:${safeHorizontal}`,
         fitsInScreen,
         boardPosition: `(${Math.round(boardX)}, ${Math.round(boardY)})`,
+        isCentered: Math.abs(boardX - safeHorizontal - (usableWidth - boardWidth) / 2) < 1,
       }
     };
-  }, [rows, cols, safeTop, safeBottom, safeHorizontalPadding, isChallenge]);
+  }, [rows, cols, isChallenge]);
 }

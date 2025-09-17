@@ -496,20 +496,18 @@ export default function LevelDetailScreen() {
         </View>
       </View>
 
-      {/* 游戏区域 */}
-      <View style={styles.gameContainer}>
-        <GameBoard 
-          board={currentBoard}
-          onTilesClear={handleTilesClear}
-          onBoardRefresh={handleBoardRefresh}
-          onTileClick={handleSwapTileClick}
-          itemMode={itemMode}
-          selectedSwapTile={selectedSwapTile}
-          swapAnimations={swapAnimationsRef.current}
-          fractalAnimations={fractalAnimationsRef.current}
-          isChallenge={false}
-        />
-      </View>
+      {/* Game Board */}
+      <GameBoard 
+        board={currentBoard}
+        onTilesClear={handleTilesClear}
+        onBoardRefresh={handleBoardRefresh}
+        onTileClick={handleSwapTileClick}
+        itemMode={itemMode}
+        selectedSwapTile={selectedSwapTile}
+        swapAnimations={swapAnimationsRef.current}
+        fractalAnimations={fractalAnimationsRef.current}
+        isChallenge={false}
+      />
 
       {/* Floating Action Buttons */}
       <View style={styles.floatingButtons}>
@@ -614,9 +612,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 18,
     color: '#666',
-  },
-  gameContainer: {
-    flex: 1,
   },
   header: {
     flexDirection: 'row',

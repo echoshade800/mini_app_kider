@@ -117,10 +117,10 @@ export default function ProfileScreen() {
             </View>
             
             <View style={styles.statRow}>
-              <Ionicons name="git-branch" size={24} color="#9C27B0" />
+              <Ionicons name="cut" size={24} color="#9C27B0" />
               <View style={styles.statContent}>
-                <Text style={styles.statLabel}>FractalSplit Items</Text>
-                <Text style={styles.statValue}>{gameData?.fractalSplitItems || 0}</Text>
+                <Text style={styles.statLabel}>Split Items</Text>
+                <Text style={styles.statValue}>{gameData?.splitItems || 0}</Text>
               </View>
             </View>
           </View>

@@ -1,7 +1,7 @@
 /**
  * Challenge Mode Screen - 60-second timed gameplay
  * Purpose: Fast-paced IQ challenge with scoring
- * Features: 60s countdown, IQ scoring, level 170 difficulty
+ * Features: 60s countdown, IQ scoring, consistent with level mode UI/UX
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -10,7 +10,9 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  Modal
+  Modal,
+  Dimensions,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -19,6 +21,7 @@ import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
 
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CHALLENGE_DURATION = 60; // 60 seconds
 
 export default function ChallengeScreen() {
@@ -29,11 +32,26 @@ export default function ChallengeScreen() {
   const [currentBoard, setCurrentBoard] = useState(null);
   const [showResults, setShowResults] = useState(false);
   
+  // 道具状态 - 与闯关模式一致
+  const [itemMode, setItemMode] = useState(null); // 'swapMaster' | 'fractalSplit' | null
+  const [selectedSwapTile, setSelectedSwapTile] = useState(null);
+  
+  // 动画状态 - 与闯关模式一致
+  const swapAnimationsRef = useRef(new Map());
+  const fractalAnimationsRef = useRef(new Map());
+  const [animationTrigger, setAnimationTrigger] = useState(0);
+  
+  // 倒计时进度条动画（导火索样式）
+  const progressAnim = useRef(new Animated.Value(1)).current;
+  
   const timerRef = useRef();
+  const swapMasterItems = gameData?.swapMasterItems || 0;
+  const fractalSplitItems = gameData?.fractalSplitItems || 0;
 
   useEffect(() => {
     if (gameState === 'playing') {
       startTimer();
+      startProgressAnimation();
     }
     return () => {
       if (timerRef.current) {
@@ -52,6 +70,15 @@ export default function ChallengeScreen() {
         return prev - 1;
       });
     }, 1000);
+  };
+
+  const startProgressAnimation = () => {
+    progressAnim.setValue(1);
+    Animated.timing(progressAnim, {
+      toValue: 0,
+      duration: CHALLENGE_DURATION * 1000,
+      useNativeDriver: false,
+    }).start();
   };
 
   const startChallenge = () => {
@@ -111,6 +138,89 @@ export default function ChallengeScreen() {
     }
   };
 
+  // 道具使用逻辑 - 与闯关模式一致
+  const handleUseSwapMaster = () => {
+    if (swapMasterItems <= 0 || gameState !== 'playing') return;
+    setItemMode('swapMaster');
+    setSelectedSwapTile(null);
+  };
+
+  const handleUseFractalSplit = () => {
+    if (fractalSplitItems <= 0 || gameState !== 'playing') return;
+    setItemMode('fractalSplit');
+    setSelectedSwapTile(null);
+  };
+
+  const handleSwapTileClick = (row, col, value) => {
+    if (!itemMode || value === 0 || gameState !== 'playing') return;
+    
+    const index = row * currentBoard.width + col;
+    const clickedTile = { row, col, value, index };
+    
+    if (itemMode === 'swapMaster') {
+      if (!selectedSwapTile) {
+        setSelectedSwapTile(clickedTile);
+      } else if (selectedSwapTile.index === index) {
+        setSelectedSwapTile(null);
+      } else {
+        performSwap(selectedSwapTile, clickedTile);
+      }
+    } else if (itemMode === 'fractalSplit') {
+      if (value >= 2) {
+        performFractalSplit(clickedTile);
+      }
+    }
+  };
+
+  const performSwap = (tile1, tile2) => {
+    // 交换逻辑与闯关模式一致
+    const newTiles = [...currentBoard.tiles];
+    const temp = newTiles[tile1.index];
+    newTiles[tile1.index] = newTiles[tile2.index];
+    newTiles[tile2.index] = temp;
+
+    setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
+    
+    // 消耗道具
+    const newSwapMasterItems = Math.max(0, swapMasterItems - 1);
+    updateGameData({ swapMasterItems: newSwapMasterItems });
+    
+    setItemMode(null);
+    setSelectedSwapTile(null);
+  };
+
+  const performFractalSplit = (tile) => {
+    // 分裂逻辑与闯关模式一致（简化版）
+    const { value, index } = tile;
+    const newTiles = [...currentBoard.tiles];
+    
+    // 简单分裂：将数字分解为两个较小的数字
+    const val1 = Math.floor(value / 2);
+    const val2 = value - val1;
+    
+    newTiles[index] = val1;
+    
+    // 找一个空位放置第二个数字
+    const emptyIndex = newTiles.findIndex(tile => tile === 0);
+    if (emptyIndex !== -1) {
+      newTiles[emptyIndex] = val2;
+    }
+    
+    setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
+    
+    // 消耗道具
+    const newFractalSplitItems = Math.max(0, fractalSplitItems - 1);
+    updateGameData({ fractalSplitItems: newFractalSplitItems });
+    
+    setItemMode(null);
+    setSelectedSwapTile(null);
+  };
+
+  const handleCancelSwap = () => {
+    setItemMode(null);
+    setSelectedSwapTile(null);
+  };
+
   const handleReturn = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -148,8 +258,10 @@ export default function ChallengeScreen() {
             60 seconds to maximize your IQ score!
           </Text>
           <Text style={styles.readyDescription}>
-            Clear rectangles that sum to 10. Each clear awards +3 IQ points.
-            New boards appear when current board is completely cleared.
+            与闯关模式相比，挑战模式唯一不同：玩家需要在限定时间内尽可能多地框选并消除和为 10 的数字方块，以提升"智商值"或积分。
+          </Text>
+          <Text style={styles.readyDescription}>
+            其他设置（UI 布局、交互逻辑、道具设置、动画效果）与闯关模式完全一致。
           </Text>
           
           <TouchableOpacity 
@@ -171,28 +283,94 @@ export default function ChallengeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header with Timer and IQ */}
+      {/* 顶部智商值显示与倒计时进度条（导火索样式） */}
       <View style={styles.gameHeader}>
-        <View style={styles.timerContainer}>
-          <Ionicons name="time" size={24} color="#FF5722" />
-          <Text style={styles.timerText}>{timeLeft}s</Text>
-        </View>
-        
         <View style={styles.iqContainer}>
           <Text style={styles.iqText}>IQ: {currentIQ}</Text>
         </View>
+        
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBackground}>
+            <Animated.View 
+              style={[
+                styles.progressFill,
+                {
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%']
+                  })
+                }
+              ]} 
+            />
+            <View style={styles.progressSpark} />
+          </View>
+          <Text style={styles.timerText}>{timeLeft}s</Text>
+        </View>
       </View>
 
-      {/* Game Board */}
+      {/* Game Board - 与闯关模式完全一致 */}
       {currentBoard && (
         <GameBoard 
           board={currentBoard}
           onTilesClear={handleTilesClear}
           onBoardRefresh={handleBoardRefresh}
+          onTileClick={handleSwapTileClick}
+          itemMode={itemMode}
+          selectedSwapTile={selectedSwapTile}
+          swapAnimations={swapAnimationsRef.current}
+          fractalAnimations={fractalAnimationsRef.current}
           disabled={gameState !== 'playing'}
           isChallenge={true}
+          maxBoardHeight={screenHeight - 200}
         />
       )}
+
+      {/* 道具按钮 - 与闯关模式完全一致 */}
+      <View style={styles.floatingButtons}>
+        <TouchableOpacity 
+          style={[
+            styles.floatingButton,
+            itemMode === 'swapMaster' ? styles.cancelButton : styles.swapMasterButton,
+            swapMasterItems <= 0 && itemMode !== 'swapMaster' && styles.floatingButtonDisabled
+          ]}
+          onPress={itemMode === 'swapMaster' ? handleCancelSwap : handleUseSwapMaster}
+          disabled={swapMasterItems <= 0 && itemMode !== 'swapMaster'}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name={itemMode === 'swapMaster' ? "close" : "shuffle"} 
+            size={24} 
+            color="white" 
+          />
+          {itemMode !== 'swapMaster' && (
+            <View style={styles.floatingButtonBadge}>
+              <Text style={styles.floatingButtonBadgeText}>{swapMasterItems}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[
+            styles.floatingButton,
+            itemMode === 'fractalSplit' ? styles.cancelButton : styles.fractalSplitButton,
+            fractalSplitItems <= 0 && itemMode !== 'fractalSplit' && styles.floatingButtonDisabled
+          ]}
+          onPress={itemMode === 'fractalSplit' ? handleCancelSwap : handleUseFractalSplit}
+          disabled={fractalSplitItems <= 0 && itemMode !== 'fractalSplit'}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name={itemMode === 'fractalSplit' ? "close" : "git-branch"} 
+            size={24} 
+            color="white" 
+          />
+          {itemMode !== 'fractalSplit' && (
+            <View style={styles.floatingButtonBadge}>
+              <Text style={styles.floatingButtonBadgeText}>{fractalSplitItems}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* Results Modal */}
       <Modal
@@ -263,11 +441,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   readyDescription: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 40,
+    lineHeight: 20,
+    marginBottom: 16,
   },
   startButton: {
     backgroundColor: '#FF5722',
@@ -279,6 +457,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
+    marginTop: 20,
   },
   startButtonText: {
     color: 'white',
@@ -314,20 +493,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFEBEE',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  timerText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FF5722',
-    marginLeft: 8,
-  },
   iqContainer: {
     backgroundColor: '#E3F2FD',
     paddingHorizontal: 16,
@@ -338,6 +503,103 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1976D2',
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginLeft: 20,
+  },
+  progressBackground: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#FFEBEE',
+    borderRadius: 4,
+    marginRight: 12,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF5722',
+    borderRadius: 4,
+  },
+  progressSpark: {
+    position: 'absolute',
+    right: -2,
+    top: -2,
+    width: 12,
+    height: 12,
+    backgroundColor: '#FFD54F',
+    borderRadius: 6,
+    shadowColor: '#FFD54F',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  timerText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF5722',
+    minWidth: 35,
+  },
+  // 道具按钮样式 - 与闯关模式一致
+  floatingButtons: {
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    elevation: 1000,
+    gap: 20,
+  },
+  floatingButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    position: 'relative',
+  },
+  swapMasterButton: {
+    backgroundColor: '#2196F3',
+  },
+  fractalSplitButton: {
+    backgroundColor: '#9C27B0',
+  },
+  cancelButton: {
+    backgroundColor: '#f44336',
+  },
+  floatingButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  floatingButtonBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#f44336',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  floatingButtonBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,

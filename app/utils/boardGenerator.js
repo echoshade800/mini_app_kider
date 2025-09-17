@@ -18,16 +18,20 @@ function seededRandom(seed) {
 }
 
 function getBoardDimensions(level) {
-  // 每个关卡固定棋盘大小，但随着关卡增加逐渐变大
-  if (level <= 5) return { width: 3, height: 3 };   // 前5关用3x3
-  if (level <= 15) return { width: 4, height: 4 };  // 6-15关用4x4
-  if (level <= 30) return { width: 5, height: 4 };  // 16-30关用5x4长方形
-  if (level <= 50) return { width: 6, height: 5 };  // 31-50关用6x5长方形
-  if (level <= 80) return { width: 7, height: 6 };  // 51-80关用7x6长方形
-  if (level <= 120) return { width: 8, height: 7 }; // 81-120关用8x7长方形
-  if (level <= 160) return { width: 9, height: 8 }; // 121-160关用9x8长方形
-  if (level <= 200) return { width: 10, height: 9 }; // 161-200关用10x9长方形
-  return { width: 11, height: 10 }; // 200关后用11x10长方形
+  // 棋盘尺寸设计：优先使用长方形布局，参考截图样式
+  if (level <= 5) return { width: 4, height: 3 };   // 前5关用4x3长方形
+  if (level <= 10) return { width: 5, height: 4 };  // 6-10关用5x4长方形
+  if (level <= 20) return { width: 6, height: 4 };  // 11-20关用6x4长方形
+  if (level <= 30) return { width: 7, height: 5 };  // 21-30关用7x5长方形
+  if (level <= 45) return { width: 8, height: 5 };  // 31-45关用8x5长方形
+  if (level <= 60) return { width: 8, height: 6 };  // 46-60关用8x6长方形
+  if (level <= 80) return { width: 9, height: 6 };  // 61-80关用9x6长方形
+  if (level <= 100) return { width: 10, height: 7 }; // 81-100关用10x7长方形
+  if (level <= 130) return { width: 11, height: 8 }; // 101-130关用11x8长方形
+  if (level <= 160) return { width: 12, height: 8 }; // 131-160关用12x8长方形
+  if (level <= 180) return { width: 13, height: 9 }; // 161-180关用13x9长方形
+  if (level <= 200) return { width: 14, height: 10 }; // 181-200关用14x10长方形
+  return { width: 16, height: 11 }; // 200关后用16x11长方形（类似参考图的超宽布局）
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）
@@ -179,35 +183,40 @@ export function generateBoard(level, forceNewSeed = false) {
     const tiles = new Array(size);
     
     // 确定难度参数
-    let guaranteedPairs = Math.floor(size * 0.4); // 保证可消除的配对数量
-    let adjacentRatio = 0.8;   // 相邻配对比例
-    let requiredSwaps = 0;     // 需要的道具数量
+    let guaranteedPairs = Math.floor(size * 0.45); // 增加保证可消除的配对数量
+    let adjacentRatio = 0.9;   // 提高相邻配对比例，让玩家更容易找到组合
+    let requiredSwaps = 0;     // 前期不需要道具
     
     if (level <= 5) {
-      // 前5关：100%可直接消除，不需要道具
-      guaranteedPairs = Math.floor(size * 0.5);
+      // 前5关：非常简单，大量可直接消除的组合
+      guaranteedPairs = Math.floor(size * 0.6);
       adjacentRatio = 1.0;
       requiredSwaps = 0;
-    } else if (level <= 20) {
-      // 6-20关：大部分可直接消除
-      guaranteedPairs = Math.floor(size * 0.45);
-      adjacentRatio = 0.8;
+    } else if (level <= 15) {
+      // 6-15关：简单，大部分可直接消除
+      guaranteedPairs = Math.floor(size * 0.55);
+      adjacentRatio = 0.9;
       requiredSwaps = 0;
-    } else if (level <= 50) {
-      // 21-50关：开始需要一些策略
+    } else if (level <= 40) {
+      // 16-40关：中等难度，开始需要框选较远的数字
+      guaranteedPairs = Math.floor(size * 0.5);
+      adjacentRatio = 0.7; // 降低相邻比例，鼓励框选较远的数字
+      requiredSwaps = 0; // 仍然不需要道具
+    } else if (level <= 80) {
+      // 41-80关：需要更多策略，框选更大的区域
+      guaranteedPairs = Math.floor(size * 0.45);
+      adjacentRatio = 0.5; // 进一步降低相邻比例
+      requiredSwaps = Math.random() < 0.2 ? 1 : 0; // 偶尔需要道具
+    } else if (level <= 120) {
+      // 81-120关：高难度，需要大范围框选
       guaranteedPairs = Math.floor(size * 0.4);
-      adjacentRatio = 0.6;
-      requiredSwaps = Math.random() < 0.3 ? 1 : 0;
-    } else if (level <= 100) {
-      // 51-100关：需要更多策略和道具
-      guaranteedPairs = Math.floor(size * 0.35);
-      adjacentRatio = 0.4;
-      requiredSwaps = Math.floor(Math.random() * 2) + 1;
+      adjacentRatio = 0.3;
+      requiredSwaps = Math.random() < 0.4 ? 1 : 0;
     } else {
-      // 100关以上：高难度，需要多个道具
-      guaranteedPairs = Math.floor(size * 0.3);
+      // 120关以上：最高难度
+      guaranteedPairs = Math.floor(size * 0.35);
       adjacentRatio = 0.2;
-      requiredSwaps = Math.floor(level / 50) + Math.floor(Math.random() * 2);
+      requiredSwaps = Math.floor(Math.random() * 2) + 1;
     }
     
     // 生成目标配对（和为10）

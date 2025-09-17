@@ -65,22 +65,30 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // Calculate cell size for consistent layout
-  const cellSize = Math.min(
-    (screenWidth - 80) / width, 
-    (screenHeight - 300) / height,
-    50
+  // Calculate cell size for rectangular layout (prioritize width fitting)
+  const maxBoardWidth = screenWidth - 60; // 减少水平边距
+  const maxBoardHeight = screenHeight - 280; // 为顶部和底部留出空间
+  
+  // 优先适配宽度，允许长方形布局
+  const cellSizeByWidth = maxBoardWidth / width;
+  const cellSizeByHeight = maxBoardHeight / height;
+  
+  // 选择较小的尺寸确保完整显示，但设置合理的最小和最大值
+  const cellSize = Math.max(
+    Math.min(cellSizeByWidth, cellSizeByHeight, 45), // 最大45px
+    25 // 最小25px，确保可读性
+  );
+    maxBoardHeight / height,
+    45 // 稍微减小最大尺寸
   );
   
-  // Sticky note tile size (aspect ratio 0.9 - slightly taller than wide)
-  const tileWidth = cellSize * 0.7;
-  const tileHeight = tileWidth / 0.9; // aspectRatio: 0.9
+  // Sticky note tile size - 更接近参考图的比例
+  const tileWidth = cellSize * 0.88; // 增加占比，更饱满
+  const tileHeight = cellSize * 0.88; // 保持接近正方形，但稍微紧凑
   const tileMarginX = (cellSize - tileWidth) / 2;
   const tileMarginY = (cellSize - tileHeight) / 2;
   
   // Board background size with wooden frame
-  const boardWidth = width * cellSize + 40;
-  const boardHeight = height * cellSize + 40;
 
   // Initialize tile scale animation
   const initTileScale = (index) => {
@@ -728,7 +736,7 @@ const styles = StyleSheet.create({
   },
   chalkboard: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
-    padding: 20,
+    padding: 15, // 减少内边距，为长方形布局留出更多空间
     borderRadius: 16,
     borderWidth: 8,
     borderColor: '#8B5A2B', // Wooden frame
@@ -741,8 +749,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 10,
     position: 'relative',
-    // Inner shadow effect
-    shadowInset: true,
+    // 确保长方形棋盘也能很好地居中显示
+    alignSelf: 'center',
   },
   gridLine: {
     position: 'absolute',
@@ -752,17 +760,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFF9E6', // Cream white sticky note
-    borderRadius: 6,
+    borderRadius: 4, // 稍微减小圆角，更接近截图效果
     borderWidth: 1,
     borderColor: '#333',
     shadowColor: '#000',
     shadowOffset: {
-      width: 2,
-      height: 2,
+      width: 1,
+      height: 1,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
+    shadowOpacity: 0.25, // 稍微减轻阴影
+    shadowRadius: 2,
+    elevation: 3,
   },
   stickyNoteText: {
     fontWeight: 'bold',

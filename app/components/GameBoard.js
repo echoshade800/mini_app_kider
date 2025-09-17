@@ -104,30 +104,8 @@ export function GameBoard({
 
   // 开始所有数字方块的晃动动画
   const startShakeAnimation = () => {
-    for (let i = 0; i < tiles.length; i++) {
-      if (tiles[i] > 0) {
-        const shakeAnim = initTileShake(i);
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(shakeAnim, {
-              toValue: 1,
-              duration: 150,
-              useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnim, {
-              toValue: -1,
-              duration: 150,
-              useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnim, {
-              toValue: 0,
-              duration: 150,
-              useNativeDriver: true,
-            }),
-          ])
-        ).start();
-      }
-    }
+    // 交换模式不再使用晃动动画
+    return;
   };
 
   // 停止所有晃动动画
@@ -142,7 +120,8 @@ export function GameBoard({
 
   // 开始道具模式时启动晃动
   React.useEffect(() => {
-    if (itemMode) {
+    if (itemMode === 'fractalSplit') {
+      // 只有分裂模式才启动晃动动画
       startShakeAnimation();
     } else {
       stopShakeAnimation();
@@ -612,8 +591,8 @@ export function GameBoard({
     // 计算变换
     const transforms = [{ scale: tileScale }];
     
-    if (itemMode) {
-      // 道具模式下的晃动效果
+    if (itemMode === 'fractalSplit') {
+      // 只有分裂模式下才有晃动效果
       transforms.push({
         translateX: tileShake.interpolate({
           inputRange: [-1, 0, 1],

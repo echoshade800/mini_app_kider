@@ -221,7 +221,7 @@ export default function LevelDetailScreen() {
     const row = Math.floor(index / currentBoard.width);
     const col = index % currentBoard.width;
 
-    // 生成不同数字的分解方案
+    // 生成不同数字的分解方案，确保总和等于原数字
     const generateSplitCombination = (num) => {
       const combinations = [];
       
@@ -238,7 +238,10 @@ export default function LevelDetailScreen() {
         for (let b = a + 1; b <= 9; b++) {
           const c = num - a - b;
           if (c >= 1 && c <= 9 && c !== a && c !== b) {
-            combinations.push([a, b, c]);
+            // 确保c > b 以避免重复组合
+            if (c > b) {
+              combinations.push([a, b, c]);
+            }
           }
         }
       }
@@ -249,7 +252,26 @@ export default function LevelDetailScreen() {
           for (let c = b + 1; c <= 9; c++) {
             const d = num - a - b - c;
             if (d >= 1 && d <= 9 && d !== a && d !== b && d !== c) {
-              combinations.push([a, b, c, d]);
+              // 确保d > c 以避免重复组合
+              if (d > c) {
+                combinations.push([a, b, c, d]);
+              }
+            }
+          }
+        }
+      }
+      
+      // 5个不同数字的组合
+      for (let a = 1; a <= 9; a++) {
+        for (let b = a + 1; b <= 9; b++) {
+          for (let c = b + 1; c <= 9; c++) {
+            for (let d = c + 1; d <= 9; d++) {
+              const e = num - a - b - c - d;
+              if (e >= 1 && e <= 9 && e !== a && e !== b && e !== c && e !== d) {
+                if (e > d) {
+                  combinations.push([a, b, c, d, e]);
+                }
+              }
             }
           }
         }
@@ -268,9 +290,18 @@ export default function LevelDetailScreen() {
     // 随机选择一个组合，优先选择数字更多的组合
     const sortedCombinations = possibleCombinations.sort((a, b) => b.length - a.length);
     const selectedCombination = sortedCombinations[Math.floor(Math.random() * Math.min(3, sortedCombinations.length))];
+    
+    // 验证组合总和是否正确
+    const combinationSum = selectedCombination.reduce((sum, num) => sum + num, 0);
+    if (combinationSum !== value) {
+      console.error(`分解错误: ${value} != ${combinationSum}`, selectedCombination);
+      Alert.alert('分解错误', '数字分解计算有误，请重试');
+      return;
+    }
+    
     const splitCount = selectedCombination.length;
 
-    // 寻找足够的空位
+    // 寻找足够的空位（需要splitCount个空位，因为原位置也会变空）
     const emptyPositions = [];
     for (let i = 0; i < currentBoard.tiles.length; i++) {
       if (currentBoard.tiles[i] === 0) {
@@ -278,21 +309,21 @@ export default function LevelDetailScreen() {
       }
     }
 
-    if (emptyPositions.length < splitCount - 1) {
-      Alert.alert('空位不足', `需要${splitCount - 1}个空位进行分裂，当前只有${emptyPositions.length}个空位`);
+    if (emptyPositions.length < splitCount) {
+      Alert.alert('空位不足', `需要${splitCount}个空位进行分裂，当前只有${emptyPositions.length}个空位`);
       return;
     }
 
     const newTiles = [...currentBoard.tiles];
     const animationPromises = [];
     
-    // 原位置保留第一个分裂值
-    newTiles[index] = selectedCombination[0];
+    // 原位置清空（因为原数字已经完全分解）
+    newTiles[index] = 0;
     
-    // 在空位放置其他分裂值
-    const selectedEmptyPositions = emptyPositions.slice(0, splitCount - 1);
+    // 在空位放置所有分裂值
+    const selectedEmptyPositions = emptyPositions.slice(0, splitCount);
     selectedEmptyPositions.forEach((pos, i) => {
-      newTiles[pos] = selectedCombination[i + 1];
+      newTiles[pos] = selectedCombination[i];
     });
 
     // 创建分裂动画 - 显示正确的分解数值
@@ -316,7 +347,7 @@ export default function LevelDetailScreen() {
         translateY: new Animated.Value(0),
         scale: new Animated.Value(0.3),
         opacity: new Animated.Value(1),
-        value: selectedCombination[i + 1], // 存储对应的分解数值
+        value: selectedCombination[i], // 存储对应的分解数值
       };
       
       // 设置临时动画状态
@@ -338,7 +369,7 @@ export default function LevelDetailScreen() {
       animationPromises.push(jumpPromise);
     });
 
-    // 创建爆裂动画
+    // 创建原位置爆裂动画（原数字消失）
     const fractalAnim = {
       scale: new Animated.Value(1),
       opacity: new Animated.Value(1),

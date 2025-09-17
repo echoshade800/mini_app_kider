@@ -53,6 +53,10 @@ export default function HomeScreen() {
     }
   };
 
+  const handleAboutPress = () => {
+    router.push('/about');
+  };
+
   const handleResetData = () => {
     Alert.alert(
       '重置数据',

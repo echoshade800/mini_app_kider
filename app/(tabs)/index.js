@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   },
   levelInfoContainer: {
     position: 'absolute',
-    top: 120, // 调整到背景图顶部字母之间的位置
+    top: 80, // 调整到DAYCARE和DASH之间的位置
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -294,25 +294,25 @@ const styles = StyleSheet.create({
   },
   levelInfo: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
-    maxWidth: '80%',
+    maxWidth: '70%',
   },
   levelName: {
     color: '#333',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
   },
   levelSubtext: {
     color: '#666',
-    fontSize: 12,
+    fontSize: 11,
     textAlign: 'center',
     marginTop: 2,
   },

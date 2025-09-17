@@ -804,6 +804,9 @@ export function GameBoard({
     right: 0,
     bottom: 0,
               width: innerWidth,
+    position: 'absolute',
+    left: boardMetrics.boardX,
+    top: boardMetrics.boardY,
               height: innerHeight,
               left: padding,
     width: boardMetrics.boardWidth,
@@ -812,6 +815,17 @@ export function GameBoard({
 
   return (
     <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
+      {/* 调试信息 - 开发时可见 */}
+      {__DEV__ && (
+        <View style={styles.debugInfo}>
+          <Text style={styles.debugText}>
+            网格: {boardMetrics.debug.rows}×{boardMetrics.debug.cols} | 
+            棋盘: {boardMetrics.debug.calculatedBoardSize} | 
+            适配: {boardMetrics.debug.fitsInScreen ? '✅' : '❌'}
+          </Text>
+        </View>
+      )}
+      
       <View style={styles.container}>
         <View 
           style={[styles.chalkboard, boardContainerStyle]}
@@ -995,5 +1009,20 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
+  },
+  debugInfo: {
+    position: 'absolute',
+    top: 40,
+    left: 10,
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 8,
+    borderRadius: 4,
+    zIndex: 9999,
+  },
+  debugText: {
+    color: 'white',
+    fontSize: 12,
+    textAlign: 'center',
   },
 });

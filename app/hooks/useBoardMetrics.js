@@ -25,7 +25,7 @@ export function useBoardMetrics({
   safeBottom = 80, 
   safeHorizontalPadding = 20,
   isChallenge = false,
-  fixedTileSize = null // 新增：固定方块大小选项
+  fixedTileSize = 36 // 固定方块大小为36px
 }) {
   return useMemo(() => {
     // 挑战模式使用更大的安全区域
@@ -47,23 +47,8 @@ export function useBoardMetrics({
       gap = Math.max(4, gap * 0.85);
     }
     
-    // 计算方块尺寸 - 支持固定大小
-    let tileSize;
-    if (fixedTileSize) {
-      // 使用固定大小
-      tileSize = fixedTileSize;
-    } else {
-      // 自适应计算
-      const tileSizeW = (usableWidth - 2 * padding - (cols - 1) * gap) / cols;
-      const tileSizeH = (usableHeight - 2 * padding - (rows - 1) * gap) / rows;
-      tileSize = Math.max(MIN_TILE_SIZE, Math.floor(Math.min(tileSizeW, tileSizeH)));
-      
-      // 贴近理想尺寸
-      if (Math.abs(tileSize - IDEAL_TILE_SIZE) <= 4) {
-        tileSize = IDEAL_TILE_SIZE;
-      }
-      tileSize = Math.max(MIN_TILE_SIZE, Math.min(MAX_TILE_SIZE, tileSize));
-    }
+    // 使用固定方块大小
+    const tileSize = fixedTileSize;
     
     // 像素对齐
     const tile = roundPx(tileSize);
@@ -82,9 +67,24 @@ export function useBoardMetrics({
     const boardWidth = innerWidth + 2 * paddingPx;
     const boardHeight = innerHeight + 2 * paddingPx;
     
-    // 居中定位
-    const boardX = (screenWidth - boardWidth) / 2;
-    const boardY = actualSafeTop + (usableHeight - boardHeight) / 2;
+    // 居中定位 - 确保棋盘不超出屏幕
+    let boardX = (screenWidth - boardWidth) / 2;
+    let boardY = actualSafeTop + (usableHeight - boardHeight) / 2;
+    
+    // 边界检查 - 确保棋盘完全在屏幕内
+    if (boardX < safeHorizontalPadding) {
+      boardX = safeHorizontalPadding;
+    }
+    if (boardX + boardWidth > screenWidth - safeHorizontalPadding) {
+      boardX = screenWidth - safeHorizontalPadding - boardWidth;
+    }
+    
+    if (boardY < actualSafeTop) {
+      boardY = actualSafeTop;
+    }
+    if (boardY + boardHeight > screenHeight - actualSafeBottom) {
+      boardY = screenHeight - actualSafeBottom - boardHeight;
+    }
     
     // 方块位置计算函数
     const getTilePosition = (row, col) => ({
@@ -107,6 +107,15 @@ export function useBoardMetrics({
       usableWidth: roundPx(usableWidth),
       usableHeight: roundPx(usableHeight),
       getTilePosition,
+      // 添加调试信息
+      debug: {
+        rows,
+        cols,
+        totalCells,
+        calculatedBoardSize: `${Math.round(boardWidth)}×${Math.round(boardHeight)}`,
+        screenSize: `${screenWidth}×${screenHeight}`,
+        fitsInScreen: boardWidth <= usableWidth && boardHeight <= usableHeight,
+      }
     };
   }, [rows, cols, safeTop, safeBottom, safeHorizontalPadding, isChallenge]);
 }

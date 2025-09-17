@@ -1,457 +1,234 @@
-/**
- * Home Screen - Main dashboard with overview and quick actions
- * Purpose: Show user progress, provide quick access to game modes
- * Extend: Add daily challenges, achievements, or social features
- */
-
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet,
-  Modal,
-  Alert,
-  ImageBackground,
-  Dimensions
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ImageBackground, TouchableOpacity, SafeAreaView, Modal } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useGameStore } from '../store/gameStore';
-import { STAGE_NAMES, getStageGroup } from '../utils/stageNames';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import StorageUtils from '../utils/StorageUtils';
+import { STAGE_NAMES } from '../utils/stageNames';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/20250917-165940.jpeg';
 
-export default function HomeScreen() {
-  const { 
-    userData, 
-    gameData, 
-    settings, 
-    updateSettings, 
-    resetDemoData,
-    isLoading 
-  } = useGameStore();
-  
-  const [showSettings, setShowSettings] = useState(false);
+export default function Home() {
+  const [latestLevelName, setLatestLevelName] = useState('新手上路');
+  const [iq, setIq] = useState(0);
+  const [maxLevel, setMaxLevel] = useState(1);
+  const [showGuide, setShowGuide] = useState(false);
 
-  const handleStartLevel = () => {
-    try {
-      router.replace('/(tabs)/levels');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert('导航错误', '无法进入关卡选择页面，请重试');
-    }
-  };
-
-  const handleStartChallenge = () => {
-    try {
-      router.replace('/(tabs)/challenge');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert('导航错误', '无法进入挑战模式，请重试');
-    }
-  };
-
-  const handleAboutPress = () => {
-    router.push('/about');
-  };
-
-  const handleResetData = () => {
-    Alert.alert(
-      '重置数据',
-      '这将删除所有进度和设置，确定要重置吗？',
-      [
-        { text: '取消', style: 'cancel' },
-        { 
-          text: '确定', 
-          style: 'destructive',
-          onPress: () => {
-            resetDemoData();
-            setShowSettings(false);
-            Alert.alert('成功', '数据已重置');
-          }
-        }
-      ]
-    );
-  };
-
-  const getBestLevelDisplay = () => {
-    const level = gameData?.maxLevel || 0;
-    if (level === 0) return { title: 'Not Started', subtitle: 'Begin Your Journey' };
-    if (level > 200) {
-      return { 
-        title: `Level 200+${level - 200}`, 
-        subtitle: `The Last Horizon+${level - 200}` 
-      };
-    }
-    return { 
-      title: `Level ${level}`, 
-      subtitle: STAGE_NAMES[level] || `Level ${level}` 
-    };
-  };
-
-  const getBestChallengeDisplay = () => {
-    const score = gameData?.maxScore || 0;
-    const title = getIQTitle(score);
-    return { 
-      title: `IQ ${score}`, 
-      subtitle: title 
-    };
-  };
-
-  const getIQTitle = (iq) => {
-    if (iq >= 145) return 'Cosmic Genius';
-    if (iq >= 130) return 'Puzzle Master';
-    if (iq >= 115) return 'Rising Star';
-    if (iq >= 100) return 'Everyday Scholar';
-    if (iq >= 85) return 'Hardworking Student';
-    if (iq >= 70) return 'Slow but Steady';
-    if (iq >= 65) return 'Little Explorer';
-    if (iq >= 55) return 'Learning Hatchling';
-    if (iq >= 40) return 'Tiny Adventurer';
-    return 'Newborn Dreamer';
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const bestLevel = getBestLevelDisplay();
-  const bestChallenge = getBestChallengeDisplay();
-
-  const getCurrentLevelName = () => {
-    const level = gameData?.maxLevel || 1;
-    if (level > 200) {
-      return `The Last Horizon+${level - 200}`;
-    }
-    return STAGE_NAMES[level] || `Level ${level}`;
-  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const info = await StorageUtils.getData();
+        const currentLevel = info?.maxLevel || 1;
+        const levelName = currentLevel > 200 
+          ? `The Last Horizon+${currentLevel - 200}`
+          : STAGE_NAMES[currentLevel] || `Level ${currentLevel}`;
+        
+        setLatestLevelName(levelName);
+        setIq(info?.maxScore || 0);
+        setMaxLevel(currentLevel);
+      } catch (error) {
+        console.error('Failed to load game data:', error);
+      }
+    })();
+  }, []);
 
   return (
-    <View style={styles.container}>
-      <ImageBackground
-        source={{ uri: 'https://twycptozlvvvqxufzhik.supabase.co/storage/v1/object/public/kider1/daycare_dash_stroller_under_1mb.jpg' }}
-        style={styles.backgroundImage}
-        resizeMode="contain"
-      >
-        <SafeAreaView style={styles.safeArea}>
-          {/* Settings Button - Top Right */}
-          <View style={styles.topBar}>
-            <View style={styles.topLeft} />
-            <TouchableOpacity 
-              style={styles.settingsButton}
-              onPress={() => setShowSettings(true)}
-            >
-              <Ionicons name="settings" size={28} color="#fff" />
-            </TouchableOpacity>
-          </View>
+    <ImageBackground
+      source={{ uri: HERO_URL }}
+      resizeMode="cover"
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* 顶部操作区 */}
+        <View style={{ 
+          flexDirection: 'row', 
+          justifyContent: 'space-between', 
+          paddingHorizontal: 16, 
+          paddingTop: 4, 
+          alignItems: 'center' 
+        }}>
+          <TouchableOpacity
+            accessibilityLabel="新手引导"
+            onPress={() => setShowGuide(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ 
+              width: 36, 
+              height: 36, 
+              borderRadius: 18, 
+              backgroundColor: 'rgba(0,0,0,0.25)', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>I</Text>
+          </TouchableOpacity>
 
-          {/* Level Info - Between title lines */}
-          <View style={styles.levelInfoContainer}>
-            <View style={styles.levelInfo}>
-              <Text style={styles.levelName}>{getCurrentLevelName()}</Text>
-              <Text style={styles.levelSubtext}>Best IQ: {gameData?.maxScore || 0}</Text>
-            </View>
-          </View>
+          <TouchableOpacity
+            accessibilityLabel="设置"
+            onPress={() => router.push('/(tabs)/profile')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ 
+              width: 36, 
+              height: 36, 
+              borderRadius: 18, 
+              backgroundColor: 'rgba(0,0,0,0.25)', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '800' }}>⚙︎</Text>
+          </TouchableOpacity>
+        </View>
 
-          {/* Invisible buttons overlaying the image buttons */}
-          <View style={styles.buttonOverlays}>
-            {/* Level Mode Button - Left side */}
-            <TouchableOpacity 
-              style={styles.levelModeOverlay}
-              onPress={handleStartLevel}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.debugText}>闯关模式</Text>
-            </TouchableOpacity>
-            
-            {/* Challenge Mode Button - Right side */}
-            <TouchableOpacity 
-              style={styles.challengeModeOverlay}
-              onPress={handleStartChallenge}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.debugText}>挑战模式</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </ImageBackground>
-
-      {/* Settings Modal */}
-      <Modal
-        visible={showSettings}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowSettings(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.settingsModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Settings</Text>
-              <TouchableOpacity 
-                style={styles.closeButton}
-                onPress={() => setShowSettings(false)}
-              >
-                <Ionicons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.modalContent}>
-              <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Sound Effects</Text>
-                <TouchableOpacity
-                  style={[styles.toggle, settings?.soundEnabled && styles.toggleActive]}
-                  onPress={() => updateSettings({ soundEnabled: !settings?.soundEnabled })}
-                >
-                  <View style={[styles.toggleThumb, settings?.soundEnabled && styles.toggleThumbActive]} />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Haptic Feedback</Text>
-                <TouchableOpacity
-                  style={[styles.toggle, settings?.hapticsEnabled && styles.toggleActive]}
-                  onPress={() => updateSettings({ hapticsEnabled: !settings?.hapticsEnabled })}
-                >
-                  <View style={[styles.toggleThumb, settings?.hapticsEnabled && styles.toggleThumbActive]} />
-                </TouchableOpacity>
-              </View>
-              
-              <TouchableOpacity 
-                style={styles.aboutButton}
-                onPress={handleAboutPress}
-              >
-                <Ionicons name="information-circle" size={20} color="#4a90e2" />
-                <Text style={styles.aboutButtonText}>About & Help</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.resetButton}
-                onPress={handleResetData}
-              >
-                <Text style={styles.resetButtonText}>Reset Demo Data</Text>
-              </TouchableOpacity>
-            </View>
+        {/* 中部信息框 */}
+        <View style={{ 
+          flex: 1, 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          paddingHorizontal: 24 
+        }}>
+          <View style={{ 
+            paddingVertical: 14, 
+            paddingHorizontal: 18, 
+            borderRadius: 16, 
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+          }}>
+            <Text style={{ 
+              fontSize: 20, 
+              fontWeight: '800', 
+              color: '#5A3E12',
+              textAlign: 'center'
+            }}>
+              {latestLevelName} · IQ：{iq}
+            </Text>
           </View>
         </View>
-      </Modal>
-    </View>
+
+        {/* 底部按钮 */}
+        <View style={{ 
+          flexDirection: 'row', 
+          justifyContent: 'center', 
+          gap: 16, 
+          paddingBottom: 28,
+          paddingHorizontal: 20
+        }}>
+          <TouchableOpacity
+            accessibilityLabel="闯关模式"
+            onPress={() => router.push('/(tabs)/levels')}
+            style={{ 
+              minWidth: 140, 
+              height: 60, 
+              borderRadius: 999, 
+              backgroundColor: '#F58B39', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              paddingHorizontal: 24, 
+              shadowColor: '#000', 
+              shadowOpacity: 0.2, 
+              shadowRadius: 8, 
+              elevation: 4 
+            }}
+          >
+            <Text style={{ 
+              color: '#fff', 
+              fontSize: 18, 
+              fontWeight: '800' 
+            }}>
+              LEVELS
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            accessibilityLabel="挑战模式"
+            onPress={() => router.push('/(tabs)/challenge')}
+            style={{ 
+              minWidth: 140, 
+              height: 60, 
+              borderRadius: 999, 
+              backgroundColor: '#F26D21', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              paddingHorizontal: 24, 
+              shadowColor: '#000', 
+              shadowOpacity: 0.2, 
+              shadowRadius: 8, 
+              elevation: 4 
+            }}
+          >
+            <Text style={{ 
+              color: '#fff', 
+              fontSize: 18, 
+              fontWeight: '800' 
+            }}>
+              ARCADE
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 新手引导 Modal */}
+        <Modal 
+          visible={showGuide} 
+          transparent 
+          animationType="fade" 
+          onRequestClose={() => setShowGuide(false)}
+        >
+          <View style={{ 
+            flex: 1, 
+            backgroundColor: 'rgba(0,0,0,0.45)', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: 24 
+          }}>
+            <View style={{ 
+              width: '90%', 
+              borderRadius: 16, 
+              backgroundColor: '#fff', 
+              padding: 20 
+            }}>
+              <Text style={{ 
+                fontSize: 18, 
+                fontWeight: '800', 
+                marginBottom: 8,
+                color: '#333'
+              }}>
+                新手引导
+              </Text>
+              <Text style={{ 
+                fontSize: 15, 
+                lineHeight: 22, 
+                color: '#333',
+                marginBottom: 14
+              }}>
+                框选让数字之和等于 10 即可消除，支持跨格；道具有"交换""分裂"。闯关模式循序渐进，挑战模式随机大盘更刺激，祝你玩得开心！
+              </Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <TouchableOpacity 
+                  onPress={() => setShowGuide(false)} 
+                  style={{ 
+                    paddingVertical: 8, 
+                    paddingHorizontal: 12,
+                    minWidth: 44,
+                    minHeight: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Text style={{ 
+                    color: '#F26D21', 
+                    fontWeight: '700' 
+                  }}>
+                    知道了
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  safeArea: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f8ff',
-  },
-  loadingText: {
-    fontSize: 18,
-    color: '#666',
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-  topLeft: {
-    flex: 1,
-  },
-  settingsButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    padding: 10,
-    borderRadius: 20,
-  },
-  levelInfoContainer: {
-    position: 'absolute',
-    top: 80, // 调整到DAYCARE和DASH之间的位置
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  levelInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-    maxWidth: '70%',
-  },
-  levelName: {
-    color: '#333',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  levelSubtext: {
-    color: '#666',
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  buttonOverlays: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 40,
-  },
-  levelModeOverlay: {
-    flex: 1,
-    height: 200,
-    marginRight: 20,
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(76, 175, 80, 0.3)',
-  },
-  challengeModeOverlay: {
-    flex: 1,
-    height: 200,
-    marginLeft: 20,
-    backgroundColor: 'rgba(255, 152, 0, 0.1)',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 152, 0, 0.3)',
-  },
-  debugText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  settingsModal: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    width: '85%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalContent: {
-    padding: 20,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  settingLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  toggle: {
-    width: 50,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#ccc',
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-  },
-  toggleActive: {
-    backgroundColor: '#4CAF50',
-  },
-  toggleThumb: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  toggleThumbActive: {
-    alignSelf: 'flex-end',
-  },
-  aboutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  aboutButtonText: {
-    fontSize: 16,
-    color: '#4a90e2',
-    marginLeft: 12,
-  },
-  resetButton: {
-    backgroundColor: '#f44336',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  resetButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

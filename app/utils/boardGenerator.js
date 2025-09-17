@@ -27,8 +27,24 @@ function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
 
 // 挑战模式：直接使用最大尺寸铺满屏幕
 function getChallengeModeDimensions(screenWidth = 390, screenHeight = 844) {
-  // 挑战模式使用16x10的最大尺寸
-  return { width: 10, height: 16 };
+  // 挑战模式使用更大的尺寸以充分利用屏幕空间
+  // 考虑到顶部HUD(约80px)和底部道具栏(约100px)，剩余空间约664px
+  // 在常见手机屏幕上可以容纳更多行列
+  const availableHeight = screenHeight - 180; // 预留顶部和底部空间
+  const availableWidth = screenWidth - 40; // 预留左右边距
+  
+  // 基于可用空间计算最优行列数
+  const idealTileSize = 32; // 挑战模式使用稍小的方块
+  const gap = 4; // 更紧密的间距
+  
+  const maxCols = Math.floor((availableWidth - 24) / (idealTileSize + gap));
+  const maxRows = Math.floor((availableHeight - 24) / (idealTileSize + gap));
+  
+  // 限制在合理范围内，确保可玩性
+  const cols = Math.min(Math.max(maxCols, 8), 12);
+  const rows = Math.min(Math.max(maxRows, 12), 18);
+  
+  return { width: cols, height: rows };
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）

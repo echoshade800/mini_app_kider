@@ -387,7 +387,7 @@ export default function ChallengeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* HUD */}
-      <View style={styles.hud}>
+      <View style={[styles.hud, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000 }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={handleReturn}
@@ -421,11 +421,11 @@ export default function ChallengeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Game Board */}
+      {/* Game Board - Full Screen */}
       {(gameState === 'ready' || gameState === 'playing') && (
         <>
           {gameState === 'ready' && (
-            <View style={styles.readyOverlay}>
+            <View style={[styles.readyOverlay, { zIndex: 2000 }]}>
               <View style={styles.readyContent}>
                 <Text style={styles.readyTitle}>Challenge Mode</Text>
                 <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
@@ -439,40 +439,44 @@ export default function ChallengeScreen() {
           {/* Always render the board, but disable interaction when ready */}
           {!currentBoard && generateNewBoard()}
           {currentBoard && (
-            <GameBoard 
-              board={currentBoard}
-              onTilesClear={handleTilesClear}
-              onTileClick={handleTileClick}
-              itemMode={itemMode}
-              selectedSwapTile={selectedSwapTile}
-              swapAnimations={swapAnimationsRef.current}
-              fractalAnimations={fractalAnimationsRef.current}
-              onBoardRefresh={handleBoardRefresh}
-              disabled={gameState !== 'playing'}
-              isChallenge={true}
-            />
+            <View style={styles.fullScreenBoard}>
+              <GameBoard 
+                board={currentBoard}
+                onTilesClear={handleTilesClear}
+                onTileClick={handleTileClick}
+                itemMode={itemMode}
+                selectedSwapTile={selectedSwapTile}
+                swapAnimations={swapAnimationsRef.current}
+                fractalAnimations={fractalAnimationsRef.current}
+                onBoardRefresh={handleBoardRefresh}
+                disabled={gameState !== 'playing'}
+                isChallenge={true}
+              />
+            </View>
           )}
         </>
       )}
 
       {gameState === 'finished' && currentBoard && (
-        <GameBoard 
-          board={currentBoard}
-          onTilesClear={handleTilesClear}
-          onTileClick={handleTileClick}
-          itemMode={itemMode}
-          selectedSwapTile={selectedSwapTile}
-          swapAnimations={swapAnimationsRef.current}
-          fractalAnimations={fractalAnimationsRef.current}
-          onBoardRefresh={handleBoardRefresh}
-          disabled={true}
-          isChallenge={true}
-        />
+        <View style={styles.fullScreenBoard}>
+          <GameBoard 
+            board={currentBoard}
+            onTilesClear={handleTilesClear}
+            onTileClick={handleTileClick}
+            itemMode={itemMode}
+            selectedSwapTile={selectedSwapTile}
+            swapAnimations={swapAnimationsRef.current}
+            fractalAnimations={fractalAnimationsRef.current}
+            onBoardRefresh={handleBoardRefresh}
+            disabled={true}
+            isChallenge={true}
+          />
+        </View>
       )}
 
-      {/* 底部道具栏 - 与闯关模式一致 */}
+      {/* 底部道具栏 - 固定在屏幕最底部 */}
       {gameState === 'playing' && (
-        <View style={styles.itemsBar}>
+        <View style={[styles.itemsBar, { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000 }]}>
           <TouchableOpacity 
             style={[
               styles.itemButton,
@@ -521,7 +525,7 @@ export default function ChallengeScreen() {
 
       {/* No Solution Overlay */}
       {showNoSolution && (
-        <View style={styles.noSolutionOverlay}>
+        <View style={[styles.noSolutionOverlay, { zIndex: 3000 }]}>
           <Text style={styles.noSolutionText}>{noSolutionMessage}</Text>
         </View>
       )}
@@ -580,12 +584,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a2e',
   },
+  fullScreenBoard: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
   hud: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 12,
+    paddingTop: 50, // 为状态栏留出空间
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   backButton: {
@@ -796,7 +809,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 20,
+    paddingBottom: 30, // 为底部安全区域留出空间
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     gap: 20,
   },

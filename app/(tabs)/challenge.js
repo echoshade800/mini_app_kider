@@ -194,7 +194,7 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 生成固定尺寸的挑战模式棋盘
+    // 生成挑战模式棋盘
     const board = generateChallengeBoard();
     setCurrentBoard(board);
     setReshuffleCount(0);

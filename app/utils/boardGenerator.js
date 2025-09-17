@@ -1,536 +1,1044 @@
 /**
- * Board Generator - Deterministic puzzle board creation
- * Purpose: Generate solvable number puzzles with appropriate difficulty scaling
- * Features: Fixed board size per level, guaranteed solvability, line selection support
+ * GameBoard Component - Green chalkboard with sticky note style tiles
+ * Purpose: Render game tiles with rectangle drawing on a classroom chalkboard theme
+ * Features: Green chalkboard background, sticky note tiles with slight rotation, explosion effects
  */
-import { getGridByLevel, getLevelLayout } from '../utils/levelGrid';
-import { getLevelGridSize, getChallengeGridSize } from '../utils/layout';
 
-// Deterministic random number generator
-function seededRandom(seed) {
-  let state = 0;
-  for (let i = 0; i < seed.length; i++) {
-    state = ((state << 5) - state + seed.charCodeAt(i)) & 0xffffffff;
-  }
+import React, { useState, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  PanResponder, 
+  Dimensions, 
+  StyleSheet,
+  Animated,
+  PixelRatio
+} from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { useGameStore } from '../store/gameStore';
+import { hasValidCombinations, reshuffleBoard, isBoardEmpty } from '../utils/gameLogic';
+import { getCompleteLayout, getTilePosition } from '../utils/layout';
+import { RescueModal } from './RescueModal';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+export function GameBoard({ 
+  board, 
+  onTilesClear, 
+  onBoardRefresh,
+  onTileClick, 
+  itemMode = null,
+  selectedSwapTile = null,
+  disabled = false,
+  swapAnimations,
+  fractalAnimations,
+  isChallenge = false,
+  level = 1
+}) {
+  const { settings } = useGameStore();
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+  const [showRescueModal, setShowRescueModal] = useState(false);
   
-  return function() {
-    state = ((state * 1103515245) + 12345) & 0x7fffffff;
-    return state / 0x7fffffff;
-  };
-}
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef({}).current;
 
-function getBoardDimensions(level) {
+  // Generate stable random rotation for each tile
+  const { width, height, tiles } = board;
+  
   // 使用新的统一布局系统
-  const { rows, cols } = getLevelGridSize(level);
-  return { width: cols, height: rows };
-}
+  const topUsed = isChallenge ? 110 : 100;
+  const bottomUsed = isChallenge ? 130 : 120;
+  
+  const boardMetrics = getCompleteLayout(
+    screenWidth,
+    screenHeight,
+    level,
+    isChallenge,
+    topUsed,
+    bottomUsed
+  );
+  
+  // 方块位置计算函数
+  const getTilePositionForBoard = (row, col) => {
+    return getTilePosition(row, col, boardMetrics.tileSize, boardMetrics.gap, boardMetrics.padding);
+  };
 
-// 挑战模式：使用固定的16×10网格
-function getChallengeModeDimensions() {
-  // 挑战模式固定使用16×10网格
-  const { rows, cols } = getChallengeGridSize();
-  return { width: cols, height: rows };
-}
+  const getTileRotation = (row, col) => {
+    const seed = row * 1000 + col;
+    const random = (seed * 9301 + 49297) % 233280;
+    return ((random / 233280) - 0.5) * 2.4; // -1.2° to +1.2°
+  };
 
-// 检查两个位置是否可以形成有效的矩形选择（包括线条）
-function canFormRectangle(pos1, pos2, width, height) {
-  const row1 = Math.floor(pos1 / width);
-  const col1 = pos1 % width;
-  const row2 = Math.floor(pos2 / width);
-  const col2 = pos2 % width;
-  
-  // 必须在同一行或同一列，或者形成矩形
-  return (row1 === row2) || (col1 === col2) || 
-         (Math.abs(row1 - row2) >= 1 && Math.abs(col1 - col2) >= 1);
-}
+  React.useEffect(() => {
+    return () => {
+      Object.values(tileScales).forEach(anim => {
+        if (anim && anim.stopAnimation) {
+          anim.stopAnimation();
+        }
+      });
+    };
+  }, []);
 
-// 获取矩形内的所有位置（包括线条选择）
-function getRectanglePositions(pos1, pos2, width, height) {
-  const row1 = Math.floor(pos1 / width);
-  const col1 = pos1 % width;
-  const row2 = Math.floor(pos2 / width);
-  const col2 = pos2 % width;
-  
-  const minRow = Math.min(row1, row2);
-  const maxRow = Math.max(row1, row2);
-  const minCol = Math.min(col1, col2);
-  const maxCol = Math.max(col1, col2);
-  
-  const positions = [];
-  for (let row = minRow; row <= maxRow; row++) {
-    for (let col = minCol; col <= maxCol; col++) {
-      positions.push(row * width + col);
-    }
-  }
-  
-  return positions;
-}
-
-// 检查棋盘是否可解（所有数字都能通过矩形选择消除）
-function isBoardSolvable(tiles, width, height) {
-  const workingTiles = [...tiles];
-  const size = width * height;
-  let maxIterations = 100; // 防止无限循环
-  
-  while (maxIterations > 0) {
-    let foundSolution = false;
+  // 检查是否需要救援  
+  const checkForRescue = React.useCallback(() => {
+    const { tiles, width, height } = board;
     
-    // 尝试找到一个可以消除的矩形
-    for (let pos1 = 0; pos1 < size && !foundSolution; pos1++) {
-      if (workingTiles[pos1] === 0) continue;
-      
-      for (let pos2 = pos1; pos2 < size && !foundSolution; pos2++) {
-        if (workingTiles[pos2] === 0) continue;
+    // 检查是否有可消除的组合
+    if (!hasValidCombinations(tiles, width, height)) {
+      if (reshuffleCount < 3) {
+        // 自动重排
+        const newTiles = reshuffleBoard(tiles, width, height);
+        const newBoard = { ...board, tiles: newTiles };
         
-        if (canFormRectangle(pos1, pos2, width, height)) {
-          const positions = getRectanglePositions(pos1, pos2, width, height);
-          const sum = positions.reduce((acc, pos) => acc + workingTiles[pos], 0);
+        // 检查重排后是否有解
+        if (hasValidCombinations(newTiles, width, height)) {
+          setReshuffleCount(0);
+          if (onBoardRefresh) {
+            onBoardRefresh(newBoard);
+          }
+        } else {
+          setReshuffleCount(prev => prev + 1);
+          if (onBoardRefresh) {
+            onBoardRefresh(newBoard);
+          }
           
-          if (sum === 10) {
-            // 找到可消除的矩形，清除这些位置
-            positions.forEach(pos => workingTiles[pos] = 0);
-            foundSolution = true;
+          // 如果重排3次后仍无解，显示救援界面
+          if (reshuffleCount + 1 >= 3) {
+            setTimeout(() => {
+              setShowRescueModal(true);
+            }, 500);
+          }
+        }
+      }
+    }
+  }, [board, disabled, reshuffleCount, onBoardRefresh]);
+
+  // 监听棋盘变化，检查是否需要救援
+  React.useEffect(() => {
+    if (board && !itemMode) {
+      const timer = setTimeout(() => {
+        checkForRescue();
+      }, 1000); // 延迟检查，避免频繁触发
+      
+      return () => clearTimeout(timer);
+    }
+  }, [board, itemMode, checkForRescue]);
+
+  if (!board) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading board...</Text>
+      </View>
+    );
+  }
+
+  // Initialize tile scale animation
+  const initTileScale = (index) => {
+    if (!tileScales[index]) {
+      tileScales[index] = new Animated.Value(1);
+    }
+    return tileScales[index];
+  };
+
+  // Scale tile animation
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    if (tileScale) {
+      Animated.spring(tileScale, {
+        toValue: scale,
+        useNativeDriver: true,
+        tension: 400,
+        friction: 8,
+      }).start();
+    }
+  };
+
+  const isInsideGridArea = (pageX, pageY) => {
+    if (isInRestrictedArea(pageY)) return false;
+
+    const boardX = boardMetrics.boardX;
+    const boardY = boardMetrics.boardY;
+    const boardWidth = boardMetrics.boardWidth;
+    const boardHeight = boardMetrics.boardHeight;
+    const padding = boardMetrics.padding;
+
+    const innerLeft = boardX;
+    const innerTop = boardY;
+
+    if (pageX < innerLeft + padding || pageX > innerLeft + boardWidth - padding ||
+        pageY < innerTop + padding || pageY > innerTop + boardHeight - padding) {
+      return false;
+    }
+
+    const relativeX = pageX - innerLeft - padding;
+    const relativeY = pageY - innerTop - padding;
+
+    const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+    const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+
+    if (relativeX < 0 || relativeX >= width * cellWidth - boardMetrics.gap ||
+        relativeY < 0 || relativeY >= height * cellHeight - boardMetrics.gap) {
+      return false;
+    }
+
+    const col = Math.floor(relativeX / cellWidth);
+    const row = Math.floor(relativeY / cellHeight);
+
+    return row >= 0 && row < height && col >= 0 && col < width;
+  };
+
+  const isInRestrictedArea = (pageY) => {
+    const topRestrictedHeight = topUsed;
+    const bottomRestrictedHeight = bottomUsed;
+    
+    return pageY < topRestrictedHeight || 
+           pageY > screenHeight - bottomRestrictedHeight;
+  };
+
+  const getSelectedTilesForSelection = (sel) => {
+    if (!sel) return [];
+    
+    const { startRow, startCol, endRow, endCol } = sel;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = [];
+    
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value > 0) {
+            selectedTiles.push({ row, col, value, index });
           }
         }
       }
     }
     
-    if (!foundSolution) {
-      // 检查是否还有剩余数字
-      const hasRemainingNumbers = workingTiles.some(tile => tile > 0);
-      return !hasRemainingNumbers; // 如果没有剩余数字，则可解
-    }
-    
-    maxIterations--;
-  }
-  
-  return false; // 超过最大迭代次数，认为不可解
-}
+    return selectedTiles;
+  };
 
-// 确保棋盘总和为10的倍数
-function ensureSumIsMultipleOf10(tiles) {
-  const nonZeroTiles = tiles.filter(tile => tile > 0);
-  const currentSum = nonZeroTiles.reduce((acc, tile) => acc + tile, 0);
-  const remainder = currentSum % 10;
-  
-  if (remainder === 0) {
-    return tiles; // 已经是10的倍数，无需调整
-  }
-  
-  const adjustment = 10 - remainder;
-  const newTiles = [...tiles];
-  
-  // 找到第一个非零数字进行调整
-  for (let i = 0; i < newTiles.length; i++) {
-    if (newTiles[i] > 0) {
-      // 尝试调整这个数字
-      const newValue = newTiles[i] + adjustment;
-      if (newValue >= 1 && newValue <= 9) {
-        newTiles[i] = newValue;
-        return newTiles;
-      }
-      
-      // 如果调整后超出范围，尝试减少
-      const newValueDown = newTiles[i] - (10 - adjustment);
-      if (newValueDown >= 1 && newValueDown <= 9) {
-        newTiles[i] = newValueDown;
-        return newTiles;
-      }
-    }
-  }
-  
-  // 如果单个数字调整不行，尝试调整多个数字
-  let remainingAdjustment = adjustment;
-  for (let i = 0; i < newTiles.length && remainingAdjustment > 0; i++) {
-    if (newTiles[i] > 0) {
-      const maxIncrease = Math.min(9 - newTiles[i], remainingAdjustment);
-      if (maxIncrease > 0) {
-        newTiles[i] += maxIncrease;
-        remainingAdjustment -= maxIncrease;
-      }
-    }
-  }
-  
-  // 如果还有剩余调整量，尝试减少一些数字
-  if (remainingAdjustment > 0) {
-    for (let i = 0; i < newTiles.length && remainingAdjustment > 0; i++) {
-      if (newTiles[i] > 1) {
-        const maxDecrease = Math.min(newTiles[i] - 1, remainingAdjustment);
-        newTiles[i] -= maxDecrease;
-        remainingAdjustment -= maxDecrease;
-      }
-    }
-  }
-  
-  return newTiles;
-}
+  const getSelectedTiles = () => {
+    return getSelectedTilesForSelection(selection);
+  };
 
-// 生成挑战模式专用的满盘棋盘
-export function generateChallengeBoard() {
-  const seed = `challenge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const random = seededRandom(seed);
-  
-  // 使用固定的挑战模式尺寸
-  const { width, height } = getChallengeModeDimensions();
-  const size = width * height;
-  
-  // 初始化棋盘，填满所有位置
-  const tiles = new Array(size);
-  
-  // 挑战模式高难度设置 - 增加方块后调整配对比例
-  const guaranteedPairs = Math.floor(size * 0.4); // 40%保证可解配对，增加可玩性
-  const adjacentRatio = 0.2; // 20%相邻配对，80%需要大范围框选
-  
-  // 生成目标配对（和为10）
-  const targetPairs = [
-    [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
-  ];
-  
-  // 放置保证可消除的配对
-  const placedPositions = new Set();
-  let pairsPlaced = 0;
-  
-  // 少量相邻配对（容易找到）
-  const easyPairsToPlace = Math.floor(guaranteedPairs * adjacentRatio);
-  
-  for (let i = 0; i < easyPairsToPlace && pairsPlaced < guaranteedPairs; i++) {
-    const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-    const [val1, val2] = pairType;
-    
-    let placed = false;
-    let attempts = 0;
-    
-    while (!placed && attempts < 50) {
-      const pos1 = Math.floor(random() * size);
+  const resetSelection = () => {
+    setSelection(null);
+    selectionOpacity.setValue(0);
+    hoveredTiles.forEach(index => {
+      scaleTile(index, 1);
+    });
+    setHoveredTiles(new Set());
+  };
+
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: (evt) => {
+      if (itemMode) return false;
+      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
+      const { pageX, pageY } = evt.nativeEvent;
+      return !disabled && isInsideGridArea(pageX, pageY);
+    },
+    onMoveShouldSetPanResponder: (evt) => {
+      if (itemMode) return false;
+      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
+      const { pageX, pageY } = evt.nativeEvent;
+      return !disabled && isInsideGridArea(pageX, pageY);
+    },
+
+    onPanResponderGrant: (evt) => {
+      const { pageX, pageY } = evt.nativeEvent;
       
-      if (placedPositions.has(pos1)) {
-        attempts++;
-        continue;
+      if (!isInsideGridArea(pageX, pageY)) return;
+      
+      const boardX = boardMetrics.boardX;
+      const boardY = boardMetrics.boardY;
+      const padding = boardMetrics.padding;
+
+      const innerLeft = boardX;
+      const innerTop = boardY;
+
+      const relativeX = pageX - innerLeft - padding;
+      const relativeY = pageY - innerTop - padding;
+
+      const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+      const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+
+      const startCol = Math.floor(relativeX / cellWidth);
+      const startRow = Math.floor(relativeY / cellHeight);
+      
+      setSelection({
+        startRow,
+        startCol,
+        endRow: startRow,
+        endCol: startCol,
+      });
+      
+      Animated.timing(selectionOpacity, {
+        toValue: 0.6,
+        duration: 80,
+        useNativeDriver: false,
+      }).start();
+    },
+
+    onPanResponderMove: (evt) => {
+      if (!selection) return;
+      
+      const { pageX, pageY } = evt.nativeEvent;
+      
+      const boardX = boardMetrics.boardX;
+      const boardY = boardMetrics.boardY;
+      const boardWidth = boardMetrics.boardWidth;
+      const boardHeight = boardMetrics.boardHeight;
+      const padding = boardMetrics.padding;
+
+      const innerLeft = boardX;
+      const innerTop = boardY;
+
+      if (pageX < innerLeft + padding || pageX > innerLeft + boardWidth - padding ||
+          pageY < innerTop + padding || pageY > innerTop + boardHeight - padding) {
+        return;
       }
       
-      const row1 = Math.floor(pos1 / width);
-      const col1 = pos1 % width;
+      const relativeX = pageX - innerLeft - padding;
+      const relativeY = pageY - innerTop - padding;
+
+      const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+      const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+
+      if (relativeX < 0 || relativeX >= width * cellWidth - boardMetrics.gap ||
+          relativeY < 0 || relativeY >= height * cellHeight - boardMetrics.gap) {
+        return;
+      }
       
-      // 尝试相邻位置
-      const candidateOffsets = [
-        [0, 1], [1, 0], [0, -1], [-1, 0],
-        [0, 2], [2, 0], [0, -2], [-2, 0]
-      ];
+      const endCol = Math.floor(relativeX / cellWidth);
+      const endRow = Math.floor(relativeY / cellHeight);
       
-      for (const [dr, dc] of candidateOffsets) {
-        const row2 = row1 + dr;
-        const col2 = col1 + dc;
-        const pos2 = row2 * width + col2;
-        
-        if (row2 >= 0 && row2 < height && col2 >= 0 && col2 < width &&
-            !placedPositions.has(pos2)) {
+      if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
+        return;
+      }
+      
+      setSelection(prev => ({
+        ...prev,
+        endRow,
+        endCol,
+      }));
+
+      // Update hovered tiles with scaling effect
+      const newSelection = { ...selection, endRow, endCol };
+      const newSelectedTiles = getSelectedTilesForSelection(newSelection);
+      const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
+      
+      // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
+      const sum = newSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+      const targetScale = sum === 10 ? 1.1 : 1.05;
+      
+      newSelectedTiles.forEach(tile => {
+        if (!hoveredTiles.has(tile.index)) {
+          scaleTile(tile.index, targetScale);
+        }
+      });
+      
+      hoveredTiles.forEach(index => {
+        if (!newHoveredSet.has(index)) {
+          scaleTile(index, 1);
+        }
+      });
+      
+      setHoveredTiles(newHoveredSet);
+    },
+
+    onPanResponderRelease: () => {
+      if (selection && !disabled) {
+        handleSelectionComplete();
+      }
+      
+      hoveredTiles.forEach(index => {
+        scaleTile(index, 1);
+      });
+      setHoveredTiles(new Set());
+      
+      Animated.timing(selectionOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => {
+        setSelection(null);
+      });
+    },
+    
+    onPanResponderTerminationRequest: (evt) => {
+      const { pageX, pageY } = evt.nativeEvent;
+      const buttonAreaBottom = screenHeight - 80; // 底部道具栏区域
+      const buttonAreaTop = screenHeight - 160;
+      const topRestrictedHeight = 120; // 顶部HUD区域
+      
+      if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
+          pageY < topRestrictedHeight) {
+        return true;
+      }
+      
+      return true;
+    },
+    
+    onPanResponderReject: () => {
+      resetSelection();
+    },
+  });
+
+  // Handle tile click in item mode
+  const handleTilePress = (row, col, value) => {
+    if (!itemMode || disabled || value === 0) return;
+    
+    if (onTileClick) {
+      onTileClick(row, col, value);
+    }
+    
+    if (settings?.hapticsEnabled !== false) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const handleSelectionComplete = async () => {
+    if (!selection) return;
+
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+
+    if (sum === 10 && selectedTiles.length > 0) {
+      // 重置重排计数
+      setReshuffleCount(0);
+      
+      // Success - create explosion effect with yellow "10" note
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      
+      // Calculate explosion center position
+      const { startRow, startCol, endRow, endCol } = selection;
+      const centerRow = (startRow + endRow) / 2;
+      const centerCol = (startCol + endCol) / 2;
+
+      const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+      const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+
+      const explosionX = centerCol * cellWidth + boardMetrics.tileSize / 2;
+      const explosionY = centerRow * cellHeight + boardMetrics.tileSize / 2;
+      
+      setExplosionAnimation({ x: explosionX, y: explosionY });
+      
+      // Explosion animation - yellow "10" note
+      explosionScale.setValue(0.5);
+      explosionOpacity.setValue(1);
+      
+      Animated.parallel([
+        Animated.timing(explosionScale, {
+          toValue: 2.0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(explosionOpacity, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setExplosionAnimation(null);
+      });
+
+      // Selection box animation - bright green glow
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+        onTilesClear(tilePositions);
+      });
+
+    } else if (selectedTiles.length > 0) {
+      // Failure - blue feedback with short vibration
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.selectionAsync();
+      }
+      
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.4,
+          duration: 150,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+      });
+    } else {
+      setSelection(null);
+    }
+  };
+
+  // 处理救援选择
+  const handleRescueContinue = () => {
+    setShowRescueModal(false);
+    setReshuffleCount(0);
+    // 这里可以触发道具使用逻辑
+  };
+
+  const handleRescueReturn = () => {
+    setShowRescueModal(false);
+    setReshuffleCount(0);
+    // 返回主页面的逻辑由父组件处理
+    if (onBoardRefresh) {
+      onBoardRefresh('return');
+    }
+  };
+
+  const getSelectionStyle = () => {
+    if (!selection) return null;
+    
+    const { startRow, startCol, endRow, endCol } = selection;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const isSuccess = sum === 10;
+    
+    const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+    const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+
+    const left = minCol * cellWidth;
+    const top = minRow * cellHeight;
+    const selectionWidth = (maxCol - minCol + 1) * cellWidth - boardMetrics.gap;
+    const selectionHeight = (maxRow - minRow + 1) * cellHeight - boardMetrics.gap;
+    
+    return {
+      position: 'absolute',
+      left,
+      top,
+      width: selectionWidth,
+      height: selectionHeight,
+      backgroundColor: isSuccess ? 'rgba(24, 197, 110, 0.3)' : 'rgba(33, 150, 243, 0.2)',
+      opacity: selectionOpacity,
+      borderRadius: 8,
+      borderWidth: 3,
+      borderColor: isSuccess ? '#18C56E' : '#2F80ED',
+      shadowColor: isSuccess ? '#18C56E' : '#2F80ED',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: isSuccess ? 0.6 : 0.3,
+      shadowRadius: isSuccess ? 8 : 4,
+      elevation: isSuccess ? 8 : 4,
+    };
+  };
+
+  const getSelectionSum = () => {
+    if (!selection) return null;
+    
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    
+    if (selectedTiles.length === 0) return null;
+    
+    const { startRow, startCol, endRow, endCol } = selection;
+    const maxRow = Math.max(startRow, endRow);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+    const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+
+    const left = maxCol * cellWidth + boardMetrics.tileSize;
+    const top = maxRow * cellHeight + boardMetrics.tileSize;
+    
+    return {
+      sum,
+      isSuccess: sum === 10,
+      style: {
+        position: 'absolute',
+        left: left - 30,
+        top: top - 30,
+        width: 60,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: sum === 10 ? '#FFEB3B' : '#2196F3',
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: sum === 10 ? '#F57F17' : '#1976D2',
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 6,
+        transform: [{ rotate: '-2deg' }], // Slight rotation like sticky note
+      }
+    };
+  };
+
+  const renderGridLines = () => {
+    const lines = [];
+    const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+    const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+
+    // Vertical lines
+    for (let i = 1; i < width; i++) {
+      lines.push(
+        <View
+          key={`v-${i}`}
+          style={[
+            styles.gridLine,
+            {
+              left: i * cellWidth - boardMetrics.gap / 2,
+              top: 0,
+              width: 1,
+              height: height * cellHeight - boardMetrics.gap,
+            }
+          ]}
+        />
+      );
+    }
+
+    // Horizontal lines
+    for (let i = 1; i < height; i++) {
+      lines.push(
+        <View
+          key={`h-${i}`}
+          style={[
+            styles.gridLine,
+            {
+              left: 0,
+              top: i * cellHeight - boardMetrics.gap / 2,
+              width: width * cellWidth - boardMetrics.gap,
+              height: 1,
+            }
+          ]}
+        />
+      );
+    }
+
+    return lines;
+  };
+
+  const renderTile = (value, row, col) => {
+    const index = row * width + col;
+    
+    if (value === 0) {
+      // 检查是否有临时跳跃动画
+      const tempAnimKeys = Array.from(fractalAnimations ? fractalAnimations.keys() : [])
+        .filter(key => key.toString().startsWith(`temp_${index}_`));
+      
+      if (tempAnimKeys.length > 0) {
+        // 渲染跳跃中的临时方块
+        return tempAnimKeys.map(tempKey => {
+          const tempAnim = fractalAnimations.get(tempKey);
+          if (!tempAnim) return null;
           
-          tiles[pos1] = val1;
-          tiles[pos2] = val2;
-          placedPositions.add(pos1);
-          placedPositions.add(pos2);
-          pairsPlaced++;
-          placed = true;
-          break;
+          const { x, y } = getTilePositionForBoard(row, col);
+          const rotation = getTileRotation(row, col);
+          
+          const transforms = [
+            { scale: tempAnim.scale },
+            { rotate: `${rotation}deg` },
+            { translateX: tempAnim.translateX },
+            { translateY: tempAnim.translateY },
+          ];
+          
+          // 获取正确的分解数值
+          const displayValue = tempAnim.value || Math.floor(Math.random() * 9) + 1;
+          
+          return (
+            <Animated.View 
+              key={tempKey}
+              style={[
+                {
+                  position: 'absolute',
+                  left: x,
+                  top: y,
+                  width: boardMetrics.tileSize,
+                  height: boardMetrics.tileSize,
+                  transform: transforms,
+                  opacity: tempAnim.opacity,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }
+              ]}
+            >
+              <View style={styles.tileInner}>
+                <Text style={[
+                  styles.tileText,
+                  { 
+                    fontSize: Math.max(14, boardMetrics.tileSize * 0.45),
+                    lineHeight: boardMetrics.tileSize,
+                  }
+                ]}>
+                  {displayValue}
+                </Text>
+              </View>
+            </Animated.View>
+          );
+        });
+      }
+      
+      // 检查是否完全清空（仅挑战模式需要刷新）
+      if (isChallenge) {
+        const newTiles = [...tiles];
+        const tilePositions = []; // This should be defined somewhere
+        tilePositions.forEach(pos => {
+          const index = pos.row * width + pos.col;
+          newTiles[index] = 0;
+        });
+        
+        if (isBoardEmpty(newTiles) && onBoardRefresh) {
+          // 棋盘全清，生成新棋盘
+          setTimeout(() => {
+            onBoardRefresh('refresh');
+          }, 1000);
         }
       }
       
-      attempts++;
+      return null;
     }
-  }
-  
-  // 放置剩余的保证配对（需要大范围框选）
-  while (pairsPlaced < guaranteedPairs) {
-    const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-    const [val1, val2] = pairType;
-    
-    const availablePositions = [];
-    for (let i = 0; i < size; i++) {
-      if (!placedPositions.has(i)) {
-        availablePositions.push(i);
-      }
-    }
-    
-    if (availablePositions.length >= 2) {
-      const pos1 = availablePositions[Math.floor(random() * availablePositions.length)];
-      const remainingPositions = availablePositions.filter(p => p !== pos1);
-      const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
-      
-      tiles[pos1] = val1;
-      tiles[pos2] = val2;
-      placedPositions.add(pos1);
-      placedPositions.add(pos2);
-      pairsPlaced++;
-    } else {
-      break;
-    }
-  }
-  
-  // 填满剩余所有位置 - 挑战模式高频低频分布
-  for (let i = 0; i < size; i++) {
-    if (!placedPositions.has(i)) {
-      // 70%高频数字，30%低频数字
-      const highFreqNumbers = [5, 6, 7, 8, 9];
-      const lowFreqNumbers = [1, 2, 3, 4];
-      if (random() < 0.7) {
-        tiles[i] = highFreqNumbers[Math.floor(random() * highFreqNumbers.length)];
-      } else {
-        tiles[i] = lowFreqNumbers[Math.floor(random() * lowFreqNumbers.length)];
-      }
-    }
-  }
-  
-  // 确保总和为10的倍数
-  const adjustedTiles = ensureSumIsMultipleOf10(tiles);
-  
-  return {
-    seed,
-    width,
-    height,
-    tiles: adjustedTiles,
-    requiredSwaps: 0,
-    level: 'challenge',
-    solvable: true,
-    isChallengeMode: true,
-  };
-}
 
-export function generateBoard(level, forceNewSeed = false, isChallengeMode = false) {
-  // 使用时间戳或固定种子，根据需要生成不同的棋盘
-  const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
-  const seed = `level_${level}_${baseSeed}`;
-  const random = seededRandom(seed);
-  
-  // 获取棋盘尺寸
-  const { width, height } = isChallengeMode 
-    ? getChallengeModeDimensions()
-    : getBoardDimensions(level);
-    
-  const difficultyLevel = isChallengeMode ? 130 : level;
-  const size = width * height;
-  
-  let attempts = 0;
-  const maxAttempts = 50;
-  
-  while (attempts < maxAttempts) {
-    // 初始化棋盘，填满所有位置
-    const tiles = new Array(size);
-    
-    // 确定难度参数
-    let guaranteedPairs = Math.floor(size * 0.45);
-    let adjacentRatio = 0.9;   // 提高相邻配对比例，让玩家更容易找到组合
-    let requiredSwaps = 0;     // 前期不需要道具
-    
-    if (difficultyLevel <= 5) {
-      // 前5关：非常简单，大量可直接消除的组合
-      guaranteedPairs = Math.floor(size * 0.6);
-      adjacentRatio = 1.0;
-      requiredSwaps = 0;
-    } else if (difficultyLevel <= 15) {
-      // 6-15关：简单，大部分可直接消除
-      guaranteedPairs = Math.floor(size * 0.55);
-      adjacentRatio = 0.9;
-      requiredSwaps = 0;
-    } else if (difficultyLevel <= 40) {
-      // 16-40关：中等难度，开始需要框选较远的数字
-      guaranteedPairs = Math.floor(size * 0.5);
-      adjacentRatio = 0.7; // 降低相邻比例，鼓励框选较远的数字
-      requiredSwaps = 0; // 仍然不需要道具
-    } else if (difficultyLevel <= 80) {
-      // 41-80关：需要更多策略，框选更大的区域
-      guaranteedPairs = Math.floor(size * 0.45);
-      adjacentRatio = 0.5; // 进一步降低相邻比例
-      requiredSwaps = Math.random() < 0.2 ? 1 : 0; // 偶尔需要道具
-    } else if (difficultyLevel <= 120) {
-      // 81-120关：高难度，需要大范围框选
-      guaranteedPairs = Math.floor(size * 0.4);
-      adjacentRatio = 0.3;
-      requiredSwaps = Math.random() < 0.4 ? 1 : 0;
-    } else {
-      // 120关以上：最高难度（挑战模式使用130关难度）
-      guaranteedPairs = Math.floor(size * 0.4); // 挑战模式增加保证配对
-      adjacentRatio = 0.2;
-      requiredSwaps = Math.floor(Math.random() * 2) + 1;
+    if (row < 0 || row >= height || col < 0 || col >= width) {
+      return null;
     }
+
+    const { x, y } = getTilePositionForBoard(row, col);
+
+    const tileScale = initTileScale(index);
+    const rotation = getTileRotation(row, col);
     
-    // 生成目标配对（和为10）
-    const targetPairs = [
-      [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
+    // Get swap and fractal animations
+    const swapAnim = swapAnimations ? swapAnimations.get(index) : null;
+    const fractalAnim = fractalAnimations ? fractalAnimations.get(index) : null;
+    
+    const transforms = [
+      { scale: tileScale },
+      { rotate: `${rotation}deg` }
     ];
     
-    // 放置保证可消除的配对
-    const placedPositions = new Set();
-    let pairsPlaced = 0;
-    
-    // 优先放置相邻或线性配对（容易找到）
-    const easyPairsToPlace = Math.floor(guaranteedPairs * adjacentRatio);
-    
-    for (let i = 0; i < easyPairsToPlace && pairsPlaced < guaranteedPairs; i++) {
-      const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-      const [val1, val2] = pairType;
-      
-      let placed = false;
-      let attempts = 0;
-      
-      while (!placed && attempts < 50) {
-        const pos1 = Math.floor(random() * size);
-        
-        if (placedPositions.has(pos1)) {
-          attempts++;
-          continue;
-        }
-        
-        const row1 = Math.floor(pos1 / width);
-        const col1 = pos1 % width;
-        
-        // 尝试相邻位置和线性位置
-        const candidateOffsets = [
-          // 相邻位置
-          [0, 1], [1, 0], [0, -1], [-1, 0],
-          // 线性位置（同行同列）
-          [0, 2], [2, 0], [0, -2], [-2, 0],
-          [0, 3], [3, 0], [0, -3], [-3, 0]
-        ];
-        
-        for (const [dr, dc] of candidateOffsets) {
-          const row2 = row1 + dr;
-          const col2 = col1 + dc;
-          const pos2 = row2 * width + col2;
-          
-          if (row2 >= 0 && row2 < height && col2 >= 0 && col2 < width &&
-              !placedPositions.has(pos2)) {
-            
-            tiles[pos1] = val1;
-            tiles[pos2] = val2;
-            placedPositions.add(pos1);
-            placedPositions.add(pos2);
-            pairsPlaced++;
-            placed = true;
-            break;
-          }
-        }
-        
-        attempts++;
-      }
+    if (swapAnim && swapAnim.translateX && swapAnim.translateY) {
+      transforms.push({
+        translateX: swapAnim.translateX,
+      });
+      transforms.push({
+        translateY: swapAnim.translateY,
+      });
     }
     
-    // 放置剩余的保证配对
-    while (pairsPlaced < guaranteedPairs) {
-      const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-      const [val1, val2] = pairType;
-      
-      const availablePositions = [];
-      for (let i = 0; i < size; i++) {
-        if (!placedPositions.has(i)) {
-          availablePositions.push(i);
-        }
-      }
-      
-      if (availablePositions.length >= 2) {
-        const pos1 = availablePositions[Math.floor(random() * availablePositions.length)];
-        const remainingPositions = availablePositions.filter(p => p !== pos1);
-        const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
-        
-        tiles[pos1] = val1;
-        tiles[pos2] = val2;
-        placedPositions.add(pos1);
-        placedPositions.add(pos2);
-        pairsPlaced++;
-      } else {
-        break;
-      }
+    if (fractalAnim && fractalAnim.scale) {
+      transforms.push({
+        scale: fractalAnim.scale,
+      });
     }
     
-    // 填满剩余所有位置
-    for (let i = 0; i < size; i++) {
-      if (!placedPositions.has(i)) {
-        if (difficultyLevel <= 10) {
-          // 前10关：只使用容易配对的数字
-          const easyNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
-          tiles[i] = easyNumbers[Math.floor(random() * easyNumbers.length)];
-        } else if (difficultyLevel <= 30) {
-          // 简单关卡：避免太多干扰
-          const safeNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
-          tiles[i] = safeNumbers[Math.floor(random() * safeNumbers.length)];
-        } else {
-          // 高级关卡：添加一些干扰数字（挑战模式使用高频低频分布）
-          if (isChallengeMode) {
-            // 挑战模式：70%高频数字，30%低频数字
-            const highFreqNumbers = [5, 6, 7, 8, 9];
-            const lowFreqNumbers = [1, 2, 3, 4];
-            if (random() < 0.7) {
-              tiles[i] = highFreqNumbers[Math.floor(random() * highFreqNumbers.length)];
-            } else {
-              tiles[i] = lowFreqNumbers[Math.floor(random() * lowFreqNumbers.length)];
+    const isSelected = selectedSwapTile && selectedSwapTile.index === index;
+    
+    let tileStyle = styles.tileInner;
+    
+    if (isSelected && itemMode) {
+      if (itemMode === 'swapMaster') {
+        tileStyle = [styles.tileInner, styles.tileSwapSelected];
+      } else if (itemMode === 'fractalSplit') {
+        tileStyle = [styles.tileInner, styles.tileFractalSelected];
+      }
+    }
+
+    let opacity = 1;
+    if (fractalAnim && fractalAnim.opacity) {
+      opacity = fractalAnim.opacity;
+    }
+
+    const handleTileTouch = itemMode ? () => handleTilePress(row, col, value) : undefined;
+    
+    return (
+      <View
+        key={`${row}-${col}`}
+        style={{
+          position: 'absolute',
+          left: x,
+          top: y,
+          width: boardMetrics.tileSize,
+          height: boardMetrics.tileSize,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        onTouchStart={handleTileTouch}
+        pointerEvents="box-none"
+      >
+        <Animated.View
+          style={[
+            tileStyle,
+            {
+              width: '100%',
+              height: '100%',
+              transform: transforms,
+              opacity: opacity,
             }
-          } else {
-            tiles[i] = Math.floor(random() * 9) + 1;
-          }
-        }
-      }
-    }
-    
-    // 确保总和为10的倍数
-    const adjustedTiles = ensureSumIsMultipleOf10(tiles);
-    
-    // 检查棋盘是否可解
-    if (isBoardSolvable(adjustedTiles, width, height)) {
-      return {
-        seed,
-        width,
-        height,
-        tiles: adjustedTiles,
-        requiredSwaps, // 返回建议的道具使用次数
-        level,
-        solvable: true
-      };
-    }
-    
-    attempts++;
-  }
-  
-  // 如果无法生成可解的棋盘，返回一个简单的可解棋盘
-  console.warn(`Failed to generate solvable board for level ${level}, using fallback`);
-  const { width: fallbackWidth, height: fallbackHeight } = isChallengeMode 
-    ? getChallengeModeDimensions() 
-    : getBoardDimensions(level);
-  return generateFallbackBoard(level, fallbackWidth, fallbackHeight, isChallengeMode);
+          ]}
+        >
+          <Text style={[
+            styles.tileText,
+            { 
+              fontSize: Math.max(14, boardMetrics.tileSize * 0.45),
+              lineHeight: boardMetrics.tileSize,
+            }
+          ]}>
+            {value}
+          </Text>
+        </Animated.View>
+      </View>
+    );
+  };
+
+  // 处理棋盘布局
+  const handleBoardLayout = (event) => {
+    // Board layout is now handled by useBoardMetrics hook
+    // No additional layout logic needed here
+  };
+
+  // 挑战模式使用全屏尺寸，闯关模式使用固定尺寸
+  const boardContainerStyle = {
+    position: 'absolute',
+    left: boardMetrics.boardX,
+    top: boardMetrics.boardY,
+    width: boardMetrics.boardWidth,
+    height: boardMetrics.boardHeight,
+  };
+
+  const selectionStyle = getSelectionStyle();
+  const selectionSum = getSelectionSum();
+
+  return (
+    <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
+      {/* 调试信息 - 开发时可见 */}
+      {__DEV__ && (
+        <View style={styles.debugInfo}>
+          <Text style={styles.debugText}>
+            {boardMetrics.debug.spacingInfo} | 棋盘: {boardMetrics.debug.calculatedBoardSize}
+            {'\n'}位置: {boardMetrics.debug.boardPosition} | 居中: {boardMetrics.debug.isCentered ? '✅' : '❌'} | 适配: {boardMetrics.debug.fitsInScreen ? '✅' : '❌'}
+            {'\n'}边距范围: {boardMetrics.debug.marginRange} | 当前边距: {boardMetrics.debug.dynamicMargin}px
+          </Text>
+        </View>
+      )}
+      
+      <View style={styles.container}>
+        <View 
+          style={[styles.chalkboard, boardContainerStyle]}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              width: boardMetrics.innerWidth,
+              height: boardMetrics.innerHeight,
+              left: boardMetrics.padding,
+              top: boardMetrics.padding,
+            }}
+          >
+            {/* Grid lines */}
+            {renderGridLines()}
+            
+            {/* Render all tiles */}
+            {tiles.map((value, index) => {
+              const row = Math.floor(index / width);
+              const col = index % width;
+              return renderTile(value, row, col);
+            })}
+            
+            {/* Selection overlay */}
+            {selectionStyle && (
+              <Animated.View style={selectionStyle} />
+            )}
+            
+            {/* Selection sum display */}
+            {selectionSum && (
+              <View style={selectionSum.style}>
+                <Text style={[
+                  styles.sumText,
+                  { color: selectionSum.isSuccess ? '#333' : 'white' }
+                ]}>
+                  {selectionSum.sum}
+                </Text>
+              </View>
+            )}
+
+            {/* Explosion effect - Yellow "10" sticky note */}
+            {explosionAnimation && (
+              <Animated.View
+                style={[
+                  styles.explosion,
+                  {
+                    left: explosionAnimation.x - 40,
+                    top: explosionAnimation.y - 30,
+                    transform: [
+                      { scale: explosionScale },
+                      { rotate: '5deg' }
+                    ],
+                    opacity: explosionOpacity,
+                  }
+                ]}
+              >
+                <View style={styles.explosionNote}>
+                  <Text style={styles.explosionText}>10</Text>
+                </View>
+              </Animated.View>
+            )}
+          </View>
+        </View>
+      </View>
+      
+      {/* Rescue Modal */}
+      <RescueModal
+        visible={showRescueModal}
+        onContinue={handleRescueContinue}
+        onReturn={handleRescueReturn}
+        hasItems={true} // 这里可以根据实际道具数量判断
+      />
+    </View>
+  );
 }
 
-// 生成后备的简单可解棋盘
-function generateFallbackBoard(level, width, height, isChallengeMode = false) {
-  const size = width * height;
-  const tiles = new Array(size).fill(0);
-  
-  // 简单地放置一些1-9和9-1的配对
-  let pos = 0;
-  const pairs = [[1, 9], [2, 8], [3, 7], [4, 6]];
-  
-  for (let i = 0; i < Math.min(pairs.length, Math.floor(size / 2)); i++) {
-    if (pos + 1 < size) {
-      tiles[pos] = pairs[i][0];
-      tiles[pos + 1] = pairs[i][1];
-      pos += 2;
-    }
-  }
-  
-  // 填充剩余位置
-  while (pos < size) {
-    tiles[pos] = Math.floor(Math.random() * 9) + 1;
-    pos++;
-  }
-  
-  // 确保后备棋盘的总和也是10的倍数
-  const adjustedTiles = ensureSumIsMultipleOf10(tiles);
-  
-  return {
-    seed: `fallback_${level}_${Date.now()}`,
-    width,
-    height,
-    tiles: adjustedTiles,
-    requiredSwaps: 0,
-    level,
-    solvable: true,
-    isChallengeMode,
-  };
-}
+const styles = StyleSheet.create({
+  fullScreenContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingContainer: {
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  chalkboard: {
+    backgroundColor: '#1E5A3C', // Deep green chalkboard
+    borderRadius: 16,
+    borderWidth: 8,
+    borderColor: '#8B5A2B', // Wooden frame
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
+    position: 'relative',
+    alignSelf: 'center',
+  },
+  gridLine: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)', // Semi-transparent white grid lines
+  },
+  tileInner: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF9E6', // Cream white sticky note
+    borderRadius: 3, // 更小的圆角，更接近参考图片
+    borderWidth: 1,
+    borderColor: '#333',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 1,
+      height: 1,
+    },
+    shadowOpacity: 0.2, // 减轻阴影，更接近参考图片
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  tileSwapSelected: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#2196F3',
+  },
+  tileFractalSelected: {
+    backgroundColor: '#F3E5F5',
+    borderColor: '#9C27B0',
+  },
+  tileText: {
+    fontWeight: 'bold',
+    color: '#111',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
+  sumText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  explosion: {
+    position: 'absolute',
+    width: 80,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  explosionNote: {
+    width: 80,
+    height: 60,
+    backgroundColor: '#FFEB3B', // Yellow sticky note
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#F57F17',
+    shadowColor: '#000',
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  explosionText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  debugInfo: {
+    position: 'absolute',
+    top: 40,
+    left: 10,
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 8,
+    borderRadius: 4,
+    zIndex: 9999,
+  },
+  debugText: {
+    color: 'white',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+});

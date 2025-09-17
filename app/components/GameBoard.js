@@ -849,8 +849,8 @@ export function GameBoard({
           <View
             style={{
               position: 'absolute',
-              width: boardMetrics.innerWidth,
-              height: boardMetrics.innerHeight,
+              width: boardMetrics.boardWidth - boardMetrics.padding * 2,
+              height: boardMetrics.boardHeight - boardMetrics.padding * 2,
               left: boardMetrics.padding,
               top: boardMetrics.padding,
             }}

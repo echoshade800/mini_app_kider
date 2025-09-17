@@ -152,39 +152,17 @@ export function GameBoard({
   };
 
   const isInsideGridArea = (pageX, pageY) => {
+    // 检查是否在限制区域内
     if (isInRestrictedArea(pageY)) return false;
-
+    
+    // 检查是否在棋盘容器范围内（包含padding）
     const boardX = boardMetrics.boardX || 0;
     const boardY = boardMetrics.boardY || 0;
-    const boardWidth = boardMetrics.boardWidth || 0;
-    const boardHeight = boardMetrics.boardHeight || 0;
-    const padding = boardMetrics.padding || 0;
-
-    const innerLeft = boardX + padding;
-    const innerTop = boardY + padding;
-    const innerWidth = boardWidth - padding * 2;
-    const innerHeight = boardHeight - padding * 2;
-
-    if (pageX < innerLeft || pageX > innerLeft + innerWidth ||
-        pageY < innerTop || pageY > innerTop + innerHeight) {
-      return false;
-    }
-
-    const relativeX = pageX - innerLeft;
-    const relativeY = pageY - innerTop;
-
-    const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
-    const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
-
-    if (relativeX < 0 || relativeX >= width * cellWidth - (boardMetrics.gap || 6) ||
-        relativeY < 0 || relativeY >= height * cellHeight - (boardMetrics.gap || 6)) {
-      return false;
-    }
-
-    const col = Math.floor(relativeX / cellWidth);
-    const row = Math.floor(relativeY / cellHeight);
-
-    return row >= 0 && row < height && col >= 0 && col < width;
+    const boardWidth = boardMetrics.boardWidth || 300;
+    const boardHeight = boardMetrics.boardHeight || 300;
+    
+    return pageX >= boardX && pageX <= boardX + boardWidth &&
+           pageY >= boardY && pageY <= boardY + boardHeight;
   };
 
   const isInRestrictedArea = (pageY) => {
@@ -257,17 +235,22 @@ export function GameBoard({
       const boardY = boardMetrics.boardY || 0;
       const padding = boardMetrics.padding || 0;
 
-      const innerLeft = boardX;
-      const innerTop = boardY;
+      const innerLeft = boardX + padding;
+      const innerTop = boardY + padding;
 
-      const relativeX = pageX - innerLeft - padding;
-      const relativeY = pageY - innerTop - padding;
+      const relativeX = pageX - innerLeft;
+      const relativeY = pageY - innerTop;
 
       const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
       const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
 
       const startCol = Math.floor(relativeX / cellWidth);
       const startRow = Math.floor(relativeY / cellHeight);
+      
+      // 确保起始位置在有效范围内
+      if (startRow < 0 || startRow >= height || startCol < 0 || startCol >= width) {
+        return;
+      }
       
       setSelection({
         startRow,
@@ -290,35 +273,27 @@ export function GameBoard({
       
       const boardX = boardMetrics.boardX || 0;
       const boardY = boardMetrics.boardY || 0;
-      const boardWidth = boardMetrics.boardWidth || 0;
-      const boardHeight = boardMetrics.boardHeight || 0;
+      const boardWidth = boardMetrics.boardWidth || 300;
+      const boardHeight = boardMetrics.boardHeight || 300;
       const padding = boardMetrics.padding || 0;
 
-      const innerLeft = boardX;
-      const innerTop = boardY;
+      const innerLeft = boardX + padding;
+      const innerTop = boardY + padding;
 
-      if (pageX < innerLeft + padding || pageX > innerLeft + boardWidth - padding ||
-          pageY < innerTop + padding || pageY > innerTop + boardHeight - padding) {
+      // 允许在整个棋盘容器内拖拽
+      if (pageX < boardX || pageX > boardX + boardWidth ||
+          pageY < boardY || pageY > boardY + boardHeight) {
         return;
       }
       
-      const relativeX = pageX - innerLeft - padding;
-      const relativeY = pageY - innerTop - padding;
+      const relativeX = pageX - innerLeft;
+      const relativeY = pageY - innerTop;
 
       const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
       const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
 
-      if (relativeX < 0 || relativeX >= width * cellWidth - (boardMetrics.gap || 6) ||
-          relativeY < 0 || relativeY >= height * cellHeight - (boardMetrics.gap || 6)) {
-        return;
-      }
-      
-      const endCol = Math.floor(relativeX / cellWidth);
-      const endRow = Math.floor(relativeY / cellHeight);
-      
-      if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
-        return;
-      }
+      const endCol = Math.max(0, Math.min(width - 1, Math.floor(relativeX / cellWidth)));
+      const endRow = Math.max(0, Math.min(height - 1, Math.floor(relativeY / cellHeight)));
       
       setSelection(prev => ({
         ...prev,
@@ -638,90 +613,20 @@ export function GameBoard({
     const index = row * width + col;
     
     if (value === 0) {
-      // 检查是否有临时跳跃动画
-      const tempAnimKeys = Array.from(fractalAnimations ? fractalAnimations.keys() : [])
-        .filter(key => key.toString().startsWith(`temp_${index}_`));
-      
-      if (tempAnimKeys.length > 0) {
-        // 渲染跳跃中的临时方块
-        return tempAnimKeys.map(tempKey => {
-          const tempAnim = fractalAnimations.get(tempKey);
-          if (!tempAnim) return null;
-          
-          const { x, y } = boardMetrics.getTilePosition(row, col);
-          const rotation = getTileRotation(row, col);
-          
-          const transforms = [
-            { scale: tempAnim.scale },
-            { rotate: `${rotation}deg` },
-            { translateX: tempAnim.translateX },
-            { translateY: tempAnim.translateY },
-          ];
-          
-          // 获取正确的分解数值
-          const displayValue = tempAnim.value || Math.floor(Math.random() * 9) + 1;
-          
-          return (
-            <Animated.View 
-              key={tempKey}
-              style={[
-                {
-                  position: 'absolute',
-                  left: x,
-                  top: y,
-                  width: boardMetrics.tileWidth,
-                  height: boardMetrics.tileHeight,
-                  transform: transforms,
-                  opacity: tempAnim.opacity,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }
-              ]}
-            >
-              <View style={styles.tileInner}>
-                <Text style={[
-                  styles.tileText,
-                  { 
-                    fontSize: Math.max(14, boardMetrics.tileWidth * 0.45),
-                    lineHeight: boardMetrics.tileHeight,
-                  }
-                ]}>
-                  {displayValue}
-                </Text>
-              </View>
-            </Animated.View>
-          );
-        });
-      }
-      
-      // 检查是否完全清空（仅挑战模式需要刷新）
-      if (isChallenge) {
-        const newTiles = [...tiles];
-        const tilePositions = []; // This should be defined somewhere
-        tilePositions.forEach(pos => {
-          const index = pos.row * width + pos.col;
-          newTiles[index] = 0;
-        });
-        
-        if (isBoardEmpty(newTiles) && onBoardRefresh) {
-          // 棋盘全清，生成新棋盘
-          setTimeout(() => {
-            onBoardRefresh('refresh');
-          }, 1000);
-        }
-      }
-      
-      return null;
+      return null; // 空方块不渲染
     }
 
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
     }
 
+    // 使用正确的位置计算
     const { x, y } = boardMetrics.getTilePosition ? 
       boardMetrics.getTilePosition(row, col) : 
-      { x: col * ((boardMetrics.tileSize || 30) + (boardMetrics.gap || 6)), 
-        y: row * ((boardMetrics.tileSize || 30) + (boardMetrics.gap || 6)) };
+      { 
+        x: col * ((boardMetrics.tileSize || 30) + (boardMetrics.gap || 6)), 
+        y: row * ((boardMetrics.tileSize || 30) + (boardMetrics.gap || 6)) 
+      };
 
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
@@ -830,12 +735,12 @@ export function GameBoard({
   return (
     <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
       {/* 调试信息 - 开发时可见 */}
-      {__DEV__ && (
+      {__DEV__ && boardMetrics.debug && (
         <View style={styles.debugInfo}>
           <Text style={styles.debugText}>
-            {boardMetrics.debug.spacingInfo} | 棋盘: {boardMetrics.debug.calculatedBoardSize}
-            {'\n'}位置: {boardMetrics.debug.boardPosition} | 居中: {boardMetrics.debug.isCentered ? '✅' : '❌'} | 适配: {boardMetrics.debug.fitsInScreen ? '✅' : '❌'}
-            {'\n'}边距范围: {boardMetrics.debug.marginRange} | 当前边距: {boardMetrics.debug.dynamicMargin}px
+            {boardMetrics.debug.level} | {boardMetrics.debug.gridSize} | Gap: {boardMetrics.debug.gap}
+            {'\n'}棋盘: {boardMetrics.debug.boardSize} | 位置: {boardMetrics.debug.position}
+            {'\n'}居中: {boardMetrics.debug.isCentered ? '✅' : '❌'} | 适配: {boardMetrics.debug.fitsInScreen ? '✅' : '❌'}
           </Text>
         </View>
       )}
@@ -847,8 +752,8 @@ export function GameBoard({
           <View
             style={{
               position: 'absolute',
-              width: (boardMetrics.boardWidth || 300) - (boardMetrics.padding || 12) * 2,
-              height: (boardMetrics.boardHeight || 300) - (boardMetrics.padding || 12) * 2,
+              width: (boardMetrics.boardWidth || 300) - (boardMetrics.padding || 0) * 2,
+              height: (boardMetrics.boardHeight || 300) - (boardMetrics.padding || 0) * 2,
               left: boardMetrics.padding || 12,
               top: boardMetrics.padding || 12,
             }}

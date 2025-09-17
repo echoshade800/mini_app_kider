@@ -917,6 +917,10 @@ export function GameBoard({
   );
 }
 
+// 导出挑战模式专用函数
+export function generateChallengeBoard() {
+  return generateBoard(130, true, true); // 使用高难度等级生成挑战模式棋盘
+}
 const styles = StyleSheet.create({
   fullScreenContainer: {
     position: 'absolute',

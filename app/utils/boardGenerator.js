@@ -38,21 +38,62 @@ function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
   // 获取最大可容纳尺寸
   const maxDimensions = getMaxBoardDimensions(screenWidth, screenHeight);
   
-  // 从4x4开始，每10关增加一行或一列
+  // 按照指定的增长规律
   let width = 4;
   let height = 4;
   
-  // 计算当前关卡应该的尺寸
-  const growthSteps = Math.floor((level - 1) / 10);
-  
-  for (let i = 0; i < growthSteps; i++) {
-    if (i % 2 === 0) {
-      // 偶数步骤增加宽度
-      if (width < maxDimensions.width) width++;
-    } else {
-      // 奇数步骤增加高度
-      if (height < maxDimensions.height) height++;
-    }
+  // 具体的增长规律
+  if (level >= 1 && level <= 5) {
+    width = 4; height = 4;
+  } else if (level >= 6 && level <= 10) {
+    width = 5; height = 4;
+  } else if (level >= 11 && level <= 15) {
+    width = 5; height = 5;
+  } else if (level >= 16 && level <= 20) {
+    width = 6; height = 5;
+  } else if (level >= 21 && level <= 25) {
+    width = 6; height = 6;
+  } else if (level >= 26 && level <= 30) {
+    width = 7; height = 6;
+  } else if (level >= 31 && level <= 35) {
+    width = 7; height = 7;
+  } else if (level >= 36 && level <= 40) {
+    width = 8; height = 7;
+  } else if (level >= 41 && level <= 45) {
+    width = 8; height = 8;
+  } else if (level >= 46 && level <= 50) {
+    width = 9; height = 8;
+  } else if (level >= 51 && level <= 55) {
+    width = 9; height = 9;
+  } else if (level >= 56 && level <= 60) {
+    width = 10; height = 9;
+  } else if (level >= 61 && level <= 65) {
+    width = 10; height = 10;
+  } else if (level >= 66 && level <= 70) {
+    width = 11; height = 10;
+  } else if (level >= 71 && level <= 75) {
+    width = 11; height = 11;
+  } else if (level >= 76 && level <= 80) {
+    width = 12; height = 11;
+  } else if (level >= 81 && level <= 85) {
+    width = 12; height = 12;
+  } else if (level >= 86 && level <= 90) {
+    width = 13; height = 12;
+  } else if (level >= 91 && level <= 95) {
+    width = 13; height = 13;
+  } else if (level >= 96 && level <= 100) {
+    width = 14; height = 13;
+  } else if (level >= 101 && level <= 105) {
+    width = 14; height = 14;
+  } else if (level >= 106 && level <= 110) {
+    width = 15; height = 14;
+  } else if (level >= 111 && level <= 115) {
+    width = 15; height = 15;
+  } else if (level >= 116 && level <= 120) {
+    width = 16; height = 15;
+  } else if (level >= 121) {
+    // 121关及以后达到最大尺寸 10x16 = 160格
+    width = 16; height = 10;
   }
   
   // 确保不超过最大尺寸

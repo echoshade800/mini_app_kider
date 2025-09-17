@@ -20,6 +20,7 @@ import { Dimensions, Animated } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
+import { STAGE_NAMES } from '../utils/stageNames';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 

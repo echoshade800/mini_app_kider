@@ -31,17 +31,9 @@ export default function ChallengeScreen() {
   const [currentBoard, setCurrentBoard] = useState(null);
   const [showResults, setShowResults] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [boardClearMessage, setBoardClearMessage] = useState('');
   
   const timerRef = useRef();
   const fuseAnimation = useRef(new Animated.Value(1)).current;
-
-  // Generate full board on initialization
-  useEffect(() => {
-    if (gameState === 'ready' && !currentBoard) {
-      generateFullBoard();
-    }
-  }, [gameState]);
 
   useEffect(() => {
     if (gameState === 'playing') {
@@ -81,8 +73,7 @@ export default function ChallengeScreen() {
       setCurrentIQ(0);
       setTimeLeft(CHALLENGE_DURATION);
       fuseAnimation.setValue(1);
-      generateFullBoard();
-      setBoardClearMessage('');
+      generateChallengeBoard();
     } catch (error) {
       console.error('Failed to start challenge:', error);
       Alert.alert('Start Failed', 'Unable to start challenge mode, please try again');
@@ -104,15 +95,11 @@ export default function ChallengeScreen() {
     setShowResults(true);
   };
 
-  const generateFullBoard = () => {
-    // Generate completely filled board for challenge mode
+  const generateChallengeBoard = () => {
+    // 使用高难度关卡生成棋盘，但确保铺满
     const challengeLevel = 100 + Math.floor(Math.random() * 50);
-    const board = generateBoard(challengeLevel, true, true); // 第三个参数表示挑战模式
-    
-    // Ensure board is completely filled (no empty tiles)
-    const filledTiles = board.tiles.map(tile => tile === 0 ? Math.floor(Math.random() * 9) + 1 : tile);
-    
-    setCurrentBoard({ ...board, tiles: filledTiles });
+    const board = generateBoard(challengeLevel, true); // forceNewSeed = true
+    setCurrentBoard(board);
   };
 
   const handleTilesClear = (clearedPositions) => {
@@ -121,7 +108,7 @@ export default function ChallengeScreen() {
     // Award 3 IQ points per clear
     setCurrentIQ(prev => prev + 3);
     
-    // Update board with cleared tiles
+    // Update board with cleared tiles (same as level mode)
     const newTiles = [...currentBoard.tiles];
     clearedPositions.forEach(pos => {
       const index = pos.row * currentBoard.width + pos.col;
@@ -132,12 +119,10 @@ export default function ChallengeScreen() {
     const hasRemainingTiles = newTiles.some(tile => tile > 0);
     
     if (!hasRemainingTiles) {
-      // Board completely cleared - show message and generate new full board
-      setBoardClearMessage('Level Cleared! New Board Generated!');
+      // Board completely cleared - generate new board
       setTimeout(() => {
-        generateFullBoard();
-        setBoardClearMessage('');
-      }, 1500);
+        generateChallengeBoard();
+      }, 1000);
     } else {
       // Update board with cleared tiles
       setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
@@ -145,6 +130,9 @@ export default function ChallengeScreen() {
   };
 
   const handleBackToHome = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
     setShowResults(false);
     setGameState('ready');
     router.replace('/');
@@ -193,7 +181,7 @@ export default function ChallengeScreen() {
           </Text>
           <Text style={styles.readyDescription}>
             Clear rectangles that sum to 10. Each clear awards +3 IQ points.
-            New boards appear instantly after each clear.
+            New boards appear when current board is completely cleared.
           </Text>
           
           <TouchableOpacity 
@@ -256,30 +244,17 @@ export default function ChallengeScreen() {
         </View>
       </View>
 
-      {/* Board Clear Message */}
-      {boardClearMessage && (
-        <View style={styles.messageContainer}>
-          <Text style={styles.messageText}>{boardClearMessage}</Text>
-        </View>
-      )}
-
       {/* Back Button */}
       <View style={styles.backButtonContainer}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => {
-            if (timerRef.current) {
-              clearInterval(timerRef.current);
-            }
-            setGameState('ready');
-            router.replace('/');
-          }}
+          onPress={handleBackToHome}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
-      {/* Game Board */}
+      {/* Game Board - Same as Level Mode */}
       {currentBoard && (
         <GameBoard 
           board={currentBoard}
@@ -445,19 +420,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  messageContainer: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    backgroundColor: '#4CAF50',
-    marginHorizontal: 20,
-    marginVertical: 10,
-    borderRadius: 8,
-  },
-  messageText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   backButtonContainer: {
     position: 'absolute',
     top: 80,
@@ -476,6 +438,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+  },
+  readyTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 12,
   },
   readySubtitle: {
     fontSize: 18,

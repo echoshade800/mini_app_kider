@@ -1,7 +1,7 @@
 /**
- * GameBoard Component - Enhanced interactive puzzle board with swap mode
- * Purpose: Render game tiles with rectangle drawing and item click interactions
- * Features: Rectangle drawing for normal mode, click selection for item modes, explosion effects
+ * GameBoard Component - Green chalkboard with sticky note style tiles
+ * Purpose: Render game tiles with rectangle drawing on a classroom chalkboard theme
+ * Features: Green chalkboard background, sticky note tiles with slight rotation, explosion effects
  */
 
 import React, { useState, useRef } from 'react';
@@ -11,8 +11,7 @@ import {
   PanResponder, 
   Dimensions, 
   StyleSheet,
-  Animated,
-  TouchableOpacity
+  Animated
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
@@ -23,7 +22,7 @@ export function GameBoard({
   board, 
   onTilesClear, 
   onTileClick, 
-  itemMode = null, // 'swapMaster' | 'fractalSplit' | null - changes interaction from rectangle drawing to click selection
+  itemMode = null,
   selectedSwapTile = null,
   disabled = false,
   swapAnimations,
@@ -39,10 +38,15 @@ export function GameBoard({
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
 
-  // Cleanup function for animations
+  // Generate stable random rotation for each tile
+  const getTileRotation = (row, col) => {
+    const seed = row * 1000 + col;
+    const random = (seed * 9301 + 49297) % 233280;
+    return ((random / 233280) - 0.5) * 2.4; // -1.2° to +1.2°
+  };
+
   React.useEffect(() => {
     return () => {
-      // Stop all animations when component unmounts
       Object.values(tileScales).forEach(anim => {
         if (anim && anim.stopAnimation) {
           anim.stopAnimation();
@@ -68,13 +72,15 @@ export function GameBoard({
     50
   );
   
-  // Actual tile size with margin
-  const tileSize = cellSize * 0.7;
-  const tileMargin = (cellSize - tileSize) / 2;
+  // Sticky note tile size (aspect ratio 0.9 - slightly taller than wide)
+  const tileWidth = cellSize * 0.7;
+  const tileHeight = tileWidth / 0.9; // aspectRatio: 0.9
+  const tileMarginX = (cellSize - tileWidth) / 2;
+  const tileMarginY = (cellSize - tileHeight) / 2;
   
-  // Board background size
-  const boardWidth = width * cellSize + 20;
-  const boardHeight = height * cellSize + 20;
+  // Board background size with wooden frame
+  const boardWidth = width * cellSize + 40;
+  const boardHeight = height * cellSize + 40;
 
   // Initialize tile scale animation
   const initTileScale = (index) => {
@@ -97,44 +103,36 @@ export function GameBoard({
     }
   };
 
-  // 检查触摸点是否在棋盘网格区域内
   const isInsideGridArea = (pageX, pageY) => {
-    // 先检查是否在禁止画框的区域
     if (isInRestrictedArea(pageY)) return false;
     
-    // 计算棋盘在屏幕上的位置
     const boardCenterX = screenWidth / 2;
     const boardCenterY = screenHeight / 2;
     const boardLeft = boardCenterX - boardWidth / 2;
     const boardTop = boardCenterY - boardHeight / 2;
     
-    // 检查是否在棋盘边界内
-    if (pageX < boardLeft + 10 || pageX > boardLeft + boardWidth - 10 ||
-        pageY < boardTop + 10 || pageY > boardTop + boardHeight - 10) {
+    if (pageX < boardLeft + 20 || pageX > boardLeft + boardWidth - 20 ||
+        pageY < boardTop + 20 || pageY > boardTop + boardHeight - 20) {
       return false;
     }
     
-    // 转换为相对于棋盘的坐标
-    const relativeX = pageX - boardLeft - 10;
-    const relativeY = pageY - boardTop - 10;
+    const relativeX = pageX - boardLeft - 20;
+    const relativeY = pageY - boardTop - 20;
     
-    // 检查是否在有效的网格区域内
     if (relativeX < 0 || relativeX >= width * cellSize ||
         relativeY < 0 || relativeY >= height * cellSize) {
       return false;
     }
     
-    // 转换为网格坐标并检查范围
     const col = Math.floor(relativeX / cellSize);
     const row = Math.floor(relativeY / cellSize);
     
     return row >= 0 && row < height && col >= 0 && col < width;
   };
 
-  // 检查是否在禁止画框的区域（顶部和底部）
   const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = 200; // 顶部200像素禁止画框
-    const bottomRestrictedHeight = 200; // 底部200像素禁止画框
+    const topRestrictedHeight = 200;
+    const bottomRestrictedHeight = 200;
     
     return pageY < topRestrictedHeight || 
            pageY > screenHeight - bottomRestrictedHeight;
@@ -151,7 +149,6 @@ export function GameBoard({
     
     const selectedTiles = [];
     
-    // 计算框内所有有数字的方块（支持线条选择）
     for (let row = minRow; row <= maxRow; row++) {
       for (let col = minCol; col <= maxCol; col++) {
         if (row >= 0 && row < height && col >= 0 && col < width) {
@@ -174,33 +171,22 @@ export function GameBoard({
   const resetSelection = () => {
     setSelection(null);
     selectionOpacity.setValue(0);
-    // 恢复所有tile的缩放
     hoveredTiles.forEach(index => {
       scaleTile(index, 1);
     });
     setHoveredTiles(new Set());
   };
 
-  // 全屏触摸响应器
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
-      // Disable rectangle drawing in item mode
       if (itemMode) return false;
-      
-      // Check if in restricted area
       if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
-      
       const { pageX, pageY } = evt.nativeEvent;
-      // Only allow rectangle drawing in grid area
       return !disabled && isInsideGridArea(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
-      // Disable rectangle drawing in item mode
       if (itemMode) return false;
-      
-      // Check if in restricted area
       if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
-      
       const { pageX, pageY } = evt.nativeEvent;
       return !disabled && isInsideGridArea(pageX, pageY);
     },
@@ -208,20 +194,16 @@ export function GameBoard({
     onPanResponderGrant: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
       
-      // Double check: ensure in grid area
       if (!isInsideGridArea(pageX, pageY)) return;
       
-      // Calculate board position on screen
       const boardCenterX = screenWidth / 2;
       const boardCenterY = screenHeight / 2;
       const boardLeft = boardCenterX - boardWidth / 2;
       const boardTop = boardCenterY - boardHeight / 2;
       
-      // Convert to board-relative coordinates
-      const relativeX = pageX - boardLeft - 10;
-      const relativeY = pageY - boardTop - 10;
+      const relativeX = pageX - boardLeft - 20;
+      const relativeY = pageY - boardTop - 20;
       
-      // Convert to grid coordinates
       const startCol = Math.floor(relativeX / cellSize);
       const startRow = Math.floor(relativeY / cellSize);
       
@@ -232,9 +214,8 @@ export function GameBoard({
         endCol: startCol,
       });
       
-      // Start selection animation
       Animated.timing(selectionOpacity, {
-        toValue: 0.5,
+        toValue: 0.6,
         duration: 80,
         useNativeDriver: false,
       }).start();
@@ -245,34 +226,29 @@ export function GameBoard({
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      // Calculate board position on screen
       const boardCenterX = screenWidth / 2;
       const boardCenterY = screenHeight / 2;
       const boardLeft = boardCenterX - boardWidth / 2;
       const boardTop = boardCenterY - boardHeight / 2;
       
-      // Check if move point is within board area
-      if (pageX < boardLeft + 10 || pageX > boardLeft + boardWidth - 10 ||
-          pageY < boardTop + 10 || pageY > boardTop + boardHeight - 10) {
-        // If moved outside board, keep current selection
+      if (pageX < boardLeft + 20 || pageX > boardLeft + boardWidth - 20 ||
+          pageY < boardTop + 20 || pageY > boardTop + boardHeight - 20) {
         return;
       }
       
-      const relativeX = pageX - boardLeft - 10;
-      const relativeY = pageY - boardTop - 10;
+      const relativeX = pageX - boardLeft - 20;
+      const relativeY = pageY - boardTop - 20;
       
-      // Check if in valid grid area
       if (relativeX < 0 || relativeX >= width * cellSize ||
           relativeY < 0 || relativeY >= height * cellSize) {
-        return; // Not in valid grid area, keep current selection
+        return;
       }
       
       const endCol = Math.floor(relativeX / cellSize);
       const endRow = Math.floor(relativeY / cellSize);
       
-      // Ensure grid coordinates are in valid range
       if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
-        return; // Grid coordinates out of range, keep current selection
+        return;
       }
       
       setSelection(prev => ({
@@ -281,19 +257,21 @@ export function GameBoard({
         endCol,
       }));
 
-      // Update hovered tiles
+      // Update hovered tiles with scaling effect
       const newSelection = { ...selection, endRow, endCol };
       const newSelectedTiles = getSelectedTilesForSelection(newSelection);
       const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
       
-      // Only selected tiles scale up
+      // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
+      const sum = newSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+      const targetScale = sum === 10 ? 1.1 : 1.05;
+      
       newSelectedTiles.forEach(tile => {
         if (!hoveredTiles.has(tile.index)) {
-          scaleTile(tile.index, 1.2); // Scale up when selected
+          scaleTile(tile.index, targetScale);
         }
       });
       
-      // Restore tiles no longer hovered to original size
       hoveredTiles.forEach(index => {
         if (!newHoveredSet.has(index)) {
           scaleTile(index, 1);
@@ -308,13 +286,11 @@ export function GameBoard({
         handleSelectionComplete();
       }
       
-      // Restore all tile scaling
       hoveredTiles.forEach(index => {
         scaleTile(index, 1);
       });
       setHoveredTiles(new Set());
       
-      // Clear selection state
       Animated.timing(selectionOpacity, {
         toValue: 0,
         duration: 200,
@@ -324,15 +300,12 @@ export function GameBoard({
       });
     },
     
-    // Allow other components to terminate rectangle drawing (buttons have priority)
     onPanResponderTerminationRequest: (evt) => {
-      // If touch point is in button area, give priority to buttons
       const { pageX, pageY } = evt.nativeEvent;
-      const buttonAreaBottom = screenHeight - 10; // Bottom button area
-      const buttonAreaTop = screenHeight - 200; // Button area top
-      const topRestrictedHeight = 200; // Top restricted area
+      const buttonAreaBottom = screenHeight - 10;
+      const buttonAreaTop = screenHeight - 200;
+      const topRestrictedHeight = 200;
       
-      // If touch is in button area or restricted area, let other components handle
       if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
           pageY < topRestrictedHeight) {
         return true;
@@ -341,7 +314,6 @@ export function GameBoard({
       return true;
     },
     
-    // Clean up state when rejected by other components
     onPanResponderReject: () => {
       resetSelection();
     },
@@ -368,40 +340,40 @@ export function GameBoard({
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
 
     if (sum === 10 && selectedTiles.length > 0) {
-      // Success - create explosion effect
+      // Success - create explosion effect with yellow "10" note
       if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       
       // Calculate explosion center position
       const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
-      const explosionX = centerCol * cellSize + cellSize / 2 + 10;
-      const explosionY = centerRow * cellSize + cellSize / 2 + 10;
+      const explosionX = centerCol * cellSize + cellSize / 2 + 20;
+      const explosionY = centerRow * cellSize + cellSize / 2 + 20;
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
-      // Explosion animation
-      explosionScale.setValue(0);
+      // Explosion animation - yellow "10" note
+      explosionScale.setValue(0.5);
       explosionOpacity.setValue(1);
       
       Animated.parallel([
         Animated.timing(explosionScale, {
-          toValue: 2.5,
-          duration: 800,
+          toValue: 2.0,
+          duration: 600,
           useNativeDriver: true,
         }),
         Animated.timing(explosionOpacity, {
           toValue: 0,
-          duration: 800,
+          duration: 600,
           useNativeDriver: true,
         }),
       ]).start(() => {
         setExplosionAnimation(null);
       });
 
-      // Selection box animation
+      // Selection box animation - bright green glow
       Animated.sequence([
         Animated.timing(selectionOpacity, {
           toValue: 0.8,
@@ -419,27 +391,26 @@ export function GameBoard({
       });
 
     } else if (selectedTiles.length > 0) {
-      // Failure - blue feedback
+      // Failure - blue feedback with short vibration
       if (settings?.hapticsEnabled !== false) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Haptics.selectionAsync();
       }
       
       Animated.sequence([
         Animated.timing(selectionOpacity, {
-          toValue: 0.5,
+          toValue: 0.4,
           duration: 150,
           useNativeDriver: false,
         }),
         Animated.timing(selectionOpacity, {
           toValue: 0,
-          duration: 400,
+          duration: 300,
           useNativeDriver: false,
         }),
       ]).start(() => {
         setSelection(null);
       });
     } else {
-      // No tiles selected
       setSelection(null);
     }
   };
@@ -457,8 +428,8 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    const left = minCol * cellSize + 10;
-    const top = minRow * cellSize + 10;
+    const left = minCol * cellSize + 20;
+    const top = minRow * cellSize + 20;
     const width = (maxCol - minCol + 1) * cellSize;
     const height = (maxRow - minRow + 1) * cellSize;
     
@@ -468,11 +439,16 @@ export function GameBoard({
       top,
       width,
       height,
-      backgroundColor: isSuccess ? '#4CAF50' : '#2196F3',
+      backgroundColor: isSuccess ? 'rgba(24, 197, 110, 0.3)' : 'rgba(33, 150, 243, 0.2)',
       opacity: selectionOpacity,
       borderRadius: 8,
       borderWidth: 3,
-      borderColor: isSuccess ? '#45a049' : '#1976D2',
+      borderColor: isSuccess ? '#18C56E' : '#2F80ED',
+      shadowColor: isSuccess ? '#18C56E' : '#2F80ED',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: isSuccess ? 0.6 : 0.3,
+      shadowRadius: isSuccess ? 8 : 4,
+      elevation: isSuccess ? 8 : 4,
     };
   };
 
@@ -485,63 +461,105 @@ export function GameBoard({
     if (selectedTiles.length === 0) return null;
     
     const { startRow, startCol, endRow, endCol } = selection;
-    const centerRow = (startRow + endRow) / 2;
-    const centerCol = (startCol + endCol) / 2;
+    const maxRow = Math.max(startRow, endRow);
+    const maxCol = Math.max(startCol, endCol);
     
-    const left = centerCol * cellSize + 10;
-    const top = centerRow * cellSize + 10;
+    const left = maxCol * cellSize + cellSize + 20;
+    const top = maxRow * cellSize + cellSize + 20;
     
     return {
       sum,
       isSuccess: sum === 10,
       style: {
         position: 'absolute',
-        left: left - 25,
-        top: top - 25,
-        width: 50,
-        height: 50,
+        left: left - 30,
+        top: top - 30,
+        width: 60,
+        height: 40,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: sum === 10 ? '#FFD700' : '#2196F3',
-        borderRadius: 25,
-        borderWidth: 3,
-        borderColor: sum === 10 ? '#FFA000' : '#1976D2',
+        backgroundColor: sum === 10 ? '#FFEB3B' : '#2196F3',
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: sum === 10 ? '#F57F17' : '#1976D2',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 2, height: 2 },
         shadowOpacity: 0.3,
-        shadowRadius: 6,
-        elevation: 8,
+        shadowRadius: 4,
+        elevation: 6,
+        transform: [{ rotate: '-2deg' }], // Slight rotation like sticky note
       }
     };
+  };
+
+  const renderGridLines = () => {
+    const lines = [];
+    
+    // Vertical lines
+    for (let i = 1; i < width; i++) {
+      lines.push(
+        <View
+          key={`v-${i}`}
+          style={[
+            styles.gridLine,
+            {
+              left: i * cellSize + 20,
+              top: 20,
+              width: 1,
+              height: height * cellSize,
+            }
+          ]}
+        />
+      );
+    }
+    
+    // Horizontal lines
+    for (let i = 1; i < height; i++) {
+      lines.push(
+        <View
+          key={`h-${i}`}
+          style={[
+            styles.gridLine,
+            {
+              left: 20,
+              top: i * cellSize + 20,
+              width: width * cellSize,
+              height: 1,
+            }
+          ]}
+        />
+      );
+    }
+    
+    return lines;
   };
 
   const renderTile = (value, row, col) => {
     const index = row * width + col;
     
-    // Only render tiles with values > 0
     if (value === 0) {
       return null;
     }
 
-    // Validate coordinates
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
     }
 
-    // Position calculation - consistent for all modes
-    const left = col * cellSize + 10 + tileMargin;
-    const top = row * cellSize + 10 + tileMargin;
+    const left = col * cellSize + 20 + tileMarginX;
+    const top = row * cellSize + 20 + tileMarginY;
 
     const tileScale = initTileScale(index);
+    const rotation = getTileRotation(row, col);
     
     // Get swap and fractal animations
     const swapAnim = swapAnimations ? swapAnimations.get(index) : null;
     const fractalAnim = fractalAnimations ? fractalAnimations.get(index) : null;
     
-    // Calculate transforms - only scaling and special animations
-    const transforms = [{ scale: tileScale }];
+    const transforms = [
+      { scale: tileScale },
+      { rotate: `${rotation}deg` }
+    ];
     
-    // If swap animation exists, add position transform
     if (swapAnim && swapAnim.translateX && swapAnim.translateY) {
       transforms.push({
         translateX: swapAnim.translateX,
@@ -551,61 +569,52 @@ export function GameBoard({
       });
     }
     
-    // If fractal animation exists, add scale transform
     if (fractalAnim && fractalAnim.scale) {
       transforms.push({
         scale: fractalAnim.scale,
       });
     }
     
-    // Check if this is the selected swap tile
     const isSelected = selectedSwapTile && selectedSwapTile.index === index;
     
-    // Style changes only for selected tiles in item mode
-    let selectedBgColor = '#FFF8E1'; // Default background
-    let selectedBorderColor = '#E0E0E0'; // Default border
-    let selectedTextColor = '#333'; // Default text color
+    let selectedBgColor = '#FFF9E6'; // Cream white sticky note
+    let selectedBorderColor = '#333';
+    let selectedTextColor = '#111';
     
-    // Only change style when selected
     if (isSelected && itemMode) {
       if (itemMode === 'swapMaster') {
         selectedBgColor = '#E3F2FD';
         selectedBorderColor = '#2196F3';
         selectedTextColor = '#0D47A1';
       } else if (itemMode === 'fractalSplit') {
-        selectedBgColor = '#E1F5FE';
+        selectedBgColor = '#F3E5F5';
         selectedBorderColor = '#9C27B0';
         selectedTextColor = '#4A148C';
       }
     }
 
-    // Calculate opacity
     let opacity = 1;
     if (fractalAnim && fractalAnim.opacity) {
       opacity = fractalAnim.opacity;
     }
 
-    // Create unified tile style for both modes
     const tileStyle = [
-      styles.tile,
+      styles.stickyNote,
       { 
         position: 'absolute',
         left,
         top,
-        width: tileSize, 
-        height: tileSize,
+        width: tileWidth, 
+        height: tileHeight,
         transform: transforms,
         opacity: opacity,
         backgroundColor: selectedBgColor,
-        borderWidth: isSelected && itemMode ? 3 : 2,
         borderColor: selectedBorderColor,
       }
     ];
 
-    // Handle click events through onTouchStart for item mode
     const handleTileTouch = itemMode ? () => handleTilePress(row, col, value) : undefined;
     
-    // Always use the same component structure - Animated.View with conditional touch handling
     return (
       <Animated.View 
         key={`${row}-${col}`}
@@ -613,9 +622,9 @@ export function GameBoard({
         onTouchStart={handleTileTouch}
       >
         <Text style={[
-          styles.tileText,
+          styles.stickyNoteText,
           { 
-            fontSize: tileSize * 0.5,
+            fontSize: Math.min(tileWidth, tileHeight) * 0.4,
             color: selectedTextColor
           }
         ]}>
@@ -633,13 +642,16 @@ export function GameBoard({
       <View style={styles.container}>
         <View 
           style={[
-            styles.board,
+            styles.chalkboard,
             {
               width: boardWidth,
               height: boardHeight,
             }
           ]}
         >
+          {/* Grid lines */}
+          {renderGridLines()}
+          
           {/* Render all tiles */}
           {tiles.map((value, index) => {
             const row = Math.floor(index / width);
@@ -664,37 +676,25 @@ export function GameBoard({
             </View>
           )}
 
-          {/* Explosion effect for successful clears */}
+          {/* Explosion effect - Yellow "10" sticky note */}
           {explosionAnimation && (
             <Animated.View
               style={[
                 styles.explosion,
                 {
-                  left: explosionAnimation.x - 30,
+                  left: explosionAnimation.x - 40,
                   top: explosionAnimation.y - 30,
-                  transform: [{ scale: explosionScale }],
+                  transform: [
+                    { scale: explosionScale },
+                    { rotate: '5deg' }
+                  ],
                   opacity: explosionOpacity,
                 }
               ]}
             >
-              <View style={styles.explosionCenter}>
-                <Text style={styles.explosionText}>💥</Text>
+              <View style={styles.explosionNote}>
+                <Text style={styles.explosionText}>10</Text>
               </View>
-              {/* Explosion particle effects */}
-              {[...Array(12)].map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.explosionParticle,
-                    {
-                      transform: [
-                        { rotate: `${i * 30}deg` },
-                        { translateY: -25 }
-                      ],
-                    }
-                  ]}
-                />
-              ))}
             </Animated.View>
           )}
         </View>
@@ -726,76 +726,79 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  board: {
-    backgroundColor: '#2E7D32',
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 4,
-    borderColor: '#8D6E63',
+  chalkboard: {
+    backgroundColor: '#1E5A3C', // Deep green chalkboard
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 8,
+    borderColor: '#8B5A2B', // Wooden frame
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 6,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
     position: 'relative',
+    // Inner shadow effect
+    shadowInset: true,
   },
-  tile: {
+  gridLine: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)', // Semi-transparent white grid lines
+  },
+  stickyNote: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFF9E6', // Cream white sticky note
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#333',
     shadowColor: '#000',
     shadowOffset: {
-      width: 0,
+      width: 2,
       height: 2,
     },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 4,
   },
-  tileText: {
+  stickyNoteText: {
     fontWeight: 'bold',
-    color: '#333',
+    color: '#111',
+    textAlign: 'center',
   },
   sumText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   explosion: {
     position: 'absolute',
-    width: 60,
+    width: 80,
     height: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  explosionCenter: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#FFD700',
-    borderRadius: 25,
+  explosionNote: {
+    width: 80,
+    height: 60,
+    backgroundColor: '#FFEB3B', // Yellow sticky note
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#FFA000',
+    borderWidth: 2,
+    borderColor: '#F57F17',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.4,
     shadowRadius: 6,
     elevation: 8,
   },
   explosionText: {
-    fontSize: 20,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
-  },
-  explosionParticle: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    backgroundColor: '#FF6B35',
-    borderRadius: 4,
   },
 });

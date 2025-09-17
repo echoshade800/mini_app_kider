@@ -30,7 +30,8 @@ export function GameBoard({
   disabled = false,
   swapAnimations,
   fractalAnimations,
-  isChallenge = false
+  isChallenge = false,
+  maxBoardHeight = null
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);

@@ -170,13 +170,17 @@ export function GameBoard({
     const relativeX = pageX - boardLeft - boardPadding;
     const relativeY = pageY - boardTop - boardPadding;
     
-    if (relativeX < 0 || relativeX >= width * cellSize ||
-        relativeY < 0 || relativeY >= height * cellSize) {
+    // 计算在哪个方块上
+    const totalTileWidth = tileSize + gap;
+    const totalTileHeight = tileSize + gap;
+    
+    if (relativeX < 0 || relativeX >= width * totalTileWidth - gap ||
+        relativeY < 0 || relativeY >= height * totalTileHeight - gap) {
       return false;
     }
     
-    const col = Math.floor(relativeX / cellSize);
-    const row = Math.floor(relativeY / cellSize);
+    const col = Math.floor(relativeX / totalTileWidth);
+    const row = Math.floor(relativeY / totalTileHeight);
     
     return row >= 0 && row < height && col >= 0 && col < width;
   };
@@ -255,8 +259,11 @@ export function GameBoard({
       const relativeX = pageX - boardLeft - boardPadding;
       const relativeY = pageY - boardTop - boardPadding;
       
-      const startCol = Math.floor(relativeX / cellSize);
-      const startRow = Math.floor(relativeY / cellSize);
+      const totalTileWidth = tileSize + gap;
+      const totalTileHeight = tileSize + gap;
+      
+      const startCol = Math.floor(relativeX / totalTileWidth);
+      const startRow = Math.floor(relativeY / totalTileHeight);
       
       setSelection({
         startRow,
@@ -290,13 +297,16 @@ export function GameBoard({
       const relativeX = pageX - boardLeft - boardPadding;
       const relativeY = pageY - boardTop - boardPadding;
       
-      if (relativeX < 0 || relativeX >= width * cellSize ||
-          relativeY < 0 || relativeY >= height * cellSize) {
+      const totalTileWidth = tileSize + gap;
+      const totalTileHeight = tileSize + gap;
+      
+      if (relativeX < 0 || relativeX >= width * totalTileWidth - gap ||
+          relativeY < 0 || relativeY >= height * totalTileHeight - gap) {
         return;
       }
       
-      const endCol = Math.floor(relativeX / cellSize);
-      const endRow = Math.floor(relativeY / cellSize);
+      const endCol = Math.floor(relativeX / totalTileWidth);
+      const endRow = Math.floor(relativeY / totalTileHeight);
       
       if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
         return;
@@ -500,15 +510,15 @@ export function GameBoard({
     
     const left = minCol * cellSize + boardPadding;
     const top = minRow * cellSize + boardPadding;
-    const width = (maxCol - minCol + 1) * cellSize;
-    const height = (maxRow - minRow + 1) * cellSize;
+    const selectionWidth = (maxCol - minCol + 1) * (tileSize + gap) - gap;
+    const selectionHeight = (maxRow - minRow + 1) * (tileSize + gap) - gap;
     
     return {
       position: 'absolute',
       left,
       top,
-      width,
-      height,
+      width: selectionWidth,
+      height: selectionHeight,
       backgroundColor: isSuccess ? 'rgba(24, 197, 110, 0.3)' : 'rgba(33, 150, 243, 0.2)',
       opacity: selectionOpacity,
       borderRadius: 8,
@@ -534,8 +544,8 @@ export function GameBoard({
     const maxRow = Math.max(startRow, endRow);
     const maxCol = Math.max(startCol, endCol);
     
-    const left = maxCol * cellSize + cellSize + boardPadding;
-    const top = maxRow * cellSize + cellSize + boardPadding;
+    const left = maxCol * (tileSize + gap) + tileSize + boardPadding;
+    const top = maxRow * (tileSize + gap) + tileSize + boardPadding;
     
     return {
       sum,
@@ -573,10 +583,10 @@ export function GameBoard({
           style={[
             styles.gridLine,
             {
-              left: i * cellSize + boardPadding,
+              left: i * (tileSize + gap) - gap/2 + boardPadding,
               top: boardPadding,
               width: 1,
-              height: height * cellSize,
+              height: height * (tileSize + gap) - gap,
             }
           ]}
         />
@@ -592,8 +602,8 @@ export function GameBoard({
             styles.gridLine,
             {
               left: boardPadding,
-              top: i * cellSize + boardPadding,
-              width: width * cellSize,
+              top: i * (tileSize + gap) - gap/2 + boardPadding,
+              width: width * (tileSize + gap) - gap,
               height: 1,
             }
           ]}
@@ -618,8 +628,8 @@ export function GameBoard({
           const tempAnim = fractalAnimations.get(tempKey);
           if (!tempAnim) return null;
           
-          const left = col * cellSize + 20 + tileMarginX; // 20px是棋盘内边距
-          const top = row * cellSize + 20 + tileMarginY;
+          const left = col * (tileSize + gap) + boardPadding;
+          const top = row * (tileSize + gap) + boardPadding;
           const rotation = getTileRotation(row, col);
           
           const transforms = [
@@ -688,8 +698,8 @@ export function GameBoard({
       return null;
     }
 
-    const left = col * cellSize + boardPadding + tileMargin;
-    const top = row * cellSize + boardPadding + tileMargin;
+    const left = col * (tileSize + gap) + boardPadding;
+    const top = row * (tileSize + gap) + boardPadding;
 
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);

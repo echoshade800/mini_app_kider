@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
-import { generateBoard, generateChallengeBoard } from '../utils/boardGenerator';
+import { generateChallengeBoard } from '../utils/boardGenerator';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CHALLENGE_DURATION = 60; // 60 seconds
@@ -430,15 +430,14 @@ export default function ChallengeScreen() {
         <GameBoard 
           board={currentBoard}
           onTilesClear={handleTilesClear}
-            onTileClick={handleTileClick}
-            itemMode={itemMode}
-            selectedSwapTile={selectedSwapTile}
-            swapAnimations={swapAnimationsRef.current}
-            fractalAnimations={fractalAnimationsRef.current}
+          onTileClick={handleTileClick}
+          itemMode={itemMode}
+          selectedSwapTile={selectedSwapTile}
+          swapAnimations={swapAnimationsRef.current}
+          fractalAnimations={fractalAnimationsRef.current}
           onBoardRefresh={handleBoardRefresh}
           disabled={gameState !== 'playing'}
-            maxBoardHeight={screenHeight - 280} // 为顶部HUD和底部道具栏留空间
-          maxBoardHeight={screenHeight - 200} // 为顶部HUD和底部留空间
+          isChallenge={true}
         />
       )}
 

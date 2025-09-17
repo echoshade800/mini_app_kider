@@ -131,7 +131,7 @@ export function GameBoard({
   const tileMarginY = (cellSize - tileHeight) / 2;
   
   // Board background size with wooden frame
-  const boardWidth = width * cellSize + 40; // 20px padding on each side
+  const boardWidth = width * cellSize + 40; // 20px padding on each side  
   const boardHeight = height * cellSize + 40;
 
   // Initialize tile scale animation
@@ -183,8 +183,8 @@ export function GameBoard({
   };
 
   const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = 200;
-    const bottomRestrictedHeight = 200;
+    const topRestrictedHeight = 120; // 减少顶部限制区域
+    const bottomRestrictedHeight = 120; // 减少底部限制区域
     
     return pageY < topRestrictedHeight || 
            pageY > screenHeight - bottomRestrictedHeight;
@@ -354,9 +354,9 @@ export function GameBoard({
     
     onPanResponderTerminationRequest: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
-      const buttonAreaBottom = screenHeight - 10;
-      const buttonAreaTop = screenHeight - 200;
-      const topRestrictedHeight = 200;
+      const buttonAreaBottom = screenHeight - 80; // 底部道具栏区域
+      const buttonAreaTop = screenHeight - 160;
+      const topRestrictedHeight = 120; // 顶部HUD区域
       
       if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
           pageY < topRestrictedHeight) {
@@ -574,7 +574,7 @@ export function GameBoard({
           style={[
             styles.gridLine,
             {
-              left: i * cellSize + 20,
+              left: i * cellSize + 20, // 20px是棋盘内边距
               top: 20,
               width: 1,
               height: height * cellSize,
@@ -592,7 +592,7 @@ export function GameBoard({
           style={[
             styles.gridLine,
             {
-              left: 20,
+              left: 20, // 20px是棋盘内边距
               top: i * cellSize + 20,
               width: width * cellSize,
               height: 1,
@@ -619,7 +619,7 @@ export function GameBoard({
           const tempAnim = fractalAnimations.get(tempKey);
           if (!tempAnim) return null;
           
-          const left = col * cellSize + 20 + tileMarginX;
+          const left = col * cellSize + 20 + tileMarginX; // 20px是棋盘内边距
           const top = row * cellSize + 20 + tileMarginY;
           const rotation = getTileRotation(row, col);
           
@@ -687,7 +687,7 @@ export function GameBoard({
       return null;
     }
 
-    const left = col * cellSize + 20 + tileMarginX;
+    const left = col * cellSize + 20 + tileMarginX; // 20px是棋盘内边距
     const top = row * cellSize + 20 + tileMarginY;
 
     const tileScale = initTileScale(index);
@@ -878,7 +878,7 @@ const styles = StyleSheet.create({
   },
   chalkboard: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
-    padding: 12, // 进一步减少内边距，让棋盘更大
+    padding: 20, // 增加内边距，确保数字方块在棋盘中央
     borderRadius: 16,
     borderWidth: 8,
     borderColor: '#8B5A2B', // Wooden frame

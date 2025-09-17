@@ -28,7 +28,7 @@ function seededRandom(seed) {
 export function generateBoard(level, forceNew = false, isChallenge = false) {
   const seed = forceNew ? 
     `${isChallenge ? 'challenge' : 'level'}_${level}_${Date.now()}_${Math.random()}` :
-    `level_${level}`;
+    `${isChallenge ? 'challenge' : 'level'}_${level}`; // 关卡模式使用固定种子，挑战模式使用随机种子
   
   const random = seededRandom(seed);
   const { rows, cols } = isChallenge ? getChallengeGridSize() : getLevelGridSize(level);

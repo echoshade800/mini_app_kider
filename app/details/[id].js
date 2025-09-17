@@ -46,7 +46,7 @@ export default function LevelDetailScreen() {
   useEffect(() => {
     if (level && level > 0 && level <= 200) {
       try {
-        const board = generateBoard(level, true, false); // Force new board
+        const board = generateBoard(level, false, false); // 不强制生成新棋盘，使用确定性种子
         setCurrentBoard(board);
       } catch (error) {
         console.error('Failed to generate board:', error);
@@ -426,7 +426,7 @@ export default function LevelDetailScreen() {
           text: '确定', 
           onPress: () => {
             try {
-              const board = generateBoard(level, true); // Force new board
+              const board = generateBoard(level, true, false); // 只有重新开始时才强制生成新棋盘
               setCurrentBoard(board);
               setShowSuccess(false);
             } catch (error) {

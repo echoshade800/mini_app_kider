@@ -175,7 +175,7 @@ export default function ChallengeScreen() {
     setCurrentIQ(0);
     setTimeLeft(CHALLENGE_DURATION);
     setReshuffleCount(0);
-    generateNewBoard();
+    generateNewBoard(); // 开始挑战时生成新棋盘
   };
 
   const endChallenge = () => {
@@ -194,8 +194,8 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 生成挑战模式棋盘
-    const board = generateChallengeBoard();
+    // 挑战模式每次都生成全新的随机棋盘
+    const board = generateChallengeBoard(); // 挑战模式始终生成新棋盘
     setCurrentBoard(board);
     setReshuffleCount(0);
   };

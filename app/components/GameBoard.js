@@ -30,8 +30,7 @@ export function GameBoard({
   disabled = false,
   swapAnimations,
   fractalAnimations,
-  isChallenge = false,
-  maxBoardHeight = null // 新增：限制棋盘最大高度
+  isChallenge = false
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
@@ -119,14 +118,8 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // 动态计算方块大小，确保棋盘适应屏幕
-  const availableWidth = screenWidth - 80; // 左右各留40px边距
-  const availableHeight = maxBoardHeight || (screenHeight - 300); // 上下留空间
-  
-  // 根据棋盘尺寸和可用空间计算最佳方块大小
-  const maxCellSizeByWidth = Math.floor(availableWidth / width);
-  const maxCellSizeByHeight = Math.floor(availableHeight / height);
-  const cellSize = Math.min(maxCellSizeByWidth, maxCellSizeByHeight, 45); // 最大不超过45px
+  // 固定方块大小，不再自适应
+  const cellSize = 32; // 固定大小，比之前稍大
   
   // 方块尺寸调整 - 固定比例
   const tileRatio = 0.88;
@@ -164,9 +157,10 @@ export function GameBoard({
   const isInsideGridArea = (pageX, pageY) => {
     if (isInRestrictedArea(pageY)) return false;
     
-    // 获取棋盘在屏幕上的实际位置
-    const boardLeft = (screenWidth - boardWidth) / 2;
-    const boardTop = isChallenge ? 120 : (screenHeight - boardHeight) / 2; // 挑战模式棋盘靠上
+    const boardCenterX = screenWidth / 2;
+    const boardCenterY = screenHeight / 2;
+    const boardLeft = boardCenterX - boardWidth / 2;
+    const boardTop = boardCenterY - boardHeight / 2;
     
     if (pageX < boardLeft + 20 || pageX > boardLeft + boardWidth - 20 ||
         pageY < boardTop + 20 || pageY > boardTop + boardHeight - 20) {
@@ -253,9 +247,10 @@ export function GameBoard({
       
       if (!isInsideGridArea(pageX, pageY)) return;
       
-      // 使用与isInsideGridArea相同的计算方式
-      const boardLeft = (screenWidth - boardWidth) / 2;
-      const boardTop = isChallenge ? 120 : (screenHeight - boardHeight) / 2;
+      const boardCenterX = screenWidth / 2;
+      const boardCenterY = screenHeight / 2;
+      const boardLeft = boardCenterX - boardWidth / 2;
+      const boardTop = boardCenterY - boardHeight / 2;
       
       const relativeX = pageX - boardLeft - 20;
       const relativeY = pageY - boardTop - 20;
@@ -282,9 +277,10 @@ export function GameBoard({
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      // 使用一致的坐标计算
-      const boardLeft = (screenWidth - boardWidth) / 2;
-      const boardTop = isChallenge ? 120 : (screenHeight - boardHeight) / 2;
+      const boardCenterX = screenWidth / 2;
+      const boardCenterY = screenHeight / 2;
+      const boardLeft = boardCenterX - boardWidth / 2;
+      const boardTop = boardCenterY - boardHeight / 2;
       
       if (pageX < boardLeft + 20 || pageX > boardLeft + boardWidth - 20 ||
           pageY < boardTop + 20 || pageY > boardTop + boardHeight - 20) {
@@ -784,10 +780,7 @@ export function GameBoard({
 
   return (
     <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
-      <View style={[
-        styles.container,
-        isChallenge && styles.challengeContainer
-      ]}>
+      <View style={styles.container}>
         <View 
           style={[
             styles.chalkboard,
@@ -872,10 +865,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  challengeContainer: {
-    justifyContent: 'flex-start',
-    paddingTop: 20, // 挑战模式棋盘靠上显示
   },
   loadingContainer: {
     height: 200,

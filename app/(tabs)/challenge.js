@@ -10,8 +10,7 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  Modal,
-  Dimensions
+  Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -21,7 +20,6 @@ import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
 
 const CHALLENGE_DURATION = 60; // 60 seconds
-const { height: screenHeight } = Dimensions.get('window');
 
 export default function ChallengeScreen() {
   const { gameData, updateGameData } = useGameStore();
@@ -193,7 +191,6 @@ export default function ChallengeScreen() {
           onBoardRefresh={handleBoardRefresh}
           disabled={gameState !== 'playing'}
           isChallenge={true}
-          maxBoardHeight={screenHeight - 200} // 限制棋盘高度，为顶部和底部留空间
         />
       )}
 

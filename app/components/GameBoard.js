@@ -452,8 +452,8 @@ export function GameBoard({
       const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
-      const explosionX = (centerCol - bounds.minCol) * cellSize + cellSize / 2 + 10;
-      const explosionY = (centerRow - bounds.minRow) * cellSize + cellSize / 2 + 10;
+      const explosionX = centerCol * cellSize + cellSize / 2 + 10;
+      const explosionY = centerRow * cellSize + cellSize / 2 + 10;
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       

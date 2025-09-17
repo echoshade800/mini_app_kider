@@ -24,7 +24,8 @@ export function useBoardMetrics({
   safeTop = 80, 
   safeBottom = 80, 
   safeHorizontalPadding = 20,
-  isChallenge = false 
+  isChallenge = false,
+  fixedTileSize = null // 新增：固定方块大小选项
 }) {
   return useMemo(() => {
     // 挑战模式使用更大的安全区域
@@ -46,16 +47,23 @@ export function useBoardMetrics({
       gap = Math.max(4, gap * 0.85);
     }
     
-    // 计算方块尺寸
-    const tileSizeW = (usableWidth - 2 * padding - (cols - 1) * gap) / cols;
-    const tileSizeH = (usableHeight - 2 * padding - (rows - 1) * gap) / rows;
-    let tileSize = Math.max(MIN_TILE_SIZE, Math.floor(Math.min(tileSizeW, tileSizeH)));
-    
-    // 贴近理想尺寸
-    if (Math.abs(tileSize - IDEAL_TILE_SIZE) <= 4) {
-      tileSize = IDEAL_TILE_SIZE;
+    // 计算方块尺寸 - 支持固定大小
+    let tileSize;
+    if (fixedTileSize) {
+      // 使用固定大小
+      tileSize = fixedTileSize;
+    } else {
+      // 自适应计算
+      const tileSizeW = (usableWidth - 2 * padding - (cols - 1) * gap) / cols;
+      const tileSizeH = (usableHeight - 2 * padding - (rows - 1) * gap) / rows;
+      tileSize = Math.max(MIN_TILE_SIZE, Math.floor(Math.min(tileSizeW, tileSizeH)));
+      
+      // 贴近理想尺寸
+      if (Math.abs(tileSize - IDEAL_TILE_SIZE) <= 4) {
+        tileSize = IDEAL_TILE_SIZE;
+      }
+      tileSize = Math.max(MIN_TILE_SIZE, Math.min(MAX_TILE_SIZE, tileSize));
     }
-    tileSize = Math.max(MIN_TILE_SIZE, Math.min(MAX_TILE_SIZE, tileSize));
     
     // 像素对齐
     const tile = roundPx(tileSize);

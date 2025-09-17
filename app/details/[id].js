@@ -40,13 +40,13 @@ export default function LevelDetailScreen() {
   const [animationTrigger, setAnimationTrigger] = useState(0); // 用于触发重新渲染
 
   const swapMasterItems = gameData?.swapMasterItems || 0;
-  const fractalSplitItems = gameData?.splitItems || 0;
+  const fractalSplitItems = gameData?.fractalSplitItems || 0;
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
 
   useEffect(() => {
     if (level && level > 0 && level <= 200) {
       try {
-        const board = generateBoard(level, false, false); // 不强制生成新棋盘，使用确定性种子
+        const board = generateBoard(level);
         setCurrentBoard(board);
       } catch (error) {
         console.error('Failed to generate board:', error);
@@ -75,12 +75,12 @@ export default function LevelDetailScreen() {
       const currentMaxLevel = gameData?.maxLevel || 0;
       const newMaxLevel = Math.max(currentMaxLevel, level);
       const newSwapMasterItems = swapMasterItems + 1; // Award 1 SwapMaster item
-      const newSplitItems = fractalSplitItems + 1; // Award 1 Split item
+      const newFractalSplitItems = fractalSplitItems + 1; // Award 1 FractalSplit item
       
       updateGameData({
         maxLevel: newMaxLevel,
         swapMasterItems: newSwapMasterItems,
-        splitItems: newSplitItems,
+        fractalSplitItems: newFractalSplitItems,
         lastPlayedLevel: level
       });
     } else {
@@ -407,8 +407,8 @@ export default function LevelDetailScreen() {
       setAnimationTrigger(prev => prev + 1);
       
       // 消耗道具并退出分裂模式
-      const newSplitItems = Math.max(0, fractalSplitItems - 1);
-      updateGameData({ splitItems: newSplitItems });
+      const newFractalSplitItems = Math.max(0, fractalSplitItems - 1);
+      updateGameData({ fractalSplitItems: newFractalSplitItems });
       setItemMode(null);
       setSelectedSwapTile(null);
     });
@@ -426,7 +426,7 @@ export default function LevelDetailScreen() {
           text: '确定', 
           onPress: () => {
             try {
-              const board = generateBoard(level, true, false); // 只有重新开始时才强制生成新棋盘
+              const board = generateBoard(level, true, false, screenWidth, screenHeight); // Force new board
               setCurrentBoard(board);
               setShowSuccess(false);
             } catch (error) {
@@ -491,7 +491,7 @@ export default function LevelDetailScreen() {
         <View style={styles.itemsContainer}>
           <Ionicons name="shuffle" size={20} color="#2196F3" style={styles.itemIcon} />
           <Text style={styles.itemText}>{swapMasterItems}</Text>
-          <Ionicons name="cut" size={20} color="#9C27B0" style={styles.itemIcon} />
+          <Ionicons name="git-branch" size={20} color="#9C27B0" style={styles.itemIcon} />
           <Text style={styles.itemText}>{fractalSplitItems}</Text>
         </View>
       </View>
@@ -506,7 +506,6 @@ export default function LevelDetailScreen() {
         selectedSwapTile={selectedSwapTile}
         swapAnimations={swapAnimationsRef.current}
         fractalAnimations={fractalAnimationsRef.current}
-        level={level}
         isChallenge={false}
       />
 
@@ -547,7 +546,7 @@ export default function LevelDetailScreen() {
           activeOpacity={0.7}
         >
           <Ionicons 
-            name={itemMode === 'fractalSplit' ? "close" : "cut"} 
+            name={itemMode === 'fractalSplit' ? "close" : "git-branch"} 
             size={24} 
             color="white" 
           />
@@ -573,7 +572,7 @@ export default function LevelDetailScreen() {
               Congratulations! You've completed {stageName}
             </Text>
             <Text style={styles.rewardText}>
-              +1 SwapMaster & +1 Split Earned!
+              +1 SwapMaster & +1 FractalSplit Earned!
             </Text>
             
             <View style={styles.modalButtons}>

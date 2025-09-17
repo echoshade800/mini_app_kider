@@ -175,7 +175,7 @@ export default function ChallengeScreen() {
     setCurrentIQ(0);
     setTimeLeft(CHALLENGE_DURATION);
     setReshuffleCount(0);
-    generateNewBoard(); // 开始挑战时生成新棋盘
+    generateNewBoard();
   };
 
   const endChallenge = () => {
@@ -194,8 +194,8 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 挑战模式每次都生成全新的随机棋盘
-    const board = generateChallengeBoard(); // 挑战模式始终生成新棋盘
+    // 生成满盘棋盘，传入屏幕尺寸以铺满屏幕
+    const board = generateChallengeBoard(screenWidth, screenHeight);
     setCurrentBoard(board);
     setReshuffleCount(0);
   };
@@ -279,7 +279,7 @@ export default function ChallengeScreen() {
   };
 
   const handleUseFractalSplit = () => {
-    if (gameData?.splitItems <= 0) return;
+    if (gameData?.fractalSplitItems <= 0) return;
     setItemMode('fractalSplit');
     setSelectedSwapTile(null);
   };
@@ -336,7 +336,7 @@ export default function ChallengeScreen() {
           newTiles[emptyPositions[1]] = splitValues[1];
           
           setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
-          updateGameData({ splitItems: (gameData?.splitItems || 0) - 1 });
+          updateGameData({ fractalSplitItems: (gameData?.fractalSplitItems || 0) - 1 });
           setItemMode(null);
           setSelectedSwapTile(null);
         }
@@ -447,7 +447,6 @@ export default function ChallengeScreen() {
               fractalAnimations={fractalAnimationsRef.current}
               onBoardRefresh={handleBoardRefresh}
               disabled={gameState !== 'playing'}
-              level={130} // 挑战模式使用高难度等级
               isChallenge={true}
             />
           )}
@@ -465,7 +464,6 @@ export default function ChallengeScreen() {
           fractalAnimations={fractalAnimationsRef.current}
           onBoardRefresh={handleBoardRefresh}
           disabled={true}
-          level={130}
           isChallenge={true}
         />
       )}
@@ -499,20 +497,20 @@ export default function ChallengeScreen() {
             style={[
               styles.itemButton,
               itemMode === 'fractalSplit' ? styles.itemButtonActive : styles.fractalSplitButton,
-              (gameData?.splitItems || 0) <= 0 && itemMode !== 'fractalSplit' && styles.itemButtonDisabled
+              (gameData?.fractalSplitItems || 0) <= 0 && itemMode !== 'fractalSplit' && styles.itemButtonDisabled
             ]}
             onPress={itemMode === 'fractalSplit' ? handleCancelItem : handleUseFractalSplit}
-            disabled={(gameData?.splitItems || 0) <= 0 && itemMode !== 'fractalSplit'}
+            disabled={(gameData?.fractalSplitItems || 0) <= 0 && itemMode !== 'fractalSplit'}
             activeOpacity={0.7}
           >
             <Ionicons 
-              name={itemMode === 'fractalSplit' ? "close" : "cut"} 
+              name={itemMode === 'fractalSplit' ? "close" : "git-branch"} 
               size={24} 
               color="white" 
             />
             {itemMode !== 'fractalSplit' && (
               <View style={styles.itemBadge}>
-                <Text style={styles.itemBadgeText}>{gameData?.splitItems || 0}</Text>
+                <Text style={styles.itemBadgeText}>{gameData?.fractalSplitItems || 0}</Text>
               </View>
             )}
           </TouchableOpacity>

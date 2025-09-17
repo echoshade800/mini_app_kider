@@ -53,6 +53,7 @@ export default function LevelsScreen() {
         stageName: STAGE_NAMES[i] || `Level ${i}`,
         group: getStageGroup(i),
         isUnlocked: i <= Math.max(maxLevel + 1, 1), // 至少第1关是解锁的
+        isUnlocked: true, // 开放所有关卡用于测试
         isCompleted: i <= maxLevel,
         isLastPlayed: i === lastPlayedLevel,
       });

@@ -44,7 +44,7 @@ export default function LevelDetailScreen() {
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
 
   useEffect(() => {
-    if (level && level > 0) {
+    if (level && level > 0 && level <= 200) {
       try {
         const board = generateBoard(level);
         setCurrentBoard(board);

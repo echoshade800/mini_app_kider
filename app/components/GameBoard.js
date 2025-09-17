@@ -61,14 +61,10 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // 简化坐标系统，直接使用棋盘的完整尺寸
-  const actualWidth = width;
-  const actualHeight = height;
-  
   // Calculate cell size for consistent layout
   const cellSize = Math.min(
-    (screenWidth - 80) / actualWidth, 
-    (screenHeight - 300) / actualHeight,
+    (screenWidth - 80) / width, 
+    (screenHeight - 300) / height,
     50
   );
   
@@ -77,8 +73,8 @@ export function GameBoard({
   const tileMargin = (cellSize - tileSize) / 2;
   
   // Board background size
-  const boardWidth = actualWidth * cellSize + 20;
-  const boardHeight = actualHeight * cellSize + 20;
+  const boardWidth = width * cellSize + 20;
+  const boardHeight = height * cellSize + 20;
 
   // Initialize tile scale animation
   const initTileScale = (index) => {
@@ -266,8 +262,8 @@ export function GameBoard({
       const relativeY = pageY - boardTop - 10;
       
       // Check if in valid grid area
-      if (relativeX < 0 || relativeX >= actualWidth * cellSize ||
-          relativeY < 0 || relativeY >= actualHeight * cellSize) {
+      if (relativeX < 0 || relativeX >= width * cellSize ||
+          relativeY < 0 || relativeY >= height * cellSize) {
         return; // Not in valid grid area, keep current selection
       }
       
@@ -522,12 +518,17 @@ export function GameBoard({
   const renderTile = (value, row, col) => {
     const index = row * width + col;
     
-    // Only render tiles within valid range and with values
-    if (row < 0 || row >= height || col < 0 || col >= width || value === 0) {
+    // Only render tiles with values > 0
+    if (value === 0) {
       return null;
     }
 
-    // Unified position calculation - item mode and normal mode are identical
+    // Validate coordinates
+    if (row < 0 || row >= height || col < 0 || col >= width) {
+      return null;
+    }
+
+    // Position calculation - consistent for all modes
     const left = col * cellSize + 10 + tileMargin;
     const top = row * cellSize + 10 + tileMargin;
 
@@ -560,13 +561,13 @@ export function GameBoard({
     // Check if this is the selected swap tile
     const isSelected = selectedSwapTile && selectedSwapTile.index === index;
     
-    // Normal mode and item mode use same base styles
+    // Style changes only for selected tiles in item mode
     let selectedBgColor = '#FFF8E1'; // Default background
     let selectedBorderColor = '#E0E0E0'; // Default border
     let selectedTextColor = '#333'; // Default text color
     
     // Only change style when selected
-    if (isSelected) {
+    if (isSelected && itemMode) {
       if (itemMode === 'swapMaster') {
         selectedBgColor = '#E3F2FD';
         selectedBorderColor = '#2196F3';
@@ -584,24 +585,27 @@ export function GameBoard({
       opacity = fractalAnim.opacity;
     }
 
+    // Create the tile component
+    const tileStyle = [
+      styles.tile,
+      { 
+        position: 'absolute',
+        left,
+        top,
+        width: tileSize, 
+        height: tileSize,
+        transform: transforms,
+        opacity: opacity,
+        backgroundColor: selectedBgColor,
+        borderWidth: isSelected && itemMode ? 3 : 2,
+        borderColor: selectedBorderColor,
+      }
+    ];
+
     const tileComponent = (
       <Animated.View 
         key={`${row}-${col}`}
-        style={[
-          styles.tile,
-          { 
-            position: 'absolute',
-            left,
-            top,
-            width: tileSize, 
-            height: tileSize,
-            transform: transforms,
-            opacity: opacity,
-            backgroundColor: selectedBgColor,
-            borderWidth: isSelected ? 3 : 2,
-            borderColor: selectedBorderColor,
-          }
-        ]}
+        style={tileStyle}
       >
         <Text style={[
           styles.tileText,
@@ -620,15 +624,7 @@ export function GameBoard({
       return (
         <TouchableOpacity
           key={`${row}-${col}`}
-          style={{ 
-            position: 'absolute', 
-            left, 
-            top, 
-            width: tileSize, 
-            height: tileSize,
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
+          style={styles.touchableArea}
           onPress={() => handleTilePress(row, col, value)}
           activeOpacity={0.8}
         >
@@ -812,5 +808,9 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: '#FF6B35',
     borderRadius: 4,
+  },
+  touchableArea: {
+    // Make touchable area completely transparent and non-interfering
+    backgroundColor: 'transparent',
   },
 });

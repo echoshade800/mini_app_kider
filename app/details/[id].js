@@ -264,7 +264,7 @@ export default function LevelDetailScreen() {
       newTiles[pos] = splitValue;
     });
 
-    // 创建分裂动画 - 小方块跳跃到目标位置
+    // 创建分裂动画 - 显示正确的分解数值
     const cellSize = Math.min(
       (screenWidth - 80) / currentBoard.width, 
       (screenHeight - 300) / currentBoard.height,
@@ -285,6 +285,7 @@ export default function LevelDetailScreen() {
         translateY: new Animated.Value(0),
         scale: new Animated.Value(0.3),
         opacity: new Animated.Value(1),
+        value: splitValue, // 存储正确的分解数值
       };
       
       // 设置临时动画状态

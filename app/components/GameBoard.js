@@ -561,6 +561,9 @@ export function GameBoard({
             { translateY: tempAnim.translateY },
           ];
           
+          // 获取正确的分解数值
+          const displayValue = tempAnim.value || Math.floor(Math.random() * 9) + 1;
+          
           return (
             <Animated.View 
               key={tempKey}
@@ -586,8 +589,7 @@ export function GameBoard({
                   color: '#111'
                 }
               ]}>
-                {/* 从tempKey中提取原始值 */}
-                {Math.floor(Math.random() * 9) + 1}
+                {displayValue}
               </Text>
             </Animated.View>
           );

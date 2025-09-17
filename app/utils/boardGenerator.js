@@ -526,12 +526,14 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
   
   // 如果无法生成可解的棋盘，返回一个简单的可解棋盘
   console.warn(`Failed to generate solvable board for level ${level}, using fallback`);
-  const { width: fallbackWidth, height: fallbackHeight } = isChallengeMode ? getChallengeModeDimensions() : getBoardDimensions(level);
-  return generateFallbackBoard(level, fallbackWidth, fallbackHeight, isChallengeMode);
+  const { width: fallbackWidth, height: fallbackHeight } = isChallengeMode 
+    ? getChallengeModeDimensions(screenWidth, screenHeight) 
+    : getBoardDimensions(level, screenWidth, screenHeight);
+  return generateFallbackBoard(level, fallbackWidth, fallbackHeight, isChallengeMode, screenWidth, screenHeight);
 }
 
 // 生成后备的简单可解棋盘
-function generateFallbackBoard(level, width, height, isChallengeMode = false) {
+function generateFallbackBoard(level, width, height, isChallengeMode = false, screenWidth = 390, screenHeight = 844) {
   const size = width * height;
   const tiles = new Array(size).fill(0);
   

@@ -119,13 +119,8 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // 动态计算方块大小，确保棋盘完全显示在屏幕内
-  const availableWidth = screenWidth - 80; // 左右各留40px边距
-  const availableHeight = (maxBoardHeight || screenHeight) - 160; // 上下留足够空间
-  
-  const maxCellSizeByWidth = Math.floor(availableWidth / width);
-  const maxCellSizeByHeight = Math.floor(availableHeight / height);
-  const cellSize = Math.min(maxCellSizeByWidth, maxCellSizeByHeight, 45); // 限制最大尺寸
+  // 使用固定的方块大小（参考28关）
+  const cellSize = 45; // 固定大小，不再动态计算
   
   // 方块尺寸调整 - 固定比例
   const tileRatio = 0.88;

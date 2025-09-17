@@ -426,7 +426,7 @@ export default function LevelDetailScreen() {
           text: '确定', 
           onPress: () => {
             try {
-              const board = generateBoard(level, true); // Force new board
+              const board = generateBoard(level, true, false, screenWidth, screenHeight); // Force new board
               setCurrentBoard(board);
               setShowSuccess(false);
             } catch (error) {

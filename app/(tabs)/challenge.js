@@ -188,8 +188,8 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 生成满盘棋盘，使用更大的尺寸以铺满屏幕
-    const board = generateChallengeBoard();
+    // 生成满盘棋盘，传入屏幕尺寸以铺满屏幕
+    const board = generateChallengeBoard(screenWidth, screenHeight);
     setCurrentBoard(board);
     setReshuffleCount(0);
   };

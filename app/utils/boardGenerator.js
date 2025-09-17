@@ -25,26 +25,10 @@ function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
   return { width: cols, height: rows };
 }
 
-// 挑战模式：直接使用最大尺寸铺满屏幕
-function getChallengeModeDimensions(screenWidth = 390, screenHeight = 844) {
-  // 挑战模式使用更大的尺寸以充分利用屏幕空间
-  // 考虑到顶部HUD(约80px)和底部道具栏(约100px)，剩余空间约664px
-  // 考虑到顶部HUD(约120px)和底部道具栏(约140px)，剩余空间
-  const availableHeight = screenHeight - 280; // 预留更多顶部和底部空间
-  const availableWidth = screenWidth - 40; // 预留左右边距
-  
-  // 基于可用空间计算最优行列数
-  const idealTileSize = 26; // 进一步减小方块尺寸
-  const gap = 2; // 更紧密的间距
-  
-  const maxCols = Math.floor((availableWidth - 24) / (idealTileSize + gap));
-  const maxRows = Math.floor((availableHeight - 24) / (idealTileSize + gap));
-  
-  // 限制在合理范围内，确保可玩性
-  const cols = Math.min(Math.max(maxCols, 10), 12);
-  const rows = Math.min(Math.max(maxRows, 12), 18);
-  
-  return { width: cols, height: rows };
+// 挑战模式：使用大尺寸网格
+function getChallengeModeDimensions() {
+  // 挑战模式使用固定的大尺寸网格
+  return { width: 10, height: 18 };
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）
@@ -178,136 +162,6 @@ function ensureSumIsMultipleOf10(tiles) {
   }
   
   return newTiles;
-}
-
-// 生成挑战模式专用的满盘棋盘
-export function generateChallengeBoard(screenWidth = 390, screenHeight = 844) {
-  const seed = `challenge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const random = seededRandom(seed);
-  
-  // 使用最大尺寸铺满屏幕
-  const { width, height } = getChallengeModeDimensions(screenWidth, screenHeight);
-  const size = width * height;
-  
-  // 初始化棋盘，填满所有位置
-  const tiles = new Array(size);
-  
-  // 挑战模式高难度设置
-  const guaranteedPairs = Math.floor(size * 0.35); // 35%保证可解配对
-  const adjacentRatio = 0.2; // 20%相邻配对，80%需要大范围框选
-  
-  // 生成目标配对（和为10）
-  const targetPairs = [
-    [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
-  ];
-  
-  // 放置保证可消除的配对
-  const placedPositions = new Set();
-  let pairsPlaced = 0;
-  
-  // 少量相邻配对（容易找到）
-  const easyPairsToPlace = Math.floor(guaranteedPairs * adjacentRatio);
-  
-  for (let i = 0; i < easyPairsToPlace && pairsPlaced < guaranteedPairs; i++) {
-    const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-    const [val1, val2] = pairType;
-    
-    let placed = false;
-    let attempts = 0;
-    
-    while (!placed && attempts < 50) {
-      const pos1 = Math.floor(random() * size);
-      
-      if (placedPositions.has(pos1)) {
-        attempts++;
-        continue;
-      }
-      
-      const row1 = Math.floor(pos1 / width);
-      const col1 = pos1 % width;
-      
-      // 尝试相邻位置
-      const candidateOffsets = [
-        [0, 1], [1, 0], [0, -1], [-1, 0],
-        [0, 2], [2, 0], [0, -2], [-2, 0]
-      ];
-      
-      for (const [dr, dc] of candidateOffsets) {
-        const row2 = row1 + dr;
-        const col2 = col1 + dc;
-        const pos2 = row2 * width + col2;
-        
-        if (row2 >= 0 && row2 < height && col2 >= 0 && col2 < width &&
-            !placedPositions.has(pos2)) {
-          
-          tiles[pos1] = val1;
-          tiles[pos2] = val2;
-          placedPositions.add(pos1);
-          placedPositions.add(pos2);
-          pairsPlaced++;
-          placed = true;
-          break;
-        }
-      }
-      
-      attempts++;
-    }
-  }
-  
-  // 放置剩余的保证配对（需要大范围框选）
-  while (pairsPlaced < guaranteedPairs) {
-    const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-    const [val1, val2] = pairType;
-    
-    const availablePositions = [];
-    for (let i = 0; i < size; i++) {
-      if (!placedPositions.has(i)) {
-        availablePositions.push(i);
-      }
-    }
-    
-    if (availablePositions.length >= 2) {
-      const pos1 = availablePositions[Math.floor(random() * availablePositions.length)];
-      const remainingPositions = availablePositions.filter(p => p !== pos1);
-      const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
-      
-      tiles[pos1] = val1;
-      tiles[pos2] = val2;
-      placedPositions.add(pos1);
-      placedPositions.add(pos2);
-      pairsPlaced++;
-    } else {
-      break;
-    }
-  }
-  
-  // 填满剩余所有位置 - 挑战模式高频低频分布
-  for (let i = 0; i < size; i++) {
-    if (!placedPositions.has(i)) {
-      // 70%高频数字，30%低频数字
-      const highFreqNumbers = [5, 6, 7, 8, 9];
-      const lowFreqNumbers = [1, 2, 3, 4];
-      if (random() < 0.7) {
-        tiles[i] = highFreqNumbers[Math.floor(random() * highFreqNumbers.length)];
-      } else {
-        tiles[i] = lowFreqNumbers[Math.floor(random() * lowFreqNumbers.length)];
-      }
-    }
-  }
-  
-  // 确保总和为10的倍数
-  const adjustedTiles = ensureSumIsMultipleOf10(tiles);
-  
-  return {
-    seed,
-    width,
-    height,
-    tiles: adjustedTiles,
-    requiredSwaps: 0,
-    level: 'challenge',
-    solvable: true,
-    isChallengeMode: true,
-  };
 }
 
 export function generateBoard(level, forceNewSeed = false, isChallengeMode = false, screenWidth = 390, screenHeight = 844) {

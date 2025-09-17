@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
-import { generateChallengeBoard } from '../utils/boardGenerator';
+import { generateBoard } from '../utils/boardGenerator';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CHALLENGE_DURATION = 60; // 60 seconds
@@ -194,8 +194,8 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 生成满盘棋盘，传入屏幕尺寸以铺满屏幕
-    const board = generateChallengeBoard(screenWidth, screenHeight);
+    // 生成挑战模式棋盘
+    const board = generateBoard(999, false, true, screenWidth, screenHeight);
     setCurrentBoard(board);
     setReshuffleCount(0);
   };
@@ -386,8 +386,8 @@ export default function ChallengeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* HUD */}
-      <View style={[styles.hud, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000 }]}>
+      {/* HUD - 固定顶部 */}
+      <View style={styles.hud}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={handleReturn}
@@ -421,11 +421,11 @@ export default function ChallengeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Game Board - Full Screen */}
+      {/* 游戏区域 */}
       {(gameState === 'ready' || gameState === 'playing') && (
         <>
           {gameState === 'ready' && (
-            <View style={[styles.readyOverlay, { zIndex: 2000 }]}>
+            <View style={styles.readyOverlay}>
               <View style={styles.readyContent}>
                 <Text style={styles.readyTitle}>Challenge Mode</Text>
                 <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
@@ -436,7 +436,7 @@ export default function ChallengeScreen() {
             </View>
           )}
           
-          <View style={styles.gameArea}>
+          <View style={styles.gameContainer}>
             {currentBoard && (
               <GameBoard 
                 board={currentBoard}
@@ -456,7 +456,7 @@ export default function ChallengeScreen() {
       )}
 
       {gameState === 'finished' && currentBoard && (
-        <View style={styles.gameArea}>
+        <View style={styles.gameContainer}>
           <GameBoard 
             board={currentBoard}
             onTilesClear={handleTilesClear}
@@ -472,9 +472,9 @@ export default function ChallengeScreen() {
         </View>
       )}
 
-      {/* 底部道具栏 - 固定在屏幕最底部 */}
+      {/* 底部道具栏 */}
       {gameState === 'playing' && (
-        <View style={[styles.itemsBar, { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000 }]}>
+        <View style={styles.itemsBar}>
           <TouchableOpacity 
             style={[
               styles.itemButton,
@@ -521,9 +521,9 @@ export default function ChallengeScreen() {
         </View>
       )}
 
-      {/* No Solution Overlay */}
+      {/* 无解提示覆盖层 */}
       {showNoSolution && (
-        <View style={[styles.noSolutionOverlay, { zIndex: 3000 }]}>
+        <View style={styles.noSolutionOverlay}>
           <Text style={styles.noSolutionText}>{noSolutionMessage}</Text>
         </View>
       )}
@@ -596,9 +596,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    paddingTop: 60, // 增加状态栏空间
+    paddingTop: 60,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    height: 120, // 固定HUD高度
+    height: 120,
   },
   backButton: {
     padding: 8,
@@ -640,15 +640,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   readyOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(26, 26, 46, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 2000,
   },
   readyContent: {
     alignItems: 'center',
@@ -678,21 +674,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  gameArea: {
+  gameContainer: {
     flex: 1,
-    marginTop: 0, // HUD已经有固定高度，不需要额外边距
-    marginBottom: 0, // 道具栏已经有固定高度，不需要额外边距
-    paddingHorizontal: 10, // 左右边距
   },
   noSolutionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 3000,
   },
   noSolutionText: {
     color: '#ff6b6b',
@@ -799,9 +789,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 20,
-    paddingBottom: 40, // 增加底部安全区域
+    paddingBottom: 40,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    height: 140, // 固定道具栏高度
+    height: 140,
     gap: 20,
   },
   itemButton: {

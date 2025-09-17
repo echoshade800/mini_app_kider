@@ -15,23 +15,29 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
+import { hasValidCombinations, reshuffleBoard, isBoardEmpty } from '../utils/gameLogic';
+import { RescueModal } from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export function GameBoard({ 
   board, 
   onTilesClear, 
+  onBoardRefresh,
   onTileClick, 
   itemMode = null,
   selectedSwapTile = null,
   disabled = false,
   swapAnimations,
-  fractalAnimations
+  fractalAnimations,
+  isChallenge = false
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+  const [showRescueModal, setShowRescueModal] = useState(false);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -55,6 +61,53 @@ export function GameBoard({
     };
   }, []);
 
+  // 检查是否需要救援
+  const checkForRescue = React.useCallback(() => {
+    if (!board || disabled) return;
+    
+    const { tiles, width, height } = board;
+    
+    // 检查是否有可消除的组合
+    if (!hasValidCombinations(tiles, width, height)) {
+      if (reshuffleCount < 3) {
+        // 自动重排
+        const newTiles = reshuffleBoard(tiles, width, height);
+        const newBoard = { ...board, tiles: newTiles };
+        
+        // 检查重排后是否有解
+        if (hasValidCombinations(newTiles, width, height)) {
+          setReshuffleCount(0);
+          if (onBoardRefresh) {
+            onBoardRefresh(newBoard);
+          }
+        } else {
+          setReshuffleCount(prev => prev + 1);
+          if (onBoardRefresh) {
+            onBoardRefresh(newBoard);
+          }
+          
+          // 如果重排3次后仍无解，显示救援界面
+          if (reshuffleCount + 1 >= 3) {
+            setTimeout(() => {
+              setShowRescueModal(true);
+            }, 500);
+          }
+        }
+      }
+    }
+  }, [board, disabled, reshuffleCount, onBoardRefresh]);
+
+  // 监听棋盘变化，检查是否需要救援
+  React.useEffect(() => {
+    if (board && !itemMode) {
+      const timer = setTimeout(() => {
+        checkForRescue();
+      }, 1000); // 延迟检查，避免频繁触发
+      
+      return () => clearTimeout(timer);
+    }
+  }, [board, itemMode, checkForRescue]);
+
   if (!board) {
     return (
       <View style={styles.loadingContainer}>
@@ -65,37 +118,11 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // 挑战模式特殊处理：参考图片的棋盘尺寸
-  const isChallengeMode = width === 11 && height === 16;
+  // 固定方块大小，不再自适应
+  const cellSize = 32; // 固定大小，比之前稍大
   
-  let cellSize;
-  if (isChallengeMode) {
-    // 挑战模式：参考图片的尺寸，铺满除顶部和底部外的所有空间
-    const maxBoardWidth = screenWidth - 40; // 左右各20px边距
-    const maxBoardHeight = screenHeight - 280; // 顶部和底部留出空间
-    
-    const cellSizeByWidth = maxBoardWidth / width;
-    const cellSizeByHeight = maxBoardHeight / height;
-    cellSize = Math.min(cellSizeByWidth, cellSizeByHeight);
-    
-    // 确保方块大小在合理范围内，参考图片中方块较大
-    cellSize = Math.max(Math.min(cellSize, 35), 22);
-  } else {
-    // 闯关模式：原有逻辑
-    const maxBoardWidth = screenWidth - 60;
-    const maxBoardHeight = screenHeight - 300;
-    
-    const cellSizeByWidth = maxBoardWidth / width;
-    const cellSizeByHeight = maxBoardHeight / height;
-    cellSize = Math.max(Math.min(cellSizeByWidth, cellSizeByHeight, 32), 18);
-  }
-  
-  // 方块尺寸调整
-  let tileRatio = 0.85;
-  if (isChallengeMode) {
-    // 挑战模式：参考图片中方块占比更大，间距更小
-    tileRatio = 0.92;
-  }
+  // 方块尺寸调整 - 固定比例
+  const tileRatio = 0.88;
   
   const tileWidth = cellSize * tileRatio;
   const tileHeight = cellSize * tileRatio;
@@ -364,6 +391,9 @@ export function GameBoard({
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
 
     if (sum === 10 && selectedTiles.length > 0) {
+      // 重置重排计数
+      setReshuffleCount(0);
+      
       // Success - create explosion effect with yellow "10" note
       if (settings?.hapticsEnabled !== false) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -436,6 +466,22 @@ export function GameBoard({
       });
     } else {
       setSelection(null);
+    }
+  };
+
+  // 处理救援选择
+  const handleRescueContinue = () => {
+    setShowRescueModal(false);
+    setReshuffleCount(0);
+    // 这里可以触发道具使用逻辑
+  };
+
+  const handleRescueReturn = () => {
+    setShowRescueModal(false);
+    setReshuffleCount(0);
+    // 返回主页面的逻辑由父组件处理
+    if (onBoardRefresh) {
+      onBoardRefresh('return');
     }
   };
 
@@ -615,6 +661,22 @@ export function GameBoard({
               </Text>
             </Animated.View>
           );
+          
+          // 检查是否完全清空（仅挑战模式需要刷新）
+          if (isChallenge) {
+            const newTiles = [...tiles];
+            tilePositions.forEach(pos => {
+              const index = pos.row * width + pos.col;
+              newTiles[index] = 0;
+            });
+            
+            if (isBoardEmpty(newTiles) && onBoardRefresh) {
+              // 棋盘全清，生成新棋盘
+              setTimeout(() => {
+                onBoardRefresh('refresh');
+              }, 1000);
+            }
+          }
         });
       }
       return null;
@@ -778,6 +840,14 @@ export function GameBoard({
           )}
         </View>
       </View>
+      
+      {/* Rescue Modal */}
+      <RescueModal
+        visible={showRescueModal}
+        onContinue={handleRescueContinue}
+        onReturn={handleRescueReturn}
+        hasItems={true} // 这里可以根据实际道具数量判断
+      />
     </View>
   );
 }

@@ -21,6 +21,7 @@ import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
 import { STAGE_NAMES } from '../utils/stageNames';
+import { router } from 'expo-router';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -443,6 +444,16 @@ export default function LevelDetailScreen() {
     router.replace('/(tabs)/levels');
   };
 
+  const handleBoardRefresh = (action) => {
+    if (action === 'return') {
+      // 救援选择返回主页
+      handleBackToLevels();
+    } else if (typeof action === 'object') {
+      // 重排后的棋盘
+      setCurrentBoard(action);
+    }
+  };
+
   const handleNextLevel = () => {
     setShowSuccess(false);
     const nextLevel = level + 1;
@@ -490,11 +501,13 @@ export default function LevelDetailScreen() {
       <GameBoard 
         board={currentBoard}
         onTilesClear={handleTilesClear}
+        onBoardRefresh={handleBoardRefresh}
         onTileClick={handleSwapTileClick}
         itemMode={itemMode}
         selectedSwapTile={selectedSwapTile}
         swapAnimations={swapAnimationsRef.current}
         fractalAnimations={fractalAnimationsRef.current}
+        isChallenge={false}
       />
 
       {/* Floating Action Buttons */}

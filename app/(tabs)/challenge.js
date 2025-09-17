@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
+import { router } from 'expo-router';
 
 const CHALLENGE_DURATION = 60000; // 60 seconds
 
@@ -73,7 +74,7 @@ export default function ChallengeScreen() {
       setCurrentIQ(0);
       setTimeLeft(CHALLENGE_DURATION);
       fuseAnimation.setValue(1);
-      generateChallengeBoard();
+      generateNewBoard();
     } catch (error) {
       console.error('Failed to start challenge:', error);
       Alert.alert('Start Failed', 'Unable to start challenge mode, please try again');
@@ -95,10 +96,9 @@ export default function ChallengeScreen() {
     setShowResults(true);
   };
 
-  const generateChallengeBoard = () => {
-    // 使用高难度关卡生成棋盘，但确保铺满
-    const challengeLevel = 100 + Math.floor(Math.random() * 50);
-    const board = generateBoard(challengeLevel, true); // forceNewSeed = true
+  const generateNewBoard = () => {
+    // 直接使用150关配置
+    const board = generateBoard(150, true, true); // level=150, forceNewSeed=true, isChallengeMode=true
     setCurrentBoard(board);
   };
 
@@ -108,24 +108,27 @@ export default function ChallengeScreen() {
     // Award 3 IQ points per clear
     setCurrentIQ(prev => prev + 3);
     
-    // Update board with cleared tiles (same as level mode)
+    // Update board with cleared tiles
     const newTiles = [...currentBoard.tiles];
     clearedPositions.forEach(pos => {
       const index = pos.row * currentBoard.width + pos.col;
       newTiles[index] = 0;
     });
     
-    // Check if board is completely cleared
-    const hasRemainingTiles = newTiles.some(tile => tile > 0);
-    
-    if (!hasRemainingTiles) {
-      // Board completely cleared - generate new board
-      setTimeout(() => {
-        generateChallengeBoard();
-      }, 1000);
-    } else {
-      // Update board with cleared tiles
-      setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
+    // Update board with cleared tiles
+    setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
+  };
+
+  const handleBoardRefresh = (action) => {
+    if (action === 'refresh') {
+      // 棋盘全清，生成新棋盘
+      generateNewBoard();
+    } else if (action === 'return') {
+      // 救援选择返回主页
+      handleBackToHome();
+    } else if (typeof action === 'object') {
+      // 重排后的棋盘
+      setCurrentBoard(action);
     }
   };
 
@@ -259,7 +262,9 @@ export default function ChallengeScreen() {
         <GameBoard 
           board={currentBoard}
           onTilesClear={handleTilesClear}
+          onBoardRefresh={handleBoardRefresh}
           disabled={gameState !== 'playing'}
+          isChallenge={true}
         />
       )}
 

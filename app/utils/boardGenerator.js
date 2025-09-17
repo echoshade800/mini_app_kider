@@ -35,8 +35,8 @@ function getBoardDimensions(level) {
 }
 
 function getChallengeModeDimensions() {
-  // 挑战模式使用参考图片的尺寸：11列x16行，铺满屏幕
-  return { width: 11, height: 16 }; // 176个方块，11列16行的长方形布局
+  // 挑战模式直接使用150关的配置
+  return getBoardDimensions(150);
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）
@@ -177,7 +177,10 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
   const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
   const seed = `level_${level}_${baseSeed}`;
   const random = seededRandom(seed);
-  const { width, height } = isChallengeMode ? getChallengeModeDimensions() : getBoardDimensions(level);
+  
+  // 挑战模式直接使用150关配置
+  const actualLevel = isChallengeMode ? 150 : level;
+  const { width, height } = getBoardDimensions(actualLevel);
   const size = width * height;
   
   let attempts = 0;

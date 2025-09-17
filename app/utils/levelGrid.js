@@ -1,14 +1,13 @@
 /**
- * Level Grid System - 关卡棋盘增长规则和自适应布局
- * Purpose: 实现1-200关的棋盘尺寸增长和方块大小自适应
+ * Level Grid System - 固定30px方块的棋盘布局系统
+ * Purpose: 实现1-200关的棋盘尺寸增长和固定方块大小布局
  */
 
-// UI 常量（dp）
-const TILE_IDEAL = 36;     // 理想边长：36dp（观感适中）
-const TILE_MIN   = 30;     // 不得小于：30dp（再小会难点）
-const TILE_MAX   = 42;     // 不得大于：42dp（再大显拥挤）
-const GAP        = 6;      // 方块间距
-const BOARD_PAD  = 12;     // 棋盘内边距
+// 固定常量
+const TILE_SIZE = 30;      // 固定方块大小：30px
+const MIN_GAP = 3;         // 最小间距：3px
+const MAX_GAP = 8;         // 最大间距：8px
+const BOARD_PADDING = 12;  // 棋盘内边距
 
 /**
  * 根据关卡获取棋盘行列数
@@ -18,10 +17,10 @@ const BOARD_PAD  = 12;     // 棋盘内边距
 export function getGridByLevel(level) {
   // 关卡 → 行列增长表（1–200）
   if (level >= 1 && level <= 10) {
-    return { rows: 4, cols: 4 };    // 新手引导，格子大、留白多
+    return { rows: 4, cols: 4 };    // 新手引导
   }
   if (level >= 11 && level <= 20) {
-    return { rows: 5, cols: 5 };    // 尺寸不变，仅增一行一列
+    return { rows: 5, cols: 5 };
   }
   if (level >= 21 && level <= 30) {
     return { rows: 6, cols: 6 };
@@ -30,68 +29,66 @@ export function getGridByLevel(level) {
     return { rows: 7, cols: 7 };
   }
   if (level >= 41 && level <= 50) {
-    return { rows: 8, cols: 8 };    // 简单上限
+    return { rows: 8, cols: 8 };
   }
   if (level >= 51 && level <= 60) {
-    return { rows: 9, cols: 9 };    // 过渡到中期
+    return { rows: 9, cols: 9 };
   }
   if (level >= 61 && level <= 80) {
-    return { rows: 10, cols: 10 };  // 中期稳态（保持 tile 尺寸基本不变）
+    return { rows: 10, cols: 10 };
   }
   if (level >= 81 && level <= 100) {
-    return { rows: 12, cols: 10 };  // 宽 10 列固定，行数先到 12
+    return { rows: 12, cols: 10 };  // 开始使用矩形布局
   }
   if (level >= 101 && level <= 120) {
     return { rows: 14, cols: 10 };
   }
   if (level >= 121 && level <= 200) {
-    return { rows: 16, cols: 10 };  // 行数封顶（最大铺满屏）
+    return { rows: 16, cols: 10 };  // 最大规格
   }
   
-  // 200关以后继续使用 16×10
-  return { rows: 16, cols: 10 };    // 持续使用 16×10（仅增加难度，不再加格子）
+  // 200关以后继续使用最大规格
+  return { rows: 16, cols: 10 };
 }
 
 /**
- * 计算方块尺寸和布局参数
+ * 计算棋盘布局参数
  * @param {Object} params
  * @param {number} params.rows 行数
  * @param {number} params.cols 列数
- * @param {number} params.areaWidth 可用宽度
- * @param {number} params.areaHeight 可用高度
- * @param {number} params.topHUDHeight 顶部HUD高度（可选）
- * @returns {{tileSize: number, gap: number, boardPadding: number, boardWidth: number, boardHeight: number}}
+ * @param {number} params.availableWidth 可用宽度
+ * @param {number} params.availableHeight 可用高度
+ * @returns {{tileSize: number, gap: number, boardWidth: number, boardHeight: number, padding: number}}
  */
-export function computeTileSize({ rows, cols, areaWidth, areaHeight, topHUDHeight = 0 }) {
-  // 计算可用区域（减去HUD和安全区域）
-  const availableWidth = areaWidth - 40; // 左右各20px页面边距
-  const availableHeight = areaHeight - topHUDHeight - 40; // 上下边距
+export function computeBoardLayout({ rows, cols, availableWidth, availableHeight }) {
+  const tileSize = TILE_SIZE; // 固定30px
   
-  // 计算内部可用空间（减去棋盘内边距和方块间距）
-  const innerW = availableWidth - BOARD_PAD * 2 - GAP * (cols - 1);
-  const innerH = availableHeight - BOARD_PAD * 2 - GAP * (rows - 1);
+  // 计算理想间距（基于可用空间）
+  const maxBoardWidth = availableWidth - 40; // 左右边距
+  const maxBoardHeight = availableHeight - 40; // 上下边距
   
-  // 根据宽度和高度限制计算方块尺寸
-  const sizeByW = innerW / cols;
-  const sizeByH = innerH / rows;
-  let tileSize = Math.min(sizeByW, sizeByH);
+  // 计算可用于间距的空间
+  const widthForGaps = maxBoardWidth - (cols * tileSize) - (BOARD_PADDING * 2);
+  const heightForGaps = maxBoardHeight - (rows * tileSize) - (BOARD_PADDING * 2);
   
-  // 贴合理想尺寸并做夹取
-  if (Math.abs(tileSize - TILE_IDEAL) <= 4) {
-    tileSize = TILE_IDEAL;
-  }
-  tileSize = Math.max(TILE_MIN, Math.min(TILE_MAX, tileSize));
+  // 计算间距（水平和垂直取较小值保证一致性）
+  const gapByWidth = widthForGaps / (cols - 1);
+  const gapByHeight = heightForGaps / (rows - 1);
+  const idealGap = Math.min(gapByWidth, gapByHeight);
+  
+  // 限制间距范围
+  const gap = Math.max(MIN_GAP, Math.min(MAX_GAP, idealGap));
   
   // 计算实际棋盘尺寸
-  const boardWidth = cols * tileSize + (cols - 1) * GAP + BOARD_PAD * 2;
-  const boardHeight = rows * tileSize + (rows - 1) * GAP + BOARD_PAD * 2;
+  const boardWidth = cols * tileSize + (cols - 1) * gap + BOARD_PADDING * 2;
+  const boardHeight = rows * tileSize + (rows - 1) * gap + BOARD_PADDING * 2;
   
   return {
-    tileSize: Math.floor(tileSize),
-    gap: GAP,
-    boardPadding: BOARD_PAD,
+    tileSize,
+    gap: Math.floor(gap),
     boardWidth: Math.floor(boardWidth),
-    boardHeight: Math.floor(boardHeight)
+    boardHeight: Math.floor(boardHeight),
+    padding: BOARD_PADDING
   };
 }
 
@@ -100,17 +97,19 @@ export function computeTileSize({ rows, cols, areaWidth, areaHeight, topHUDHeigh
  * @param {number} level 关卡数
  * @param {number} screenWidth 屏幕宽度
  * @param {number} screenHeight 屏幕高度
- * @param {number} topHUDHeight 顶部HUD高度
+ * @param {number} topReserved 顶部保留高度
+ * @param {number} bottomReserved 底部保留高度
  * @returns {Object} 完整的布局信息
  */
-export function getLevelLayout(level, screenWidth, screenHeight, topHUDHeight = 120) {
+export function getLevelLayout(level, screenWidth, screenHeight, topReserved = 120, bottomReserved = 120) {
   const { rows, cols } = getGridByLevel(level);
-  const layoutParams = computeTileSize({
+  const availableHeight = screenHeight - topReserved - bottomReserved;
+  
+  const layoutParams = computeBoardLayout({
     rows,
     cols,
-    areaWidth: screenWidth,
-    areaHeight: screenHeight,
-    topHUDHeight
+    availableWidth: screenWidth,
+    availableHeight
   });
   
   return {
@@ -122,37 +121,45 @@ export function getLevelLayout(level, screenWidth, screenHeight, topHUDHeight = 
 }
 
 /**
- * 检查布局是否需要调整（处理极小屏幕情况）
- * @param {Object} layout 布局信息
- * @param {number} level 关卡数
- * @returns {Object} 调整后的布局信息
+ * 获取挑战模式布局（使用最大规格）
+ * @param {number} screenWidth 屏幕宽度
+ * @param {number} screenHeight 屏幕高度
+ * @param {number} topReserved 顶部保留高度
+ * @param {number} bottomReserved 底部保留高度
+ * @returns {Object} 挑战模式布局信息
  */
-export function adjustLayoutForSmallScreen(layout, level) {
-  const { rows, cols, tileSize } = layout;
+export function getChallengeLayout(screenWidth, screenHeight, topReserved = 120, bottomReserved = 120) {
+  const rows = 16; // 最大行数
+  const cols = 10; // 最大列数
+  const availableHeight = screenHeight - topReserved - bottomReserved;
   
-  // 如果方块尺寸被压到最小值，尝试调整
-  if (tileSize <= TILE_MIN) {
-    // 61-80关之前：优先延长为横向矩形
-    if (level < 81 && cols < 10) {
-      const newCols = Math.min(cols + 1, 10);
-      const newRows = Math.max(rows - 1, 4);
-      return {
-        ...layout,
-        rows: newRows,
-        cols: newCols
-      };
-    }
-    
-    // 81关之后：列维持10，允许降低行数1-2
-    if (level >= 81 && rows > 10) {
-      const minRows = level >= 121 ? 14 : (level >= 101 ? 12 : 10);
-      const newRows = Math.max(rows - 1, minRows);
-      return {
-        ...layout,
-        rows: newRows
-      };
-    }
-  }
+  const layoutParams = computeBoardLayout({
+    rows,
+    cols,
+    availableWidth: screenWidth,
+    availableHeight
+  });
   
-  return layout;
+  return {
+    level: 'challenge',
+    rows,
+    cols,
+    ...layoutParams
+  };
+}
+
+/**
+ * 计算方块位置
+ * @param {number} row 行索引
+ * @param {number} col 列索引
+ * @param {Object} layout 布局参数
+ * @returns {{x: number, y: number}}
+ */
+export function getTilePosition(row, col, layout) {
+  const { tileSize, gap, padding } = layout;
+  
+  return {
+    x: padding + col * (tileSize + gap),
+    y: padding + row * (tileSize + gap)
+  };
 }

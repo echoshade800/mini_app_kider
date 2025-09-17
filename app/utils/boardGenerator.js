@@ -18,20 +18,20 @@ function seededRandom(seed) {
 }
 
 function getBoardDimensions(level) {
-  // 棋盘尺寸设计：更长的长方形布局，增加数字方块数量
-  if (level <= 5) return { width: 6, height: 4 };   // 前5关用6x4长方形
-  if (level <= 10) return { width: 7, height: 5 };  // 6-10关用7x5长方形
-  if (level <= 20) return { width: 8, height: 5 };  // 11-20关用8x5长方形
-  if (level <= 30) return { width: 9, height: 6 };  // 21-30关用9x6长方形
-  if (level <= 45) return { width: 10, height: 6 }; // 31-45关用10x6长方形
-  if (level <= 60) return { width: 11, height: 7 }; // 46-60关用11x7长方形
-  if (level <= 80) return { width: 12, height: 7 }; // 61-80关用12x7长方形
-  if (level <= 100) return { width: 13, height: 8 }; // 81-100关用13x8长方形
-  if (level <= 130) return { width: 14, height: 8 }; // 101-130关用14x8长方形
-  if (level <= 160) return { width: 15, height: 9 }; // 131-160关用15x9长方形
-  if (level <= 180) return { width: 16, height: 9 }; // 161-180关用16x9长方形
-  if (level <= 200) return { width: 17, height: 10 }; // 181-200关用17x10长方形
-  return { width: 18, height: 11 }; // 200关后用18x11长方形（超宽布局）
+  // 棋盘尺寸设计：渐进式增长，平衡挑战性和可玩性
+  if (level <= 5) return { width: 6, height: 4 };    // 前5关：6x4 = 24格 (简单入门)
+  if (level <= 10) return { width: 7, height: 5 };   // 6-10关：7x5 = 35格 (基础练习)
+  if (level <= 20) return { width: 8, height: 5 };   // 11-20关：8x5 = 40格 (初级挑战)
+  if (level <= 30) return { width: 9, height: 6 };   // 21-30关：9x6 = 54格 (中级入门) ← 28关在这里
+  if (level <= 45) return { width: 10, height: 6 };  // 31-45关：10x6 = 60格 (中级进阶)
+  if (level <= 60) return { width: 11, height: 7 };  // 46-60关：11x7 = 77格 (中级挑战)
+  if (level <= 80) return { width: 12, height: 7 };  // 61-80关：12x7 = 84格 (高级入门)
+  if (level <= 100) return { width: 13, height: 8 }; // 81-100关：13x8 = 104格 (高级进阶)
+  if (level <= 130) return { width: 14, height: 8 }; // 101-130关：14x8 = 112格 (高级挑战)
+  if (level <= 160) return { width: 15, height: 9 }; // 131-160关：15x9 = 135格 (专家级)
+  if (level <= 180) return { width: 16, height: 9 }; // 161-180关：16x9 = 144格 (大师级)
+  if (level <= 200) return { width: 17, height: 10 }; // 181-200关：17x10 = 170格 (传奇级)
+  return { width: 18, height: 11 }; // 200关后：18x11 = 198格 (超越现实)
 }
 
 function getChallengeModeDimensions() {

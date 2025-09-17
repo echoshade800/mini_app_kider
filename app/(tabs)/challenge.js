@@ -436,36 +436,40 @@ export default function ChallengeScreen() {
             </View>
           )}
           
-          {currentBoard && (
-            <GameBoard 
-              board={currentBoard}
-              onTilesClear={handleTilesClear}
-              onTileClick={handleTileClick}
-              itemMode={itemMode}
-              selectedSwapTile={selectedSwapTile}
-              swapAnimations={swapAnimationsRef.current}
-              fractalAnimations={fractalAnimationsRef.current}
-              onBoardRefresh={handleBoardRefresh}
-              disabled={gameState !== 'playing'}
-              isChallenge={true}
-            />
-          )}
+          <View style={styles.gameArea}>
+            {currentBoard && (
+              <GameBoard 
+                board={currentBoard}
+                onTilesClear={handleTilesClear}
+                onTileClick={handleTileClick}
+                itemMode={itemMode}
+                selectedSwapTile={selectedSwapTile}
+                swapAnimations={swapAnimationsRef.current}
+                fractalAnimations={fractalAnimationsRef.current}
+                onBoardRefresh={handleBoardRefresh}
+                disabled={gameState !== 'playing'}
+                isChallenge={true}
+              />
+            )}
+          </View>
         </>
       )}
 
       {gameState === 'finished' && currentBoard && (
-        <GameBoard 
-          board={currentBoard}
-          onTilesClear={handleTilesClear}
-          onTileClick={handleTileClick}
-          itemMode={itemMode}
-          selectedSwapTile={selectedSwapTile}
-          swapAnimations={swapAnimationsRef.current}
-          fractalAnimations={fractalAnimationsRef.current}
-          onBoardRefresh={handleBoardRefresh}
-          disabled={true}
-          isChallenge={true}
-        />
+        <View style={styles.gameArea}>
+          <GameBoard 
+            board={currentBoard}
+            onTilesClear={handleTilesClear}
+            onTileClick={handleTileClick}
+            itemMode={itemMode}
+            selectedSwapTile={selectedSwapTile}
+            swapAnimations={swapAnimationsRef.current}
+            fractalAnimations={fractalAnimationsRef.current}
+            onBoardRefresh={handleBoardRefresh}
+            disabled={true}
+            isChallenge={true}
+          />
+        </View>
       )}
 
       {/* 底部道具栏 - 固定在屏幕最底部 */}
@@ -592,8 +596,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    paddingTop: 50, // 为状态栏留出空间
+    paddingTop: 60, // 增加状态栏空间
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    height: 120, // 固定HUD高度
   },
   backButton: {
     padding: 8,
@@ -675,19 +680,9 @@ const styles = StyleSheet.create({
   },
   gameArea: {
     flex: 1,
-    backgroundColor: '#1E5A3C', // 绿色背景铺满
-    margin: 20, // 与屏幕边缘的距离
-    borderRadius: 16,
-    borderWidth: 8,
-    borderColor: '#8B5A2B', // 木框边框
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
+    marginTop: 0, // HUD已经有固定高度，不需要额外边距
+    marginBottom: 0, // 道具栏已经有固定高度，不需要额外边距
+    paddingHorizontal: 10, // 左右边距
   },
   noSolutionOverlay: {
     position: 'absolute',
@@ -804,8 +799,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 20,
-    paddingBottom: 30, // 为底部安全区域留出空间
+    paddingBottom: 40, // 增加底部安全区域
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    height: 140, // 固定道具栏高度
     gap: 20,
   },
   itemButton: {

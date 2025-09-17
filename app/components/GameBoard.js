@@ -104,7 +104,7 @@ export function GameBoard({
 
   // 开始所有数字方块的晃动动画
   const startShakeAnimation = () => {
-    // 交换模式不再使用晃动动画
+    // 道具模式不使用晃动动画，保持与普通模式一致的静态显示
     return;
   };
 
@@ -118,14 +118,10 @@ export function GameBoard({
     });
   };
 
-  // 开始道具模式时启动晃动
+  // 道具模式不启动任何额外动画
   React.useEffect(() => {
-    if (itemMode === 'fractalSplit') {
-      // 只有分裂模式才启动晃动动画
-      startShakeAnimation();
-    } else {
-      stopShakeAnimation();
-    }
+    // 确保所有晃动动画都停止，保持静态显示
+    stopShakeAnimation();
     
     return () => {
       stopShakeAnimation();
@@ -577,29 +573,18 @@ export function GameBoard({
       return null;
     }
 
-    // 直接基于行列计算位置，确保方块在棋盘格内
+    // 统一的位置计算，道具模式和普通模式完全一致
     const left = col * cellSize + 10 + tileMargin;
     const top = row * cellSize + 10 + tileMargin;
 
     const tileScale = initTileScale(index);
-    const tileShake = initTileShake(index);
     
     // 获取交换和分裂动画
     const swapAnim = swapAnimations ? swapAnimations.get(index) : null;
     const fractalAnim = fractalAnimations ? fractalAnimations.get(index) : null;
     
-    // 计算变换
+    // 计算变换 - 只包含缩放和特殊动画，不包含晃动
     const transforms = [{ scale: tileScale }];
-    
-    if (itemMode === 'fractalSplit') {
-      // 只有分裂模式下才有晃动效果
-      transforms.push({
-        translateX: tileShake.interpolate({
-          inputRange: [-1, 0, 1],
-          outputRange: [-2, 0, 2],
-        }),
-      });
-    }
     
     // 如果有交换动画，添加位置变换
     if (swapAnim && swapAnim.translateX && swapAnim.translateY) {
@@ -621,11 +606,12 @@ export function GameBoard({
     // 检查是否是选中的交换方块
     const isSelected = selectedSwapTile && selectedSwapTile.index === index;
     
-    // 根据道具模式设置不同的选中样式
-    let selectedBgColor = '#FFF8E1';
-    let selectedBorderColor = '#E0E0E0';
-    let selectedTextColor = '#333';
+    // 普通模式和道具模式使用相同的基础样式
+    let selectedBgColor = '#FFF8E1'; // 默认背景色
+    let selectedBorderColor = '#E0E0E0'; // 默认边框色
+    let selectedTextColor = '#333'; // 默认文字色
     
+    // 只有在选中状态下才改变样式
     if (isSelected) {
       if (itemMode === 'swapMaster') {
         selectedBgColor = '#E3F2FD';
@@ -682,10 +668,10 @@ export function GameBoard({
           key={`${row}-${col}`}
           style={{ 
             position: 'absolute', 
-            left: left - tileMargin, 
-            top: top - tileMargin, 
-            width: cellSize, 
-            height: cellSize,
+            left, 
+            top, 
+            width: tileSize, 
+            height: tileSize,
             alignItems: 'center',
             justifyContent: 'center'
           }}

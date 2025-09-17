@@ -17,7 +17,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { hasValidCombinations, reshuffleBoard, isBoardEmpty } from '../utils/gameLogic';
-import { useBoardMetrics } from '../hooks/useBoardMetrics';
+import { getCompleteLayout, getTilePosition } from '../utils/layout';
 import { RescueModal } from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -50,13 +50,23 @@ export function GameBoard({
   // Generate stable random rotation for each tile
   const { width, height, tiles } = board;
   
-  // 使用统一的布局计算
-  const boardMetrics = useBoardMetrics({
-    rows: height,
-    cols: width,
+  // 使用新的统一布局系统
+  const topUsed = isChallenge ? 110 : 100;
+  const bottomUsed = isChallenge ? 130 : 120;
+  
+  const boardMetrics = getCompleteLayout(
+    screenWidth,
+    screenHeight,
+    level,
     isChallenge,
-    level
-  });
+    topUsed,
+    bottomUsed
+  );
+  
+  // 方块位置计算函数
+  const getTilePositionForBoard = (row, col) => {
+    return getTilePosition(row, col, boardMetrics.tileSize, boardMetrics.gap, boardMetrics.padding);
+  };
 
   const getTileRotation = (row, col) => {
     const seed = row * 1000 + col;
@@ -151,21 +161,25 @@ export function GameBoard({
   const isInsideGridArea = (pageX, pageY) => {
     if (isInRestrictedArea(pageY)) return false;
 
-    const { boardX, boardY, boardWidth, boardHeight, padding, innerWidth, innerHeight } = boardMetrics;
+    const boardX = boardMetrics.boardX;
+    const boardY = boardMetrics.boardY;
+    const boardWidth = boardMetrics.boardWidth;
+    const boardHeight = boardMetrics.boardHeight;
+    const padding = boardMetrics.padding;
 
-    const innerLeft = boardX + (boardWidth - innerWidth) / 2;
-    const innerTop = boardY + (boardHeight - innerHeight) / 2;
+    const innerLeft = boardX;
+    const innerTop = boardY;
 
     if (pageX < innerLeft + padding || pageX > innerLeft + innerWidth - padding ||
-        pageY < innerTop + padding || pageY > innerTop + innerHeight - padding) {
+        pageY < innerTop + padding || pageY > innerTop + boardHeight - padding) {
       return false;
     }
 
     const relativeX = pageX - innerLeft - padding;
     const relativeY = pageY - innerTop - padding;
 
-    const cellWidth = boardMetrics.tileWidth + boardMetrics.gap;
-    const cellHeight = boardMetrics.tileHeight + boardMetrics.gap;
+    const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+    const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
 
     if (relativeX < 0 || relativeX >= width * cellWidth - boardMetrics.gap ||
         relativeY < 0 || relativeY >= height * cellHeight - boardMetrics.gap) {
@@ -179,8 +193,8 @@ export function GameBoard({
   };
 
   const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = boardMetrics.safeTop;
-    const bottomRestrictedHeight = boardMetrics.safeBottom;
+    const topRestrictedHeight = topUsed;
+    const bottomRestrictedHeight = bottomUsed;
     
     return pageY < topRestrictedHeight || 
            pageY > screenHeight - bottomRestrictedHeight;
@@ -244,16 +258,18 @@ export function GameBoard({
       
       if (!isInsideGridArea(pageX, pageY)) return;
       
-      const { boardX, boardY, boardWidth, boardHeight, padding, innerWidth, innerHeight } = boardMetrics;
+      const boardX = boardMetrics.boardX;
+      const boardY = boardMetrics.boardY;
+      const padding = boardMetrics.padding;
 
-      const innerLeft = boardX + (boardWidth - innerWidth) / 2;
-      const innerTop = boardY + (boardHeight - innerHeight) / 2;
+      const innerLeft = boardX;
+      const innerTop = boardY;
 
       const relativeX = pageX - innerLeft - padding;
       const relativeY = pageY - innerTop - padding;
 
-      const cellWidth = boardMetrics.tileWidth + boardMetrics.gap;
-      const cellHeight = boardMetrics.tileHeight + boardMetrics.gap;
+      const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+      const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
 
       const startCol = Math.floor(relativeX / cellWidth);
       const startRow = Math.floor(relativeY / cellHeight);
@@ -277,21 +293,25 @@ export function GameBoard({
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      const { boardX, boardY, boardWidth, boardHeight, padding, innerWidth, innerHeight } = boardMetrics;
+      const boardX = boardMetrics.boardX;
+      const boardY = boardMetrics.boardY;
+      const boardWidth = boardMetrics.boardWidth;
+      const boardHeight = boardMetrics.boardHeight;
+      const padding = boardMetrics.padding;
 
-      const innerLeft = boardX + (boardWidth - innerWidth) / 2;
-      const innerTop = boardY + (boardHeight - innerHeight) / 2;
+      const innerLeft = boardX;
+      const innerTop = boardY;
 
-      if (pageX < innerLeft + padding || pageX > innerLeft + innerWidth - padding ||
-          pageY < innerTop + padding || pageY > innerTop + innerHeight - padding) {
+      if (pageX < innerLeft + padding || pageX > innerLeft + boardWidth - padding ||
+          pageY < innerTop + padding || pageY > innerTop + boardHeight - padding) {
         return;
       }
       
       const relativeX = pageX - innerLeft - padding;
       const relativeY = pageY - innerTop - padding;
 
-      const cellWidth = boardMetrics.tileWidth + boardMetrics.gap;
-      const cellHeight = boardMetrics.tileHeight + boardMetrics.gap;
+      const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
+      const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
 
       if (relativeX < 0 || relativeX >= width * cellWidth - boardMetrics.gap ||
           relativeY < 0 || relativeY >= height * cellHeight - boardMetrics.gap) {

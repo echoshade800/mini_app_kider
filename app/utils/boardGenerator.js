@@ -4,6 +4,7 @@
  * Features: Fixed board size per level, guaranteed solvability, line selection support
  */
 import { getGridByLevel, getLevelLayout } from '../utils/levelGrid';
+import { getLevelGridSize, getChallengeGridSize } from '../utils/layout';
 
 // Deterministic random number generator
 function seededRandom(seed) {
@@ -18,36 +19,16 @@ function seededRandom(seed) {
   };
 }
 
-// 闯关模式：使用新的关卡增长规则
 function getBoardDimensions(level) {
-  // 使用新的关卡增长规则
-  const { rows, cols } = getGridByLevel(level);
+  // 使用新的统一布局系统
+  const { rows, cols } = getLevelGridSize(level);
   return { width: cols, height: rows };
 }
 
-// 挑战模式：直接使用最大尺寸铺满屏幕
+// 挑战模式：使用固定的16×10网格
 function getChallengeModeDimensions() {
-  // 挑战模式：计算能铺满屏幕的最大网格
-  const { width: screenWidth, height: screenHeight } = require('react-native').Dimensions.get('window');
-  
-  const safeTop = 120;
-  const safeBottom = 140;
-  const safeHorizontal = 20;
-  const tileSize = 36;
-  const gap = 6;
-  const padding = 12;
-  
-  const usableWidth = screenWidth - 2 * safeHorizontal - 2 * padding;
-  const usableHeight = screenHeight - safeTop - safeBottom - 2 * padding;
-  
-  // 计算最大可容纳的行列数
-  const maxCols = Math.floor((usableWidth + gap) / (tileSize + gap));
-  const maxRows = Math.floor((usableHeight + gap) / (tileSize + gap));
-  
-  // 增加一圈数字方块 - 扩大网格范围
-  const cols = Math.max(10, Math.min(maxCols, 14)); // 最少10列，最多14列
-  const rows = Math.max(12, Math.min(maxRows, 16)); // 最少12行，最多16行
-  
+  // 挑战模式固定使用16×10网格
+  const { rows, cols } = getChallengeGridSize();
   return { width: cols, height: rows };
 }
 

@@ -195,7 +195,7 @@ export default function Home() {
                 marginBottom: 8,
                 color: '#333'
               }}>
-                新手引导
+                🎉 Welcome to Daycare Dash!
               </Text>
               <Text style={{ 
                 fontSize: 15, 
@@ -203,7 +203,7 @@ export default function Home() {
                 color: '#333',
                 marginBottom: 14
               }}>
-                框选让数字之和等于 10 即可消除，支持跨格；道具有"交换""分裂"。闯关模式循序渐进，挑战模式随机大盘更刺激，祝你玩得开心！
+                How to Play: Draw a box around numbers whose total equals 10 to clear them. You can connect numbers across rows and columns—be clever and quick!{'\n\n'}Level Mode: Tackle fun puzzles from easy to tricky, and watch your IQ rise as you conquer each stage.{'\n\n'}Challenge Mode: A huge board and a ticking timer—clear as many 10s as you can and smash your best IQ score!{'\n\n'}Get ready to sharpen your mind and become the ultimate Daycare Dash master! 🧩✨
               </Text>
               <View style={{ alignItems: 'flex-end' }}>
                 <TouchableOpacity 
@@ -221,7 +221,7 @@ export default function Home() {
                     color: '#F26D21', 
                     fontWeight: '700' 
                   }}>
-                    知道了
+                    Got it!
                   </Text>
                 </TouchableOpacity>
               </View>

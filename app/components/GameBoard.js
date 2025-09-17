@@ -119,8 +119,8 @@ export function GameBoard({
     const relativeY = pageY - boardTop - 10;
     
     // 检查是否在有效的网格区域内
-    if (relativeX < 0 || relativeX >= actualWidth * cellSize ||
-        relativeY < 0 || relativeY >= actualHeight * cellSize) {
+    if (relativeX < 0 || relativeX >= width * cellSize ||
+        relativeY < 0 || relativeY >= height * cellSize) {
       return false;
     }
     

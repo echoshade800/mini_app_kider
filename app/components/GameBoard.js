@@ -67,8 +67,7 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // 使用完整的棋盘尺寸，不随数字方块消除而改变
-  const bounds = { minRow: 0, maxRow: height - 1, minCol: 0, maxCol: width - 1 };
+  // 简化坐标系统，直接使用棋盘的完整尺寸
   const actualWidth = width;
   const actualHeight = height;
   
@@ -195,11 +194,10 @@ export function GameBoard({
     }
     
     // 转换为网格坐标并检查范围
-    const col = Math.floor(relativeX / cellSize) + bounds.minCol;
-    const row = Math.floor(relativeY / cellSize) + bounds.minRow;
+    const col = Math.floor(relativeX / cellSize);
+    const row = Math.floor(relativeY / cellSize);
     
-    return row >= bounds.minRow && row <= bounds.maxRow &&
-           col >= bounds.minCol && col <= bounds.maxCol;
+    return row >= 0 && row < height && col >= 0 && col < width;
   };
 
   // 检查是否在禁止画框的区域（顶部和底部）
@@ -299,8 +297,8 @@ export function GameBoard({
       const relativeY = pageY - boardTop - 10;
       
       // 转换为网格坐标
-      const startCol = Math.floor(relativeX / cellSize) + bounds.minCol;
-      const startRow = Math.floor(relativeY / cellSize) + bounds.minRow;
+      const startCol = Math.floor(relativeX / cellSize);
+      const startRow = Math.floor(relativeY / cellSize);
       
       setSelection({
         startRow,
@@ -344,12 +342,11 @@ export function GameBoard({
         return; // 不在有效网格区域内，保持当前选择
       }
       
-      const endCol = Math.floor(relativeX / cellSize) + bounds.minCol;
-      const endRow = Math.floor(relativeY / cellSize) + bounds.minRow;
+      const endCol = Math.floor(relativeX / cellSize);
+      const endRow = Math.floor(relativeY / cellSize);
       
       // 确保网格坐标在有效范围内
-      if (endRow < bounds.minRow || endRow > bounds.maxRow ||
-          endCol < bounds.minCol || endCol > bounds.maxCol) {
+      if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
         return; // 网格坐标超出范围，保持当前选择
       }
       
@@ -535,8 +532,8 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    const left = (minCol - bounds.minCol) * cellSize + 10;
-    const top = (minRow - bounds.minRow) * cellSize + 10;
+    const left = minCol * cellSize + 10;
+    const top = minRow * cellSize + 10;
     const width = (maxCol - minCol + 1) * cellSize;
     const height = (maxRow - minRow + 1) * cellSize;
     
@@ -566,8 +563,8 @@ export function GameBoard({
     const centerRow = (startRow + endRow) / 2;
     const centerCol = (startCol + endCol) / 2;
     
-    const left = (centerCol - bounds.minCol) * cellSize + 10;
-    const top = (centerRow - bounds.minRow) * cellSize + 10;
+    const left = centerCol * cellSize + 10;
+    const top = centerRow * cellSize + 10;
     
     return {
       sum,
@@ -596,14 +593,14 @@ export function GameBoard({
   const renderTile = (value, row, col) => {
     const index = row * width + col;
     
-    // 只渲染实际内容区域内的方块
-    if (row < bounds.minRow || row > bounds.maxRow || 
-        col < bounds.minCol || col > bounds.maxCol || value === 0) {
+    // 只渲染有效范围内且有数值的方块
+    if (row < 0 || row >= height || col < 0 || col >= width || value === 0) {
       return null;
     }
 
-    const left = (col - bounds.minCol) * cellSize + 10 + tileMargin;
-    const top = (row - bounds.minRow) * cellSize + 10 + tileMargin;
+    // 直接基于行列计算位置，确保方块在棋盘格内
+    const left = col * cellSize + 10 + tileMargin;
+    const top = row * cellSize + 10 + tileMargin;
 
     const tileScale = initTileScale(index);
     const tileShake = initTileShake(index);

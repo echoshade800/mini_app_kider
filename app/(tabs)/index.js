@@ -11,13 +11,17 @@ import {
   TouchableOpacity, 
   StyleSheet,
   Modal,
-  Alert
+  Alert,
+  ImageBackground,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
 import { STAGE_NAMES, getStageGroup } from '../utils/stageNames';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const { 
@@ -42,7 +46,7 @@ export default function HomeScreen() {
 
   const handleStartChallenge = () => {
     try {
-      router.push('/challenge');
+      router.push('/(tabs)/challenge');
     } catch (error) {
       console.error('Navigation error:', error);
       Alert.alert('导航错误', '无法进入挑战模式，请重试');
@@ -119,62 +123,48 @@ export default function HomeScreen() {
   const bestChallenge = getBestChallengeDisplay();
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header with Settings */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.settingsButton}
-          onPress={() => setShowSettings(true)}
-        >
-          <Ionicons name="settings" size={24} color="#666" />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <ImageBackground
+        source={{ uri: 'https://twycptozlvvvqxufzhik.supabase.co/storage/v1/object/public/kider1/daycare_dash_stroller_under_1mb.jpg' }}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.safeArea}>
+          {/* Settings Button - Top Right */}
+          <View style={styles.topBar}>
+            <View style={styles.topLeft}>
+              {/* Progress Info */}
+              <View style={styles.progressInfo}>
+                <Text style={styles.progressText}>Level {gameData?.maxLevel || 0}</Text>
+                <Text style={styles.progressSubtext}>IQ {gameData?.maxScore || 0}</Text>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={styles.settingsButton}
+              onPress={() => setShowSettings(true)}
+            >
+              <Ionicons name="settings" size={28} color="#fff" />
+            </TouchableOpacity>
+          </View>
 
-      {/* Progress Badges */}
-      <View style={styles.badgesContainer}>
-        <View style={[styles.badge, { backgroundColor: '#4CAF50' }]}>
-          <Text style={styles.badgeTitle}>{bestLevel.title}</Text>
-          <Text style={styles.badgeSubtitle}>{bestLevel.subtitle}</Text>
-        </View>
-        <View style={[styles.badge, { backgroundColor: '#FF9800' }]}>
-          <Text style={styles.badgeTitle}>{bestChallenge.title}</Text>
-          <Text style={styles.badgeSubtitle}>{bestChallenge.subtitle}</Text>
-        </View>
-      </View>
-
-      {/* Main Content */}
-      <View style={styles.content}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>Daycare Number Elimination</Text>
-          <Text style={styles.subtitle}>
-            Draw rectangles to make 10—clear the board, climb 200+ named levels, or sprint for IQ in 60 seconds.
-          </Text>
-        </View>
-
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity 
-            style={[styles.mainButton, styles.levelButton]}
-            onPress={handleStartLevel}
-          >
-            <Ionicons name="school" size={32} color="white" />
-            <Text style={styles.buttonText}>Start Level Mode</Text>
-            <Text style={styles.buttonSubtext}>
-              Progress through 200+ named stages
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.mainButton, styles.challengeButton]}
-            onPress={handleStartChallenge}
-          >
-            <Ionicons name="timer" size={32} color="white" />
-            <Text style={styles.buttonText}>Start Challenge Mode</Text>
-            <Text style={styles.buttonSubtext}>
-              60-second IQ sprint
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+          {/* Invisible buttons overlaying the image buttons */}
+          <View style={styles.buttonOverlays}>
+            {/* Level Mode Button - Left side of image */}
+            <TouchableOpacity 
+              style={styles.levelModeOverlay}
+              onPress={handleStartLevel}
+              activeOpacity={0.7}
+            />
+            
+            {/* Challenge Mode Button - Right side of image */}
+            <TouchableOpacity 
+              style={styles.challengeModeOverlay}
+              onPress={handleStartChallenge}
+              activeOpacity={0.7}
+            />
+          </View>
+        </SafeAreaView>
+      </ImageBackground>
 
       {/* Settings Modal */}
       <Modal
@@ -217,6 +207,14 @@ export default function HomeScreen() {
               </View>
               
               <TouchableOpacity 
+                style={styles.aboutButton}
+                onPress={handleAboutPress}
+              >
+                <Ionicons name="information-circle" size={20} color="#4a90e2" />
+                <Text style={styles.aboutButtonText}>About & Help</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
                 style={styles.resetButton}
                 onPress={handleResetData}
               >
@@ -226,118 +224,83 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff',
+  },
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  safeArea: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f0f8ff',
   },
   loadingText: {
     fontSize: 18,
     color: '#666',
   },
-  header: {
+  topBar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingTop: 20,
   },
-  settingsButton: {
-    padding: 12,
-  },
-  badgesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    marginVertical: 20,
-    gap: 12,
-  },
-  badge: {
+  topLeft: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  badgeTitle: {
-    color: 'white',
+  progressInfo: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  progressText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
-  badgeSubtitle: {
-    color: 'rgba(255, 255, 255, 0.9)',
+  progressSubtext: {
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 12,
     marginTop: 2,
-    textAlign: 'center',
   },
-  content: {
+  settingsButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: 10,
+    borderRadius: 20,
+  },
+  buttonOverlays: {
     flex: 1,
-    paddingHorizontal: 20,
+    position: 'relative',
   },
-  titleContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
+  levelModeOverlay: {
+    position: 'absolute',
+    left: '5%',
+    top: '35%',
+    width: '40%',
+    height: '30%',
+    backgroundColor: 'transparent',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 10,
-  },
-  buttonsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 20,
-  },
-  mainButton: {
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  levelButton: {
-    backgroundColor: '#4CAF50',
-  },
-  challengeButton: {
-    backgroundColor: '#FF5722',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  buttonSubtext: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 14,
-    textAlign: 'center',
+  challengeModeOverlay: {
+    position: 'absolute',
+    right: '5%',
+    top: '35%',
+    width: '40%',
+    height: '30%',
+    backgroundColor: 'transparent',
   },
   modalOverlay: {
     flex: 1,
@@ -412,6 +375,18 @@ const styles = StyleSheet.create({
   },
   toggleThumbActive: {
     alignSelf: 'flex-end',
+  },
+  aboutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  aboutButtonText: {
+    fontSize: 16,
+    color: '#4a90e2',
+    marginLeft: 12,
   },
   resetButton: {
     backgroundColor: '#f44336',

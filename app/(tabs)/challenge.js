@@ -136,12 +136,18 @@ export default function ChallengeScreen() {
       startTimer();
       startProgressAnimation();
     }
+    
+    // Auto-generate board when component mounts
+    if (!currentBoard) {
+      generateNewBoard();
+    }
+    
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [gameState]);
+  }, [gameState, currentBoard]);
 
   const startTimer = () => {
     timerRef.current = setInterval(() => {
@@ -344,7 +350,7 @@ export default function ChallengeScreen() {
     }
     setShowResults(false);
     setGameState('ready');
-    router.replace('/');
+    router.replace('/(tabs)');
   };
 
   const handleAgain = () => {
@@ -416,17 +422,40 @@ export default function ChallengeScreen() {
       </View>
 
       {/* Game Board */}
-      {gameState === 'ready' && (
-        <View style={styles.readyScreen}>
-          <Text style={styles.readyTitle}>Challenge Mode</Text>
-          <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
-          <TouchableOpacity style={styles.startButton} onPress={startChallenge}>
-            <Text style={styles.startButtonText}>START CHALLENGE</Text>
-          </TouchableOpacity>
-        </View>
+      {(gameState === 'ready' || gameState === 'playing') && (
+        <>
+          {gameState === 'ready' && (
+            <View style={styles.readyOverlay}>
+              <View style={styles.readyContent}>
+                <Text style={styles.readyTitle}>Challenge Mode</Text>
+                <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
+                <TouchableOpacity style={styles.startButton} onPress={startChallenge}>
+                  <Text style={styles.startButtonText}>START CHALLENGE</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          
+          {/* Always render the board, but disable interaction when ready */}
+          {!currentBoard && generateNewBoard()}
+          {currentBoard && (
+            <GameBoard 
+              board={currentBoard}
+              onTilesClear={handleTilesClear}
+              onTileClick={handleTileClick}
+              itemMode={itemMode}
+              selectedSwapTile={selectedSwapTile}
+              swapAnimations={swapAnimationsRef.current}
+              fractalAnimations={fractalAnimationsRef.current}
+              onBoardRefresh={handleBoardRefresh}
+              disabled={gameState !== 'playing'}
+              isChallenge={true}
+            />
+          )}
+        </>
       )}
 
-      {gameState === 'playing' && currentBoard && (
+      {gameState === 'finished' && currentBoard && (
         <GameBoard 
           board={currentBoard}
           onTilesClear={handleTilesClear}
@@ -436,7 +465,7 @@ export default function ChallengeScreen() {
           swapAnimations={swapAnimationsRef.current}
           fractalAnimations={fractalAnimationsRef.current}
           onBoardRefresh={handleBoardRefresh}
-          disabled={gameState !== 'playing'}
+          disabled={true}
           isChallenge={true}
         />
       )}
@@ -595,6 +624,21 @@ const styles = StyleSheet.create({
   readyScreen: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  readyOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(26, 26, 46, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  readyContent: {
     alignItems: 'center',
     paddingHorizontal: 40,
   },

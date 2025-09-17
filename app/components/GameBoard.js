@@ -585,7 +585,7 @@ export function GameBoard({
       opacity = fractalAnim.opacity;
     }
 
-    // Create the tile component
+    // Create unified tile style for both modes
     const tileStyle = [
       styles.tile,
       { 
@@ -602,10 +602,15 @@ export function GameBoard({
       }
     ];
 
-    const tileComponent = (
+    // Handle click events through onTouchStart for item mode
+    const handleTileTouch = itemMode ? () => handleTilePress(row, col, value) : undefined;
+    
+    // Always use the same component structure - Animated.View with conditional touch handling
+    return (
       <Animated.View 
         key={`${row}-${col}`}
         style={tileStyle}
+        onTouchStart={handleTileTouch}
       >
         <Text style={[
           styles.tileText,
@@ -618,22 +623,6 @@ export function GameBoard({
         </Text>
       </Animated.View>
     );
-    
-    // If in item mode, wrap as clickable component
-    if (itemMode) {
-      return (
-        <TouchableOpacity
-          key={`${row}-${col}`}
-          style={styles.touchableArea}
-          onPress={() => handleTilePress(row, col, value)}
-          activeOpacity={0.8}
-        >
-          {tileComponent}
-        </TouchableOpacity>
-      );
-    }
-    
-    return tileComponent;
   };
 
   const selectionStyle = getSelectionStyle();
@@ -808,9 +797,5 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: '#FF6B35',
     borderRadius: 4,
-  },
-  touchableArea: {
-    // Make touchable area completely transparent and non-interfering
-    backgroundColor: 'transparent',
   },
 });

@@ -57,25 +57,36 @@ export function useBoardMetrics({
     // 检查棋盘是否超出可用区域
     const fitsInScreen = boardWidth <= usableWidth && boardHeight <= usableHeight;
     
-    // 计算棋盘位置 - 在可用区域内居中
-    let boardX = safeHorizontal + (usableWidth - boardWidth) / 2;
-    let boardY = safeTop + (usableHeight - boardHeight) / 2;
+    // 计算棋盘位置 - 优先居中，超出时贴边
+    let boardX, boardY;
+    let isCentered = true;
     
-    // 水平边界检查 - 确保不超出安全区域
-    if (boardX < safeHorizontal) {
-      boardX = safeHorizontal;
-    }
-    if (boardX + boardWidth > screenWidth - safeHorizontal) {
-      boardX = screenWidth - safeHorizontal - boardWidth;
+    if (fitsInScreen) {
+      // 棋盘适合屏幕，完美居中
+      boardX = safeHorizontal + (usableWidth - boardWidth) / 2;
+      boardY = safeTop + (usableHeight - boardHeight) / 2;
+    } else {
+      // 棋盘过大，贴边显示
+      isCentered = false;
+      
+      // 水平方向：优先居中，超出时贴边
+      if (boardWidth <= usableWidth) {
+        boardX = safeHorizontal + (usableWidth - boardWidth) / 2;
+      } else {
+        boardX = safeHorizontal; // 贴左边
+      }
+      
+      // 垂直方向：优先居中，超出时贴顶部
+      if (boardHeight <= usableHeight) {
+        boardY = safeTop + (usableHeight - boardHeight) / 2;
+      } else {
+        boardY = safeTop; // 贴顶部
+      }
     }
     
-    // 垂直边界检查 - 确保不与状态栏和道具栏重叠
-    if (boardY < safeTop) {
-      boardY = safeTop;
-    }
-    if (boardY + boardHeight > screenHeight - safeBottom) {
-      boardY = screenHeight - safeBottom - boardHeight;
-    }
+    // 最终边界检查 - 确保绝对不超出屏幕
+    boardX = Math.max(safeHorizontal, Math.min(boardX, screenWidth - safeHorizontal - boardWidth));
+    boardY = Math.max(safeTop, Math.min(boardY, screenHeight - safeBottom - boardHeight));
     
     // 方块位置计算函数
     const getTilePosition = (row, col) => ({
@@ -123,7 +134,7 @@ export function useBoardMetrics({
         safeArea: `top:${safeTop} bottom:${safeBottom} sides:${safeHorizontal}`,
         fitsInScreen,
         boardPosition: `(${Math.round(boardX)}, ${Math.round(boardY)})`,
-        isCentered: Math.abs(boardX - safeHorizontal - (usableWidth - boardWidth) / 2) < 1,
+        isCentered,
       }
     };
   }, [rows, cols, isChallenge]);

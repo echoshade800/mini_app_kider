@@ -27,13 +27,13 @@ export function getGridByLevel(level) {
     return { rows: 6, cols: 6 };
   }
   if (level >= 31 && level <= 40) {
-    return { rows: 6, cols: 7 };  // 开始使用矩形布局
+    return { rows: 7, cols: 7 };  // 保持正方形布局
   }
   if (level >= 41 && level <= 50) {
-    return { rows: 7, cols: 8 };
+    return { rows: 8, cols: 8 };
   }
   if (level >= 51 && level <= 60) {
-    return { rows: 8, cols: 9 };
+    return { rows: 8, cols: 9 };  // 开始使用矩形布局
   }
   if (level >= 61 && level <= 80) {
     return { rows: 9, cols: 10 };
@@ -42,14 +42,14 @@ export function getGridByLevel(level) {
     return { rows: 10, cols: 10 };
   }
   if (level >= 101 && level <= 120) {
-    return { rows: 11, cols: 10 };
+    return { rows: 10, cols: 11 };  // 横向矩形
   }
   if (level >= 121 && level <= 200) {
-    return { rows: 12, cols: 10 };  // 最大网格
+    return { rows: 11, cols: 12 };  // 最大网格
   }
   
-  // 200关以后继续使用 12×10
-  return { rows: 12, cols: 10 };
+  // 200关以后继续使用 11×12
+  return { rows: 11, cols: 12 };
 }
 
 /**

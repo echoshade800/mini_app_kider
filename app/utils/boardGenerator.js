@@ -44,9 +44,9 @@ function getChallengeModeDimensions() {
   const maxCols = Math.floor((usableWidth + gap) / (tileSize + gap));
   const maxRows = Math.floor((usableHeight + gap) / (tileSize + gap));
   
-  // 限制在合理范围内，确保性能
-  const cols = Math.min(maxCols, 12);
-  const rows = Math.min(maxRows, 16);
+  // 限制在合理范围内，确保性能和可玩性
+  const cols = Math.max(8, Math.min(maxCols, 12)); // 最少8列，最多12列
+  const rows = Math.max(8, Math.min(maxRows, 14)); // 最少8行，最多14行
   
   return { width: cols, height: rows };
 }

@@ -171,16 +171,16 @@ export function GameBoard({
     const relativeY = pageY - boardTop - boardPadding;
     
     // 计算在哪个方块上
-    const totalTileWidth = tileSize + gap;
-    const totalTileHeight = tileSize + gap;
+    const cellWidth = tileSize + gap;
+    const cellHeight = tileSize + gap;
     
-    if (relativeX < 0 || relativeX >= width * totalTileWidth - gap ||
-        relativeY < 0 || relativeY >= height * totalTileHeight - gap) {
+    if (relativeX < 0 || relativeX >= width * cellWidth - gap ||
+        relativeY < 0 || relativeY >= height * cellHeight - gap) {
       return false;
     }
     
-    const col = Math.floor(relativeX / totalTileWidth);
-    const row = Math.floor(relativeY / totalTileHeight);
+    const col = Math.floor(relativeX / cellWidth);
+    const row = Math.floor(relativeY / cellHeight);
     
     return row >= 0 && row < height && col >= 0 && col < width;
   };
@@ -259,11 +259,11 @@ export function GameBoard({
       const relativeX = pageX - boardLeft - boardPadding;
       const relativeY = pageY - boardTop - boardPadding;
       
-      const totalTileWidth = tileSize + gap;
-      const totalTileHeight = tileSize + gap;
+      const cellWidth = tileSize + gap;
+      const cellHeight = tileSize + gap;
       
-      const startCol = Math.floor(relativeX / totalTileWidth);
-      const startRow = Math.floor(relativeY / totalTileHeight);
+      const startCol = Math.floor(relativeX / cellWidth);
+      const startRow = Math.floor(relativeY / cellHeight);
       
       setSelection({
         startRow,
@@ -297,16 +297,16 @@ export function GameBoard({
       const relativeX = pageX - boardLeft - boardPadding;
       const relativeY = pageY - boardTop - boardPadding;
       
-      const totalTileWidth = tileSize + gap;
-      const totalTileHeight = tileSize + gap;
+      const cellWidth = tileSize + gap;
+      const cellHeight = tileSize + gap;
       
-      if (relativeX < 0 || relativeX >= width * totalTileWidth - gap ||
-          relativeY < 0 || relativeY >= height * totalTileHeight - gap) {
+      if (relativeX < 0 || relativeX >= width * cellWidth - gap ||
+          relativeY < 0 || relativeY >= height * cellHeight - gap) {
         return;
       }
       
-      const endCol = Math.floor(relativeX / totalTileWidth);
-      const endRow = Math.floor(relativeY / totalTileHeight);
+      const endCol = Math.floor(relativeX / cellWidth);
+      const endRow = Math.floor(relativeY / cellHeight);
       
       if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
         return;
@@ -413,8 +413,8 @@ export function GameBoard({
       const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
-      const explosionX = centerCol * cellSize + cellSize / 2 + boardPadding;
-      const explosionY = centerRow * cellSize + cellSize / 2 + boardPadding;
+      const explosionX = centerCol * (tileSize + gap) + tileSize / 2 + boardPadding;
+      const explosionY = centerRow * (tileSize + gap) + tileSize / 2 + boardPadding;
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
@@ -508,8 +508,8 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    const left = minCol * cellSize + boardPadding;
-    const top = minRow * cellSize + boardPadding;
+    const left = minCol * (tileSize + gap) + boardPadding;
+    const top = minRow * (tileSize + gap) + boardPadding;
     const selectionWidth = (maxCol - minCol + 1) * (tileSize + gap) - gap;
     const selectionHeight = (maxRow - minRow + 1) * (tileSize + gap) - gap;
     

@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ImageBackground, TouchableOpacity, Modal } from 'react-native';
+import { 
+  View, 
+  Text, 
+  ImageBackground, 
+  TouchableOpacity, 
+  Modal,
+  StyleSheet
+} from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import StorageUtils from '../utils/StorageUtils';
@@ -8,9 +15,8 @@ import { STAGE_NAMES } from '../utils/stageNames';
 const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/20250917-173743.jpeg';
 
 export default function Home() {
-  const [latestLevelName, setLatestLevelName] = useState('新手上路');
+  const [latestLevelName, setLatestLevelName] = useState('Baby Steps');
   const [iq, setIq] = useState(0);
-  const [maxLevel, setMaxLevel] = useState(1);
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
@@ -24,7 +30,6 @@ export default function Home() {
         
         setLatestLevelName(levelName);
         setIq(info?.maxScore || 0);
-        setMaxLevel(currentLevel);
       } catch (error) {
         console.error('Failed to load game data:', error);
       }
@@ -32,306 +37,296 @@ export default function Home() {
   }, []);
 
   return (
-    <ImageBackground
-      source={{ uri: HERO_URL }}
-      resizeMode="cover"
-      style={{ flex: 1 }}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        {/* 顶部操作区 */}
-        <View style={{ 
-          flexDirection: 'row', 
-          justifyContent: 'space-between', 
-          paddingHorizontal: 16, 
-          paddingTop: 4, 
-          alignItems: 'center' 
-        }}>
+    <SafeAreaView style={styles.container}>
+      {/* 背景层 - 禁用指针事件 */}
+      <ImageBackground
+        source={{ uri: HERO_URL }}
+        style={styles.backgroundImage}
+        imageStyle={styles.backgroundImageStyle}
+        pointerEvents="none"
+      />
+      
+      {/* 前景层容器 - 所有交互元素 */}
+      <View style={styles.foregroundContainer} pointerEvents="auto">
+        
+        {/* 顶部栏 */}
+        <View style={styles.topBar}>
           <TouchableOpacity
-            accessibilityLabel="新手引导"
+            style={styles.topButton}
             onPress={() => setShowGuide(true)}
+            accessibilityLabel="新手引导"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            style={{ 
-              width: 40, 
-              height: 40, 
-              borderRadius: 20, 
-              backgroundColor: 'rgba(255,255,255,0.9)', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-              elevation: 5,
-            }}
           >
-            <Text style={{ 
-              color: '#8B4513', 
-              fontWeight: '900', 
-              fontSize: 20,
-              textShadowColor: 'rgba(0,0,0,0.1)',
-              textShadowOffset: { width: 1, height: 1 },
-              textShadowRadius: 2,
-            }}>I</Text>
+            <Text style={styles.topButtonText}>I</Text>
           </TouchableOpacity>
-
+          
+          <View style={styles.topCenter}>
+            <Text style={styles.levelName}>{latestLevelName}</Text>
+            <Text style={styles.iqText}>IQ：{iq}</Text>
+          </View>
+          
           <TouchableOpacity
-            accessibilityLabel="设置"
+            style={styles.topButton}
             onPress={() => router.push('/(tabs)/profile')}
+            accessibilityLabel="设置"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            style={{ 
-              width: 40, 
-              height: 40, 
-              borderRadius: 20, 
-              backgroundColor: 'rgba(255,255,255,0.9)', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-              elevation: 5,
-            }}
           >
-            <Text style={{ 
-              color: '#8B4513', 
-              fontWeight: '900', 
-              fontSize: 18,
-              textShadowColor: 'rgba(0,0,0,0.1)',
-              textShadowOffset: { width: 1, height: 1 },
-              textShadowRadius: 2,
-            }}>⚙︎</Text>
+            <Text style={styles.topButtonText}>⚙</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 中部信息框 */}
-        <View style={{ 
-          flex: 1, 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          paddingHorizontal: 24 
-        }}>
-          <View style={{ 
-            paddingVertical: 16, 
-            paddingHorizontal: 24, 
-            borderRadius: 20, 
-            backgroundColor: 'rgba(255,248,220,0.95)',
-            borderWidth: 3,
-            borderColor: '#D2691E',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
-            minWidth: 280,
-            alignItems: 'center',
-          }}>
-            <Text style={{ 
-              fontSize: 18, 
-              fontWeight: '800', 
-              color: '#8B4513',
-              textAlign: 'center',
-              marginBottom: 4,
-              textShadowColor: 'rgba(0,0,0,0.1)',
-              textShadowOffset: { width: 1, height: 1 },
-              textShadowRadius: 2,
-            }}>
-              {latestLevelName}
-            </Text>
-            <Text style={{ 
-              fontSize: 20, 
-              fontWeight: '800', 
-              color: '#5A3E12',
-              textAlign: 'center',
-              textShadowColor: 'rgba(0,0,0,0.1)',
-              textShadowOffset: { width: 1, height: 1 },
-              textShadowRadius: 2,
-            }}>
-              IQ：{iq}
-            </Text>
-          </View>
+        {/* 中间信息框 */}
+        <View style={styles.centerInfoBox}>
+          <Text style={styles.centerLevelName}>{latestLevelName}</Text>
+          <Text style={styles.centerIqText}>IQ：{iq}</Text>
         </View>
 
-        {/* 底部按钮 */}
-        <View style={{ 
-          flexDirection: 'row', 
-          justifyContent: 'center', 
-          gap: 20, 
-          paddingBottom: 40,
-          paddingHorizontal: 20
-        }}>
+        {/* 底部按钮栏 */}
+        <View style={styles.bottomButtonBar}>
           <TouchableOpacity
-            accessibilityLabel="闯关模式"
+            style={styles.mainButton}
             onPress={() => router.push('/(tabs)/levels')}
+            accessibilityLabel="LEVELS 按钮"
             activeOpacity={0.8}
-            style={{ 
-              minWidth: 140, 
-              height: 64, 
-              borderRadius: 32, 
-              backgroundColor: '#FF8C42', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              paddingHorizontal: 28,
-              borderWidth: 3,
-              borderColor: '#E67E22',
-              shadowColor: '#000', 
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.3, 
-              shadowRadius: 10, 
-              elevation: 8,
-              transform: [{ scale: 1 }],
-            }}
-            onPressIn={(e) => {
-              e.target.setNativeProps({
-                style: { transform: [{ scale: 0.95 }] }
-              });
-            }}
-            onPressOut={(e) => {
-              e.target.setNativeProps({
-                style: { transform: [{ scale: 1 }] }
-              });
-            }}
+            pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
           >
-            <Text style={{ 
-              color: '#fff', 
-              fontSize: 18, 
-              fontWeight: '900',
-              textShadowColor: 'rgba(0,0,0,0.3)',
-              textShadowOffset: { width: 1, height: 1 },
-              textShadowRadius: 3,
-            }}>
-              LEVELS
-            </Text>
+            <Text style={styles.mainButtonText}>LEVELS</Text>
           </TouchableOpacity>
-
+          
           <TouchableOpacity
-            accessibilityLabel="挑战模式"
+            style={[styles.mainButton, styles.arcadeButton]}
             onPress={() => router.push('/(tabs)/challenge')}
+            accessibilityLabel="ARCADE 按钮"
             activeOpacity={0.8}
-            style={{ 
-              minWidth: 140, 
-              height: 64, 
-              borderRadius: 32, 
-              backgroundColor: '#E74C3C', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              paddingHorizontal: 28,
-              borderWidth: 3,
-              borderColor: '#C0392B',
-              shadowColor: '#000', 
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.3, 
-              shadowRadius: 10, 
-              elevation: 8,
-              transform: [{ scale: 1 }],
-            }}
-            onPressIn={(e) => {
-              e.target.setNativeProps({
-                style: { transform: [{ scale: 0.95 }] }
-              });
-            }}
-            onPressOut={(e) => {
-              e.target.setNativeProps({
-                style: { transform: [{ scale: 1 }] }
-              });
-            }}
+            pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
           >
-            <Text style={{ 
-              color: '#fff', 
-              fontSize: 18, 
-              fontWeight: '900',
-              textShadowColor: 'rgba(0,0,0,0.3)',
-              textShadowOffset: { width: 1, height: 1 },
-              textShadowRadius: 3,
-            }}>
-              ARCADE
-            </Text>
+            <Text style={styles.mainButtonText}>ARCADE</Text>
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* 新手引导 Modal */}
-        <Modal 
-          visible={showGuide} 
-          transparent 
-          animationType="fade" 
-          onRequestClose={() => setShowGuide(false)}
-        >
-          <View style={{ 
-            flex: 1, 
-            backgroundColor: 'rgba(0,0,0,0.6)', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            padding: 24 
-          }}>
-            <View style={{ 
-              width: '90%', 
-              borderRadius: 20, 
-              backgroundColor: '#FFF8DC',
-              borderWidth: 3,
-              borderColor: '#D2691E',
-              padding: 24,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.4,
-              shadowRadius: 12,
-              elevation: 12,
-            }}>
-              <Text style={{ 
-                fontSize: 20, 
-                fontWeight: '800', 
-                marginBottom: 16,
-                color: '#8B4513',
-                textAlign: 'center',
-                textShadowColor: 'rgba(0,0,0,0.1)',
-                textShadowOffset: { width: 1, height: 1 },
-                textShadowRadius: 2,
-              }}>
-                🎉 Welcome to Daycare Dash!
-              </Text>
-              <Text style={{ 
-                fontSize: 15, 
-                lineHeight: 22, 
-                color: '#333',
-                marginBottom: 14
-              }}>
-                How to Play: Draw a box around numbers whose total equals 10 to clear them. You can connect numbers across rows and columns—be clever and quick!{'\n\n'}Level Mode: Tackle fun puzzles from easy to tricky, and watch your IQ rise as you conquer each stage.{'\n\n'}Challenge Mode: A huge board and a ticking timer—clear as many 10s as you can and smash your best IQ score!{'\n\n'}Get ready to sharpen your mind and become the ultimate Daycare Dash master! 🧩✨
-              </Text>
-              <View style={{ alignItems: 'flex-end' }}>
-                <TouchableOpacity 
-                  onPress={() => setShowGuide(false)} 
-                  style={{ 
-                    paddingVertical: 12, 
-                    paddingHorizontal: 20,
-                    backgroundColor: '#FF8C42',
-                    borderRadius: 20,
-                    borderWidth: 2,
-                    borderColor: '#E67E22',
-                    minWidth: 80,
-                    minHeight: 44,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 4,
-                  }}
-                >
-                  <Text style={{ 
-                    color: '#fff', 
-                    fontWeight: '800',
-                    fontSize: 16,
-                    textShadowColor: 'rgba(0,0,0,0.2)',
-                    textShadowOffset: { width: 1, height: 1 },
-                    textShadowRadius: 2,
-                  }}>
-                    Got it!
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+      {/* 新手引导弹窗 */}
+      <Modal 
+        visible={showGuide} 
+        transparent 
+        animationType="fade" 
+        onRequestClose={() => setShowGuide(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.guideModal}>
+            <Text style={styles.guideTitle}>🎉 Welcome to Daycare Dash!</Text>
+            <Text style={styles.guideContent}>
+              How to Play: Draw a box around numbers whose total equals 10 to clear them. You can connect numbers across rows and columns—be clever and quick!{'\n\n'}Level Mode: Tackle fun puzzles from easy to tricky, and watch your IQ rise as you conquer each stage.{'\n\n'}Challenge Mode: A huge board and a ticking timer—clear as many 10s as you can and smash your best IQ score!{'\n\n'}Get ready to sharpen your mind and become the ultimate Daycare Dash master! 🧩✨
+            </Text>
+            <TouchableOpacity 
+              style={styles.guideCloseButton}
+              onPress={() => setShowGuide(false)}
+            >
+              <Text style={styles.guideCloseButtonText}>Got it!</Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
-      </SafeAreaView>
-    </ImageBackground>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  // 背景层样式
+  backgroundImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  backgroundImageStyle: {
+    resizeMode: 'cover',
+  },
+  // 前景层容器
+  foregroundContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
+    zIndex: 1,
+  },
+  // 顶部栏
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+  topButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  topButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#8B4513',
+  },
+  topCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 20,
+  },
+  levelName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  iqText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  // 中间信息框
+  centerInfoBox: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 248, 220, 0.95)',
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 30,
+    borderWidth: 3,
+    borderColor: '#D2691E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 280,
+    alignItems: 'center',
+  },
+  centerLevelName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#8B4513',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  centerIqText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#5A3E12',
+    textAlign: 'center',
+  },
+  // 底部按钮栏
+  bottomButtonBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingBottom: 40,
+    gap: 20,
+  },
+  mainButton: {
+    minWidth: 140,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FF8C42',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    borderWidth: 3,
+    borderColor: '#E67E22',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  arcadeButton: {
+    backgroundColor: '#E74C3C',
+    borderColor: '#C0392B',
+  },
+  mainButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  // 弹窗样式
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  guideModal: {
+    width: '90%',
+    borderRadius: 20,
+    backgroundColor: '#FFF8DC',
+    borderWidth: 3,
+    borderColor: '#D2691E',
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  guideTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#8B4513',
+    textAlign: 'center',
+  },
+  guideContent: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#333',
+    marginBottom: 20,
+  },
+  guideCloseButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: '#FF8C42',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E67E22',
+    minWidth: 80,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  guideCloseButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+}
+)

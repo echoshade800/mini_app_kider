@@ -153,7 +153,22 @@ export function GameBoard({
   // 方块尺寸
   const tileWidth = tileSize;
   const tileHeight = tileSize;
+  
+  // 计算单元格大小
+  const cellSize = Math.min(
     availableWidth / width,
+    availableHeight / height,
+    50 // 最大方块大小
+  );
+  
+  // 方块尺寸调整 - 固定比例
+  const tileRatio = 0.88;
+  
+  const tileMargin = (cellSize - tileWidth) / 2; // 方块在单元格中的居中间距
+  
+  // 动态计算棋盘内边距 - 确保上下左右一致
+  const tileMarginX = tileMargin;
+  const tileMarginY = tileMargin;
 
   // Initialize tile scale animation
   const initTileScale = (index) => {
@@ -192,37 +207,13 @@ export function GameBoard({
     const relativeX = pageX - boardLeft - boardPadding;
     const relativeY = pageY - boardTop - boardPadding;
     
-    const gridWidth = width * tileSize + (width - 1) * tileSpacing;
-    const gridHeight = height * tileSize + (height - 1) * tileSpacing;
-    
-    if (relativeX < 0 || relativeX >= gridWidth ||
-        relativeY < 0 || relativeY >= gridHeight) {
+    if (relativeX < 0 || relativeX >= width * cellSize ||
+        relativeY < 0 || relativeY >= height * cellSize) {
       return false;
     }
     
-    // 计算点击的方块位置 - 考虑间距
-    let col = 0;
-    let row = 0;
-    let currentX = 0;
-    let currentY = 0;
-    
-    // 找到对应的列
-    for (let c = 0; c < width; c++) {
-      if (relativeX >= currentX && relativeX < currentX + tileSize) {
-        col = c;
-        break;
-      }
-      currentX += tileSize + tileSpacing;
-    }
-    
-    // 找到对应的行
-    for (let r = 0; r < height; r++) {
-      if (relativeY >= currentY && relativeY < currentY + tileSize) {
-        row = r;
-        break;
-      }
-      currentY += tileSize + tileSpacing;
-    }
+    const col = Math.floor(relativeX / cellSize);
+    const row = Math.floor(relativeY / cellSize);
     
     return row >= 0 && row < height && col >= 0 && col < width;
   };
@@ -301,29 +292,8 @@ export function GameBoard({
       const relativeX = pageX - boardLeft - boardPadding;
       const relativeY = pageY - boardTop - boardPadding;
       
-      // 计算起始位置 - 考虑间距
-      let startCol = 0;
-      let startRow = 0;
-      let currentX = 0;
-      let currentY = 0;
-      
-      // 找到起始列
-      for (let c = 0; c < width; c++) {
-        if (relativeX >= currentX && relativeX < currentX + tileSize) {
-          startCol = c;
-          break;
-        }
-        currentX += tileSize + tileSpacing;
-      }
-      
-      // 找到起始行
-      for (let r = 0; r < height; r++) {
-        if (relativeY >= currentY && relativeY < currentY + tileSize) {
-          startRow = r;
-          break;
-        }
-        currentY += tileSize + tileSpacing;
-      }
+      const startCol = Math.floor(relativeX / cellSize);
+      const startRow = Math.floor(relativeY / cellSize);
       
       setSelection({
         startRow,
@@ -470,8 +440,8 @@ export function GameBoard({
       const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
-      const explosionX = centerCol * (tileSize + tileSpacing) + tileSize / 2 + boardPadding;
-      const explosionY = centerRow * (tileSize + tileSpacing) + tileSize / 2 + boardPadding;
+      const explosionX = centerCol * cellSize + cellSize / 2 + boardPadding;
+      const explosionY = centerRow * cellSize + cellSize / 2 + boardPadding;
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
@@ -565,18 +535,17 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    // 计算选择框位置 - 考虑间距
-    const left = minCol * (tileSize + tileSpacing) + boardPadding;
-    const top = minRow * (tileSize + tileSpacing) + boardPadding;
-    const selectionWidth = (maxCol - minCol + 1) * tileSize + (maxCol - minCol) * tileSpacing;
-    const selectionHeight = (maxRow - minRow + 1) * tileSize + (maxRow - minRow) * tileSpacing;
+    const left = minCol * cellSize + boardPadding;
+    const top = minRow * cellSize + boardPadding;
+    const width = (maxCol - minCol + 1) * cellSize;
+    const height = (maxRow - minRow + 1) * cellSize;
     
     return {
       position: 'absolute',
       left,
       top,
-      width: selectionWidth,
-      height: selectionHeight,
+      width,
+      height,
       backgroundColor: isSuccess ? 'rgba(24, 197, 110, 0.3)' : 'rgba(33, 150, 243, 0.2)',
       opacity: selectionOpacity,
       borderRadius: 8,
@@ -602,8 +571,8 @@ export function GameBoard({
     const maxRow = Math.max(startRow, endRow);
     const maxCol = Math.max(startCol, endCol);
     
-    const left = maxCol * (tileSize + tileSpacing) + tileSize + boardPadding;
-    const top = maxRow * (tileSize + tileSpacing) + tileSize + boardPadding;
+    const left = maxCol * cellSize + cellSize + boardPadding;
+    const top = maxRow * cellSize + cellSize + boardPadding;
     
     return {
       sum,
@@ -634,17 +603,17 @@ export function GameBoard({
     const lines = [];
     
     // Vertical lines
-    for (let i = 0; i < width - 1; i++) {
+    for (let i = 1; i < width; i++) {
       lines.push(
         <View
           key={`v-${i}`}
           style={[
             styles.gridLine,
             {
-              left: (i + 1) * tileSize + i * tileSpacing + boardPadding + tileSpacing / 2,
+              left: i * cellSize + boardPadding,
               top: boardPadding,
               width: 1,
-              height: height * tileSize + (height - 1) * tileSpacing,
+              height: height * cellSize,
             }
           ]}
         />
@@ -652,7 +621,7 @@ export function GameBoard({
     }
     
     // Horizontal lines
-    for (let i = 0; i < height - 1; i++) {
+    for (let i = 1; i < height; i++) {
       lines.push(
         <View
           key={`h-${i}`}
@@ -660,8 +629,8 @@ export function GameBoard({
             styles.gridLine,
             {
               left: boardPadding,
-              top: (i + 1) * tileSize + i * tileSpacing + boardPadding + tileSpacing / 2,
-              width: width * tileSize + (width - 1) * tileSpacing,
+              top: i * cellSize + boardPadding,
+              width: width * cellSize,
               height: 1,
             }
           ]}
@@ -686,8 +655,8 @@ export function GameBoard({
           const tempAnim = fractalAnimations.get(tempKey);
           if (!tempAnim) return null;
           
-          const left = col * (tileSize + tileSpacing) + boardPadding;
-          const top = row * (tileSize + tileSpacing) + boardPadding;
+          const left = col * cellSize + 20 + tileMarginX; // 20px是棋盘内边距
+          const top = row * cellSize + 20 + tileMarginY;
           const rotation = getTileRotation(row, col);
           
           const transforms = [
@@ -729,24 +698,26 @@ export function GameBoard({
               </Text>
             </Animated.View>
           );
-          
-          // 检查是否完全清空（仅挑战模式需要刷新）
-          if (isChallenge) {
-            const newTiles = [...tiles];
-            tilePositions.forEach(pos => {
-              const index = pos.row * width + pos.col;
-              newTiles[index] = 0;
-            });
-            
-            if (isBoardEmpty(newTiles) && onBoardRefresh) {
-              // 棋盘全清，生成新棋盘
-              setTimeout(() => {
-                onBoardRefresh('refresh');
-              }, 1000);
-            }
-          }
         });
       }
+      
+      // 检查是否完全清空（仅挑战模式需要刷新）
+      if (isChallenge) {
+        const newTiles = [...tiles];
+        const tilePositions = []; // This should be defined somewhere
+        tilePositions.forEach(pos => {
+          const index = pos.row * width + pos.col;
+          newTiles[index] = 0;
+        });
+        
+        if (isBoardEmpty(newTiles) && onBoardRefresh) {
+          // 棋盘全清，生成新棋盘
+          setTimeout(() => {
+            onBoardRefresh('refresh');
+          }, 1000);
+        }
+      }
+      
       return null;
     }
 

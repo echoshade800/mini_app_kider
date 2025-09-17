@@ -69,15 +69,10 @@ export function GameBoard({
   const maxBoardWidth = screenWidth - 60; // 减少水平边距
   const maxBoardHeight = screenHeight - 280; // 为顶部和底部留出空间
   
-  // 优先适配宽度，允许长方形布局
+  // 计算单元格大小，优先适配宽度（长方形布局）
   const cellSizeByWidth = maxBoardWidth / width;
   const cellSizeByHeight = maxBoardHeight / height;
-  
-  // 选择较小的尺寸确保完整显示，但设置合理的最小和最大值
-  const cellSize = Math.max(
-    Math.min(cellSizeByWidth, cellSizeByHeight, 45), // 最大45px
-    25 // 最小25px，确保可读性
-  );
+  const cellSize = Math.max(Math.min(cellSizeByWidth, cellSizeByHeight, 45), 25);
   
   // Sticky note tile size - 更接近参考图的比例
   const tileWidth = cellSize * 0.88; // 增加占比，更饱满
@@ -86,6 +81,8 @@ export function GameBoard({
   const tileMarginY = (cellSize - tileHeight) / 2;
   
   // Board background size with wooden frame
+  const boardWidth = width * cellSize + 40; // 20px padding on each side
+  const boardHeight = height * cellSize + 40;
 
   // Initialize tile scale animation
   const initTileScale = (index) => {

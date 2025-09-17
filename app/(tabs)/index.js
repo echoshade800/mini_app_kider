@@ -42,7 +42,7 @@ export default function HomeScreen() {
 
   const handleStartChallenge = () => {
     try {
-      router.push('/(tabs)/challenge');
+      router.push('/challenge');
     } catch (error) {
       console.error('Navigation error:', error);
       Alert.alert('导航错误', '无法进入挑战模式，请重试');

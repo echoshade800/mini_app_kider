@@ -54,6 +54,13 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen 
+          name="challenge-fullscreen" 
+          options={{ 
+            headerShown: false,
+            presentation: 'fullScreenModal'
+          }} 
+        />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="details/[id]" />
         <Stack.Screen name="about" />

@@ -42,6 +42,7 @@ export default function TabLayout() {
         name="challenge"
         options={{
           title: 'Challenge',
+          href: null, // Hide from tab bar when in full-screen mode
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="timer" size={size} color={color} />
           ),

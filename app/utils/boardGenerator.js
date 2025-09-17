@@ -92,8 +92,8 @@ function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
   } else if (level >= 116 && level <= 120) {
     width = 16; height = 15;
   } else {
-    // 121关及以后达到最大尺寸 16x10 = 160格
-    width = 16; height = 10;
+    // 121关及以后达到最大尺寸 10x16 = 160格
+    width = 10; height = 16;
   }
   
   // 确保不超过最大尺寸

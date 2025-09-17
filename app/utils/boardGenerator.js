@@ -18,7 +18,6 @@ import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { hasValidCombinations, reshuffleBoard, isBoardEmpty } from '../utils/gameLogic';
 import { getCompleteLayout, getTilePosition } from '../utils/layout';
-import { RescueModal } from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 

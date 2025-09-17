@@ -17,26 +17,54 @@ function seededRandom(seed) {
   };
 }
 
-function getBoardDimensions(level) {
-  // 棋盘尺寸设计：渐进式增长，平衡挑战性和可玩性
-  if (level <= 5) return { width: 6, height: 4 };    // 前5关：6x4 = 24格 (简单入门)
-  if (level <= 10) return { width: 7, height: 5 };   // 6-10关：7x5 = 35格 (基础练习)
-  if (level <= 20) return { width: 8, height: 5 };   // 11-20关：8x5 = 40格 (初级挑战)
-  if (level <= 30) return { width: 9, height: 6 };   // 21-30关：9x6 = 54格 (中级入门) ← 28关在这里
-  if (level <= 45) return { width: 10, height: 6 };  // 31-45关：10x6 = 60格 (中级进阶)
-  if (level <= 60) return { width: 11, height: 7 };  // 46-60关：11x7 = 77格 (中级挑战)
-  if (level <= 80) return { width: 12, height: 7 };  // 61-80关：12x7 = 84格 (高级入门)
-  if (level <= 100) return { width: 13, height: 8 }; // 81-100关：13x8 = 104格 (高级进阶)
-  if (level <= 130) return { width: 14, height: 8 }; // 101-130关：14x8 = 112格 (高级挑战)
-  if (level <= 160) return { width: 15, height: 9 }; // 131-160关：15x9 = 135格 (专家级)
-  if (level <= 180) return { width: 16, height: 9 }; // 161-180关：16x9 = 144格 (大师级)
-  if (level <= 200) return { width: 17, height: 10 }; // 181-200关：17x10 = 170格 (传奇级)
-  return { width: 18, height: 11 }; // 200关后：18x11 = 198格 (超越现实)
+// 固定方块大小：45px (参考28关的大小)
+const FIXED_TILE_SIZE = 45;
+
+// 根据屏幕尺寸计算最大可容纳的棋盘尺寸
+function getMaxBoardDimensions(screenWidth, screenHeight, reservedHeight = 200) {
+  // 预留空间：顶部HUD + 底部道具栏 + 边距
+  const availableWidth = screenWidth - 80; // 左右各40px边距
+  const availableHeight = screenHeight - reservedHeight; // 预留顶部和底部空间
+  
+  // 计算最大可容纳的行列数
+  const maxCols = Math.floor(availableWidth / FIXED_TILE_SIZE);
+  const maxRows = Math.floor(availableHeight / FIXED_TILE_SIZE);
+  
+  return { width: maxCols, height: maxRows };
 }
 
-function getChallengeModeDimensions() {
-  // 挑战模式直接使用150关的配置
-  return getBoardDimensions(150);
+// 闯关模式：从4x4开始，逐步增长到铺满屏幕
+function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
+  // 获取最大可容纳尺寸
+  const maxDimensions = getMaxBoardDimensions(screenWidth, screenHeight);
+  
+  // 从4x4开始，每10关增加一行或一列
+  let width = 4;
+  let height = 4;
+  
+  // 计算当前关卡应该的尺寸
+  const growthSteps = Math.floor((level - 1) / 10);
+  
+  for (let i = 0; i < growthSteps; i++) {
+    if (i % 2 === 0) {
+      // 偶数步骤增加宽度
+      if (width < maxDimensions.width) width++;
+    } else {
+      // 奇数步骤增加高度
+      if (height < maxDimensions.height) height++;
+    }
+  }
+  
+  // 确保不超过最大尺寸
+  width = Math.min(width, maxDimensions.width);
+  height = Math.min(height, maxDimensions.height);
+  
+  return { width, height };
+}
+
+// 挑战模式：直接使用最大尺寸铺满屏幕
+function getChallengeModeDimensions(screenWidth = 390, screenHeight = 844) {
+  return getMaxBoardDimensions(screenWidth, screenHeight, 280); // 挑战模式预留更多空间给HUD
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）
@@ -173,13 +201,12 @@ function ensureSumIsMultipleOf10(tiles) {
 }
 
 // 生成挑战模式专用的满盘棋盘
-export function generateChallengeBoard() {
+export function generateChallengeBoard(screenWidth = 390, screenHeight = 844) {
   const seed = `challenge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const random = seededRandom(seed);
   
-  // 使用更大的棋盘尺寸以铺满屏幕
-  const width = 15; // 15列
-  const height = 10; // 10行
+  // 使用最大尺寸铺满屏幕
+  const { width, height } = getChallengeModeDimensions(screenWidth, screenHeight);
   const size = width * height;
   
   // 初始化棋盘，填满所有位置
@@ -303,16 +330,18 @@ export function generateChallengeBoard() {
   };
 }
 
-export function generateBoard(level, forceNewSeed = false, isChallengeMode = false) {
+export function generateBoard(level, forceNewSeed = false, isChallengeMode = false, screenWidth = 390, screenHeight = 844) {
   // 使用时间戳或固定种子，根据需要生成不同的棋盘
   const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
   const seed = `level_${level}_${baseSeed}`;
   const random = seededRandom(seed);
   
-  // 挑战模式使用28关的棋盘尺寸，但使用130关的难度
-  const actualLevel = isChallengeMode ? 28 : level;
+  // 获取棋盘尺寸
+  const { width, height } = isChallengeMode 
+    ? getChallengeModeDimensions(screenWidth, screenHeight)
+    : getBoardDimensions(level, screenWidth, screenHeight);
+    
   const difficultyLevel = isChallengeMode ? 130 : level;
-  const { width, height } = getBoardDimensions(actualLevel);
   const size = width * height;
   
   let attempts = 0;

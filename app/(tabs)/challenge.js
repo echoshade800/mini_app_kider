@@ -102,6 +102,15 @@ export default function ChallengeScreen() {
   const [showNoSolution, setShowNoSolution] = useState(false);
   const [noSolutionMessage, setNoSolutionMessage] = useState('');
   
+  // 道具状态
+  const [itemMode, setItemMode] = useState(null); // 'swapMaster' | 'fractalSplit' | null
+  const [selectedSwapTile, setSelectedSwapTile] = useState(null);
+  
+  // 动画状态
+  const swapAnimationsRef = useRef(new Map());
+  const fractalAnimationsRef = useRef(new Map());
+  const [animationTrigger, setAnimationTrigger] = useState(0);
+  
   // Selection state
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
@@ -179,8 +188,8 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 使用28关的棋盘配置（9x6布局）
-    const board = generateBoard(28, true, true); // forceNewSeed=true, isChallengeMode=true
+    // 生成满盘棋盘，使用更大的尺寸以铺满屏幕
+    const board = generateChallengeBoard();
     setCurrentBoard(board);
     setReshuffleCount(0);
   };
@@ -253,6 +262,79 @@ export default function ChallengeScreen() {
       setTimeout(() => {
         checkForRescue();
       }, 500);
+    }
+  };
+
+  // 处理道具使用
+  const handleUseSwapMaster = () => {
+    if (gameData?.swapMasterItems <= 0) return;
+    setItemMode('swapMaster');
+    setSelectedSwapTile(null);
+  };
+
+  const handleUseFractalSplit = () => {
+    if (gameData?.fractalSplitItems <= 0) return;
+    setItemMode('fractalSplit');
+    setSelectedSwapTile(null);
+  };
+
+  const handleCancelItem = () => {
+    setItemMode(null);
+    setSelectedSwapTile(null);
+  };
+
+  const handleTileClick = (row, col, value) => {
+    if (!itemMode || value === 0) return;
+    
+    const index = row * currentBoard.width + col;
+    const clickedTile = { row, col, value, index };
+    
+    if (itemMode === 'swapMaster') {
+      if (!selectedSwapTile) {
+        setSelectedSwapTile(clickedTile);
+      } else if (selectedSwapTile.index === index) {
+        setSelectedSwapTile(null);
+      } else {
+        // 执行交换逻辑（简化版）
+        const newTiles = [...currentBoard.tiles];
+        const temp = newTiles[selectedSwapTile.index];
+        newTiles[selectedSwapTile.index] = newTiles[clickedTile.index];
+        newTiles[clickedTile.index] = temp;
+        
+        setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
+        updateGameData({ swapMasterItems: (gameData?.swapMasterItems || 0) - 1 });
+        setItemMode(null);
+        setSelectedSwapTile(null);
+      }
+    } else if (itemMode === 'fractalSplit') {
+      if (value >= 2) {
+        // 简化的分裂逻辑
+        const newTiles = [...currentBoard.tiles];
+        const emptyPositions = [];
+        for (let i = 0; i < newTiles.length; i++) {
+          if (newTiles[i] === 0) emptyPositions.push(i);
+        }
+        
+        if (emptyPositions.length >= 2) {
+          const splitValues = value === 2 ? [1, 1] : 
+                             value === 3 ? [1, 2] :
+                             value === 4 ? [1, 3] :
+                             value === 5 ? [2, 3] :
+                             value === 6 ? [2, 4] :
+                             value === 7 ? [3, 4] :
+                             value === 8 ? [3, 5] :
+                             [4, 5]; // value === 9
+          
+          newTiles[index] = 0;
+          newTiles[emptyPositions[0]] = splitValues[0];
+          newTiles[emptyPositions[1]] = splitValues[1];
+          
+          setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
+          updateGameData({ fractalSplitItems: (gameData?.fractalSplitItems || 0) - 1 });
+          setItemMode(null);
+          setSelectedSwapTile(null);
+        }
+      }
     }
   };
 
@@ -348,11 +430,65 @@ export default function ChallengeScreen() {
         <GameBoard 
           board={currentBoard}
           onTilesClear={handleTilesClear}
+            onTileClick={handleTileClick}
+            itemMode={itemMode}
+            selectedSwapTile={selectedSwapTile}
+            swapAnimations={swapAnimationsRef.current}
+            fractalAnimations={fractalAnimationsRef.current}
           onBoardRefresh={handleBoardRefresh}
           disabled={gameState !== 'playing'}
-          isChallenge={true}
+            maxBoardHeight={screenHeight - 280} // 为顶部HUD和底部道具栏留空间
           maxBoardHeight={screenHeight - 200} // 为顶部HUD和底部留空间
         />
+      )}
+
+      {/* 底部道具栏 - 与闯关模式一致 */}
+      {gameState === 'playing' && (
+        <View style={styles.itemsBar}>
+          <TouchableOpacity 
+            style={[
+              styles.itemButton,
+              itemMode === 'swapMaster' ? styles.itemButtonActive : styles.swapMasterButton,
+              (gameData?.swapMasterItems || 0) <= 0 && itemMode !== 'swapMaster' && styles.itemButtonDisabled
+            ]}
+            onPress={itemMode === 'swapMaster' ? handleCancelItem : handleUseSwapMaster}
+            disabled={(gameData?.swapMasterItems || 0) <= 0 && itemMode !== 'swapMaster'}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name={itemMode === 'swapMaster' ? "close" : "shuffle"} 
+              size={24} 
+              color="white" 
+            />
+            {itemMode !== 'swapMaster' && (
+              <View style={styles.itemBadge}>
+                <Text style={styles.itemBadgeText}>{gameData?.swapMasterItems || 0}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[
+              styles.itemButton,
+              itemMode === 'fractalSplit' ? styles.itemButtonActive : styles.fractalSplitButton,
+              (gameData?.fractalSplitItems || 0) <= 0 && itemMode !== 'fractalSplit' && styles.itemButtonDisabled
+            ]}
+            onPress={itemMode === 'fractalSplit' ? handleCancelItem : handleUseFractalSplit}
+            disabled={(gameData?.fractalSplitItems || 0) <= 0 && itemMode !== 'fractalSplit'}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name={itemMode === 'fractalSplit' ? "close" : "git-branch"} 
+              size={24} 
+              color="white" 
+            />
+            {itemMode !== 'fractalSplit' && (
+              <View style={styles.itemBadge}>
+                <Text style={styles.itemBadgeText}>{gameData?.fractalSplitItems || 0}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* No Solution Overlay */}
@@ -489,8 +625,19 @@ const styles = StyleSheet.create({
   },
   gameArea: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#1E5A3C', // 绿色背景铺满
+    margin: 20, // 与屏幕边缘的距离
+    borderRadius: 16,
+    borderWidth: 8,
+    borderColor: '#8B5A2B', // 木框边框
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
   },
   noSolutionOverlay: {
     position: 'absolute',
@@ -600,5 +747,58 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  itemsBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    gap: 20,
+  },
+  itemButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    position: 'relative',
+  },
+  swapMasterButton: {
+    backgroundColor: '#2196F3',
+  },
+  fractalSplitButton: {
+    backgroundColor: '#9C27B0',
+  },
+  itemButtonActive: {
+    backgroundColor: '#f44336',
+  },
+  itemButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  itemBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#f44336',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  itemBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

@@ -191,6 +191,7 @@ export default function ChallengeScreen() {
           onBoardRefresh={handleBoardRefresh}
           disabled={gameState !== 'playing'}
           isChallenge={true}
+          maxBoardHeight={screenHeight - 200} // 限制棋盘高度，为顶部和底部留空间
         />
       )}
 

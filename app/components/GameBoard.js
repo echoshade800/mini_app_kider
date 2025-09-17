@@ -65,18 +65,40 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // Calculate cell size for rectangular layout (prioritize width fitting)
-  const maxBoardWidth = screenWidth - 60; // 减少水平边距
-  const maxBoardHeight = screenHeight - 300; // 为顶部和底部留出更多空间
+  // 挑战模式特殊处理：参考图片的棋盘尺寸
+  const isChallengeMode = width === 11 && height === 16;
   
-  // 计算单元格大小，优先适配宽度（支持更长的长方形布局）
-  const cellSizeByWidth = maxBoardWidth / width;
-  const cellSizeByHeight = maxBoardHeight / height;
-  const cellSize = Math.max(Math.min(cellSizeByWidth, cellSizeByHeight, 32), 18); // 进一步减小方块尺寸以适应更多方块
+  let cellSize;
+  if (isChallengeMode) {
+    // 挑战模式：参考图片的尺寸，铺满除顶部和底部外的所有空间
+    const maxBoardWidth = screenWidth - 40; // 左右各20px边距
+    const maxBoardHeight = screenHeight - 280; // 顶部和底部留出空间
+    
+    const cellSizeByWidth = maxBoardWidth / width;
+    const cellSizeByHeight = maxBoardHeight / height;
+    cellSize = Math.min(cellSizeByWidth, cellSizeByHeight);
+    
+    // 确保方块大小在合理范围内，参考图片中方块较大
+    cellSize = Math.max(Math.min(cellSize, 35), 22);
+  } else {
+    // 闯关模式：原有逻辑
+    const maxBoardWidth = screenWidth - 60;
+    const maxBoardHeight = screenHeight - 300;
+    
+    const cellSizeByWidth = maxBoardWidth / width;
+    const cellSizeByHeight = maxBoardHeight / height;
+    cellSize = Math.max(Math.min(cellSizeByWidth, cellSizeByHeight, 32), 18);
+  }
   
-  // Sticky note tile size - 更接近参考图的比例
-  const tileWidth = cellSize * 0.85; // 稍微增加占比以保持可读性
-  const tileHeight = cellSize * 0.85; // 保持紧凑布局
+  // 方块尺寸调整
+  let tileRatio = 0.85;
+  if (isChallengeMode) {
+    // 挑战模式：参考图片中方块占比更大，间距更小
+    tileRatio = 0.92;
+  }
+  
+  const tileWidth = cellSize * tileRatio;
+  const tileHeight = cellSize * tileRatio;
   const tileMarginX = (cellSize - tileWidth) / 2;
   const tileMarginY = (cellSize - tileHeight) / 2;
   
@@ -785,7 +807,7 @@ const styles = StyleSheet.create({
   },
   chalkboard: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
-    padding: 15, // 减少内边距，为长方形布局留出更多空间
+    padding: 12, // 进一步减少内边距，让棋盘更大
     borderRadius: 16,
     borderWidth: 8,
     borderColor: '#8B5A2B', // Wooden frame
@@ -809,7 +831,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFF9E6', // Cream white sticky note
-    borderRadius: 4, // 稍微减小圆角，更接近截图效果
+    borderRadius: 3, // 更小的圆角，更接近参考图片
     borderWidth: 1,
     borderColor: '#333',
     shadowColor: '#000',
@@ -817,7 +839,7 @@ const styles = StyleSheet.create({
       width: 1,
       height: 1,
     },
-    shadowOpacity: 0.25, // 稍微减轻阴影
+    shadowOpacity: 0.2, // 减轻阴影，更接近参考图片
     shadowRadius: 2,
     elevation: 3,
   },

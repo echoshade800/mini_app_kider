@@ -35,8 +35,8 @@ function getBoardDimensions(level) {
 }
 
 function getChallengeModeDimensions() {
-  // 挑战模式使用固定的大尺寸长方形棋盘
-  return { width: 16, height: 11 }; // 176个方块的超大棋盘
+  // 挑战模式使用参考图片的尺寸：11列x16行，铺满屏幕
+  return { width: 11, height: 16 }; // 176个方块，11列16行的长方形布局
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）

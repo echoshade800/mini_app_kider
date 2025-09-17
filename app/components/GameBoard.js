@@ -652,9 +652,9 @@ export function GameBoard({
           
           return (
             <Animated.View 
-                  width: tileWidth,
-                  height: tileHeight,
-                { 
+              key={tempKey}
+              style={[
+                {
                   position: 'absolute',
                   left: x,
                   top: y,
@@ -670,7 +670,7 @@ export function GameBoard({
               <View style={styles.tileInner}>
                 <Text style={[
                   styles.tileText,
-                  { fontSize: Math.max(14, tileWidth * 0.45) }
+                  { 
                     fontSize: Math.max(14, boardMetrics.tileWidth * 0.45),
                     lineHeight: boardMetrics.tileHeight,
                   }
@@ -744,7 +744,9 @@ export function GameBoard({
       if (itemMode === 'swapMaster') {
         tileStyle = [styles.tileInner, styles.tileSwapSelected];
       } else if (itemMode === 'fractalSplit') {
-          height: tileHeight,
+        tileStyle = [styles.tileInner, styles.tileFractalSelected];
+      }
+    }
 
     let opacity = 1;
     if (fractalAnim && fractalAnim.opacity) {
@@ -795,6 +797,11 @@ export function GameBoard({
 
   // 处理棋盘布局
   const handleBoardLayout = (event) => {
+    // Handle board layout logic here
+  };
+
+  const selectionSum = getSelectionSum();
+  const selectionStyle = getSelectionStyle();
 
   // 挑战模式使用全屏尺寸，闯关模式使用固定尺寸
   const boardContainerStyle = isChallenge ? {
@@ -803,12 +810,10 @@ export function GameBoard({
     left: 0,
     right: 0,
     bottom: 0,
-              width: innerWidth,
+  } : {
     position: 'absolute',
     left: boardMetrics.boardX,
     top: boardMetrics.boardY,
-              height: innerHeight,
-              left: padding,
     width: boardMetrics.boardWidth,
     height: boardMetrics.boardHeight,
   };

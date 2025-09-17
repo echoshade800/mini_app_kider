@@ -126,6 +126,14 @@ export default function HomeScreen() {
   const bestLevel = getBestLevelDisplay();
   const bestChallenge = getBestChallengeDisplay();
 
+  const getCurrentLevelName = () => {
+    const level = gameData?.maxLevel || 1;
+    if (level > 200) {
+      return `The Last Horizon+${level - 200}`;
+    }
+    return STAGE_NAMES[level] || `Level ${level}`;
+  };
+
   return (
     <View style={styles.container}>
       <ImageBackground
@@ -136,19 +144,21 @@ export default function HomeScreen() {
         <SafeAreaView style={styles.safeArea}>
           {/* Settings Button - Top Right */}
           <View style={styles.topBar}>
-            <View style={styles.topLeft}>
-              {/* Progress Info */}
-              <View style={styles.progressInfo}>
-                <Text style={styles.progressText}>Level {gameData?.maxLevel || 0}</Text>
-                <Text style={styles.progressSubtext}>IQ {gameData?.maxScore || 0}</Text>
-              </View>
-            </View>
+            <View style={styles.topLeft} />
             <TouchableOpacity 
               style={styles.settingsButton}
               onPress={() => setShowSettings(true)}
             >
               <Ionicons name="settings" size={28} color="#fff" />
             </TouchableOpacity>
+          </View>
+
+          {/* Level Info - Between title lines */}
+          <View style={styles.levelInfoContainer}>
+            <View style={styles.levelInfo}>
+              <Text style={styles.levelName}>{getCurrentLevelName()}</Text>
+              <Text style={styles.levelSubtext}>Best IQ: {gameData?.maxScore || 0}</Text>
+            </View>
           </View>
 
           {/* Invisible buttons overlaying the image buttons */}
@@ -269,27 +279,42 @@ const styles = StyleSheet.create({
   topLeft: {
     flex: 1,
   },
-  progressInfo: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  progressText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  progressSubtext: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 12,
-    marginTop: 2,
-  },
   settingsButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     padding: 10,
     borderRadius: 20,
+  },
+  levelInfoContainer: {
+    position: 'absolute',
+    top: 120, // 调整到背景图顶部字母之间的位置
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  levelInfo: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    maxWidth: '80%',
+  },
+  levelName: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  levelSubtext: {
+    color: '#666',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 2,
   },
   buttonOverlays: {
     flex: 1,

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ImageBackground, TouchableOpacity, SafeAreaView, Modal } from 'react-native';
+import { View, Text, ImageBackground, TouchableOpacity, Modal } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import StorageUtils from '../utils/StorageUtils';

@@ -59,7 +59,7 @@ export function useBoardMetrics({
       safeHorizontal: 20,
       
       // 工具函数
-      getTilePosition: getTilePositionForGrid,
+      getTilePosition: (row, col) => getTilePosition(row, col, layout.tileSize, layout.gap, layout.padding),
       
       // 调试信息
       debug: layout.debug

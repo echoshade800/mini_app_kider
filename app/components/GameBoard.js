@@ -78,9 +78,6 @@ export function GameBoard({
     Math.min(cellSizeByWidth, cellSizeByHeight, 45), // 最大45px
     25 // 最小25px，确保可读性
   );
-    maxBoardHeight / height,
-    45 // 稍微减小最大尺寸
-  );
   
   // Sticky note tile size - 更接近参考图的比例
   const tileWidth = cellSize * 0.88; // 增加占比，更饱满

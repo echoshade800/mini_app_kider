@@ -463,4 +463,365 @@ export default function ChallengeScreen() {
     return selectedTiles;
   };
 
-  const handleSelection
+  const handleSelectionComplete = () => {
+    const selectedTiles = getSelectedTiles();
+    
+    if (selectedTiles.length === 0) return;
+    
+    const sum = selectedTiles.reduce((total, tile) => total + tile.value, 0);
+    
+    if (sum === 10) {
+      handleTilesClear(selectedTiles);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* HUD */}
+      <View style={styles.hud}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleReturn}
+        >
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        
+        <View style={styles.hudCenter}>
+          <Text style={styles.iqText}>IQ: {currentIQ}</Text>
+          <View style={styles.progressContainer}>
+            <Animated.View 
+              style={[
+                styles.progressBar,
+                {
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%']
+                  })
+                }
+              ]} 
+            />
+          </View>
+          <Text style={styles.timeText}>{timeLeft}s</Text>
+        </View>
+        
+        <TouchableOpacity 
+          style={styles.settingsButton}
+          onPress={() => setShowSettings(true)}
+        >
+          <Ionicons name="settings" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Game Board */}
+      {gameState === 'ready' && (
+        <View style={styles.readyScreen}>
+          <Text style={styles.readyTitle}>Challenge Mode</Text>
+          <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
+          <TouchableOpacity style={styles.startButton} onPress={startChallenge}>
+            <Text style={styles.startButtonText}>START CHALLENGE</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {gameState === 'playing' && currentBoard && (
+        <View style={styles.gameArea} {...panResponder.panHandlers}>
+          <View style={styles.board}>
+            {currentBoard.tiles.map((value, index) => {
+              const row = Math.floor(index / currentBoard.width);
+              const col = index % currentBoard.width;
+              const isSelected = selection && 
+                row >= Math.min(selection.startRow, selection.endRow) &&
+                row <= Math.max(selection.startRow, selection.endRow) &&
+                col >= Math.min(selection.startCol, selection.endCol) &&
+                col <= Math.max(selection.startCol, selection.endCol);
+              
+              return (
+                <View
+                  key={index}
+                  style={[
+                    styles.tile,
+                    {
+                      width: currentBoard.cellSize,
+                      height: currentBoard.cellSize,
+                      opacity: value === 0 ? 0 : 1,
+                    },
+                    isSelected && { backgroundColor: 'rgba(255, 255, 0, 0.6)' }
+                  ]}
+                >
+                  {value > 0 && (
+                    <Text style={[styles.tileText, { fontSize: currentBoard.cellSize * 0.4 }]}>
+                      {value}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {/* No Solution Overlay */}
+      {showNoSolution && (
+        <View style={styles.noSolutionOverlay}>
+          <Text style={styles.noSolutionText}>{noSolutionMessage}</Text>
+        </View>
+      )}
+
+      {/* Results Modal */}
+      <Modal visible={showResults} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.resultsModal}>
+            <Text style={styles.resultsTitle}>Challenge Complete!</Text>
+            <Text style={styles.finalIQ}>Final IQ: {currentIQ}</Text>
+            <Text style={styles.iqTitle}>{getIQTitle(currentIQ)}</Text>
+            
+            {currentIQ > (gameData?.maxScore || 0) && (
+              <Text style={styles.newRecord}>🎉 New Record!</Text>
+            )}
+            
+            <View style={styles.resultsButtons}>
+              <TouchableOpacity style={styles.againButton} onPress={handleAgain}>
+                <Text style={styles.againButtonText}>AGAIN</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.returnButton} onPress={handleReturn}>
+                <Text style={styles.returnButtonText}>RETURN</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Settings Modal */}
+      <Modal visible={showSettings} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.settingsModal}>
+            <Text style={styles.settingsTitle}>Challenge Settings</Text>
+            <Text style={styles.settingsInfo}>
+              • 60-second time limit{'\n'}
+              • Dense grid layout{'\n'}
+              • No tile refill{'\n'}
+              • Board refreshes when cleared{'\n'}
+              • 3 IQ points per clear
+            </Text>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setShowSettings(false)}
+            >
+              <Text style={styles.closeButtonText}>CLOSE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1a1a2e',
+  },
+  hud: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  backButton: {
+    padding: 8,
+  },
+  settingsButton: {
+    padding: 8,
+  },
+  hudCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 20,
+  },
+  iqText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  progressContainer: {
+    width: '100%',
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 3,
+    marginBottom: 5,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 3,
+  },
+  timeText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  readyScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  readyTitle: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  readySubtitle: {
+    color: '#ccc',
+    fontSize: 16,
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  startButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 25,
+  },
+  startButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  gameArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  board: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  tile: {
+    backgroundColor: '#2d2d44',
+    margin: 1,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3d3d54',
+  },
+  tileText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  noSolutionOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noSolutionText: {
+    color: '#ff6b6b',
+    fontSize: 32,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resultsModal: {
+    backgroundColor: '#2d2d44',
+    padding: 30,
+    borderRadius: 20,
+    alignItems: 'center',
+    minWidth: 300,
+  },
+  resultsTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  finalIQ: {
+    color: '#4CAF50',
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  iqTitle: {
+    color: '#ccc',
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  newRecord: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  resultsButtons: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  againButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  againButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  returnButton: {
+    backgroundColor: '#666',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  returnButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  settingsModal: {
+    backgroundColor: '#2d2d44',
+    padding: 30,
+    borderRadius: 20,
+    alignItems: 'center',
+    minWidth: 300,
+  },
+  settingsTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  settingsInfo: {
+    color: '#ccc',
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 25,
+  },
+  closeButton: {
+    backgroundColor: '#666',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});

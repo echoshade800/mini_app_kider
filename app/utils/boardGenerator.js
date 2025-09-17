@@ -367,7 +367,7 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
       requiredSwaps = Math.random() < 0.4 ? 1 : 0;
     } else {
       // 120关以上：最高难度（挑战模式使用130关难度）
-      guaranteedPairs = Math.floor(size * 0.35);
+      guaranteedPairs = Math.floor(size * 0.4); // 挑战模式增加保证配对
       adjacentRatio = 0.2;
       requiredSwaps = Math.floor(Math.random() * 2) + 1;
     }

@@ -816,7 +816,7 @@ export function GameBoard({
       {__DEV__ && (
         <View style={styles.debugInfo}>
           <Text style={styles.debugText}>
-            网格: {boardMetrics.debug.rows}×{boardMetrics.debug.cols} | 棋盘: {boardMetrics.debug.calculatedBoardSize}
+            网格: {boardMetrics.debug.rows}×{boardMetrics.debug.cols} | 方块数: {boardMetrics.debug.totalCells} | 棋盘: {boardMetrics.debug.calculatedBoardSize}
             {'\n'}位置: {boardMetrics.debug.boardPosition} | 居中: {boardMetrics.debug.isCentered ? '✅' : '❌'} | 适配: {boardMetrics.debug.fitsInScreen ? '✅' : '❌'}
           </Text>
         </View>

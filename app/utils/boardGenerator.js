@@ -3,6 +3,7 @@
  * Purpose: Generate solvable number puzzles with appropriate difficulty scaling
  * Features: Fixed board size per level, guaranteed solvability, line selection support
  */
+import { getGridByLevel, getLevelLayout } from '../utils/levelGrid';
 
 // Deterministic random number generator
 function seededRandom(seed) {
@@ -17,113 +18,17 @@ function seededRandom(seed) {
   };
 }
 
-// 固定方块大小：45px (参考28关的大小)
-const FIXED_TILE_SIZE = 45;
-
-// 根据屏幕尺寸计算最大可容纳的棋盘尺寸
-function getMaxBoardDimensions(screenWidth, screenHeight, reservedHeight = 200) {
-  // 预留空间：顶部HUD + 底部道具栏 + 边距
-  const availableWidth = screenWidth - 80; // 左右各40px边距
-  const availableHeight = screenHeight - reservedHeight; // 预留顶部和底部空间
-  
-  // 计算最大可容纳的行列数
-  const maxCols = Math.floor(availableWidth / FIXED_TILE_SIZE);
-  const maxRows = Math.floor(availableHeight / FIXED_TILE_SIZE);
-  
-  return { width: maxCols, height: maxRows };
-}
-
-// 闯关模式：从4x4开始，逐步增长到铺满屏幕
+// 闯关模式：使用新的关卡增长规则
 function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
-  // 获取最大可容纳尺寸
-  const maxDimensions = getMaxBoardDimensions(screenWidth, screenHeight);
-  
-  // 按照教育阶段的增长规律
-  let width = 4;
-  let height = 4;
-  
-  // 教育阶段增长规律 - 平滑递增
-  if (level >= 1 && level <= 5) {
-    width = 4; height = 4;
-  } else if (level >= 6 && level <= 10) {
-    width = 5; height = 4;
-  } else if (level >= 11 && level <= 15) {
-    width = 5; height = 5;
-  } else if (level >= 16 && level <= 20) {
-    width = 6; height = 5;
-  } else if (level >= 21 && level <= 25) {
-    width = 6; height = 6;
-  } else if (level >= 26 && level <= 30) {
-    width = 7; height = 6;
-  } else if (level >= 31 && level <= 35) {
-    width = 7; height = 7;
-  } else if (level >= 36 && level <= 40) {
-    width = 8; height = 7;
-  } else if (level >= 41 && level <= 45) {
-    width = 8; height = 8;
-  } else if (level >= 46 && level <= 50) {
-    width = 9; height = 8;
-  } else if (level >= 51 && level <= 55) {
-    width = 9; height = 9;
-  } else if (level >= 56 && level <= 60) {
-    width = 10; height = 9;
-  } else if (level >= 61 && level <= 65) {
-    width = 10; height = 10;
-  } else if (level >= 66 && level <= 70) {
-    width = 11; height = 10;
-  } else if (level >= 71 && level <= 75) {
-    width = 11; height = 11;
-  } else if (level >= 76 && level <= 80) {
-    width = 12; height = 11;
-  } else if (level >= 81 && level <= 85) {
-    width = 12; height = 12;
-  } else if (level >= 86 && level <= 90) {
-    width = 13; height = 12;
-  } else if (level >= 91 && level <= 95) {
-    width = 13; height = 13;
-  } else if (level >= 96 && level <= 100) {
-    width = 14; height = 13;
-  } else if (level >= 101 && level <= 105) {
-    width = 14; height = 14;
-  } else if (level >= 106 && level <= 110) {
-    width = 15; height = 14;
-  } else if (level >= 111 && level <= 115) {
-    width = 15; height = 15;
-  } else if (level >= 116 && level <= 120) {
-    width = 16; height = 15;
-  } else if (level >= 121 && level <= 130) {
-    width = 16; height = 16;
-  } else if (level >= 131 && level <= 140) {
-    width = 17; height = 16;
-  } else if (level >= 141 && level <= 150) {
-    width = 17; height = 17;
-  } else if (level >= 151 && level <= 160) {
-    width = 18; height = 17;
-  } else if (level >= 161 && level <= 170) {
-    width = 18; height = 18;
-  } else if (level >= 171 && level <= 180) {
-    width = 19; height = 18;
-  } else if (level >= 181 && level <= 190) {
-    width = 19; height = 19;
-  } else if (level >= 191 && level <= 200) {
-    width = 20; height = 19;
-  } else {
-    // 200关以后继续增长
-    const extraLevels = Math.floor((level - 200) / 10);
-    width = Math.min(20 + extraLevels, maxDimensions.width);
-    height = Math.min(19 + extraLevels, maxDimensions.height);
-  }
-  
-  // 确保不超过最大尺寸
-  width = Math.min(width, maxDimensions.width);
-  height = Math.min(height, maxDimensions.height);
-  
-  return { width, height };
+  // 使用新的关卡增长规则
+  const { rows, cols } = getGridByLevel(level);
+  return { width: cols, height: rows };
 }
 
 // 挑战模式：直接使用最大尺寸铺满屏幕
 function getChallengeModeDimensions(screenWidth = 390, screenHeight = 844) {
-  return getMaxBoardDimensions(screenWidth, screenHeight, 280); // 挑战模式预留更多空间给HUD
+  // 挑战模式使用16x10的最大尺寸
+  return { width: 10, height: 16 };
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）

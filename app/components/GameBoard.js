@@ -16,6 +16,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { hasValidCombinations, reshuffleBoard, isBoardEmpty } from '../utils/gameLogic';
+import { getLevelLayout, adjustLayoutForSmallScreen } from '../utils/levelGrid';
 import { RescueModal } from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -119,56 +120,18 @@ export function GameBoard({
 
   const { width, height, tiles } = board;
   
-  // 统一间距系统 - 解决边距不一致问题
-  const availableWidth = screenWidth - 80; // 左右各40px边距
-  const availableHeight = maxBoardHeight || (screenHeight - 300); // 预留顶部和底部空间
+  // 使用新的布局系统计算尺寸
+  const topHUDHeight = isChallenge ? 80 : 120; // 挑战模式和闯关模式的HUD高度不同
+  let layout = getLevelLayout(board.level || 1, screenWidth, screenHeight, topHUDHeight);
   
-  // 计算基础间距 - 所有间距都基于这个值
-  const baseSpacing = Math.max(8, Math.min(20, 
-    Math.min(availableWidth, availableHeight) * 0.02
-  ));
+  // 处理极小屏幕情况
+  layout = adjustLayoutForSmallScreen(layout, board.level || 1);
   
-  // 计算方块大小 - 考虑间距后的可用空间
-  const availableWidthForTiles = availableWidth - (baseSpacing * 2); // 减去左右边距
-  const availableHeightForTiles = availableHeight - (baseSpacing * 2); // 减去上下边距
-  
-  const tileSize = Math.min(
-    (availableWidthForTiles - (width - 1) * baseSpacing) / width, // 减去方块间间距
-    (availableHeightForTiles - (height - 1) * baseSpacing) / height, // 减去方块间间距
-    45 // 最大方块大小
-  );
-  
-  // 重新计算实际需要的空间
-  const totalBoardWidth = width * tileSize + (width - 1) * baseSpacing + (baseSpacing * 2);
-  const totalBoardHeight = height * tileSize + (height - 1) * baseSpacing + (baseSpacing * 2);
-  
-  // 棋盘尺寸
-  const boardWidth = totalBoardWidth;
-  const boardHeight = totalBoardHeight;
-  
-  // 统一使用 baseSpacing 作为所有间距
-  const boardPadding = baseSpacing; // 棋盘边缘到方块的距离
-  const tileSpacing = baseSpacing;  // 方块之间的距离
+  const { tileSize, gap, boardPadding, boardWidth, boardHeight } = layout;
   
   // 方块尺寸
   const tileWidth = tileSize;
   const tileHeight = tileSize;
-  
-  // 计算单元格大小
-  const cellSize = Math.min(
-    availableWidth / width,
-    availableHeight / height,
-    50 // 最大方块大小
-  );
-  
-  // 方块尺寸调整 - 固定比例
-  const tileRatio = 0.88;
-  
-  const tileMargin = (cellSize - tileWidth) / 2; // 方块在单元格中的居中间距
-  
-  // 动态计算棋盘内边距 - 确保上下左右一致
-  const tileMarginX = tileMargin;
-  const tileMarginY = tileMargin;
 
   // Initialize tile scale animation
   const initTileScale = (index) => {

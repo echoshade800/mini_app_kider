@@ -10,7 +10,8 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  Modal
+  Modal,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -20,6 +21,7 @@ import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
 
 const CHALLENGE_DURATION = 60; // 60 seconds
+const { height: screenHeight } = Dimensions.get('window');
 
 export default function ChallengeScreen() {
   const { gameData, updateGameData } = useGameStore();

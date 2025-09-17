@@ -51,15 +51,27 @@ export default function Home() {
             onPress={() => setShowGuide(true)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={{ 
-              width: 36, 
-              height: 36, 
-              borderRadius: 18, 
-              backgroundColor: 'rgba(0,0,0,0.25)', 
+              width: 40, 
+              height: 40, 
+              borderRadius: 20, 
+              backgroundColor: 'rgba(255,255,255,0.9)', 
               alignItems: 'center', 
-              justifyContent: 'center' 
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 5,
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>I</Text>
+            <Text style={{ 
+              color: '#8B4513', 
+              fontWeight: '900', 
+              fontSize: 20,
+              textShadowColor: 'rgba(0,0,0,0.1)',
+              textShadowOffset: { width: 1, height: 1 },
+              textShadowRadius: 2,
+            }}>I</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -67,15 +79,27 @@ export default function Home() {
             onPress={() => router.push('/(tabs)/profile')}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={{ 
-              width: 36, 
-              height: 36, 
-              borderRadius: 18, 
-              backgroundColor: 'rgba(0,0,0,0.25)', 
+              width: 40, 
+              height: 40, 
+              borderRadius: 20, 
+              backgroundColor: 'rgba(255,255,255,0.9)', 
               alignItems: 'center', 
-              justifyContent: 'center' 
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 5,
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: '800' }}>⚙︎</Text>
+            <Text style={{ 
+              color: '#8B4513', 
+              fontWeight: '900', 
+              fontSize: 18,
+              textShadowColor: 'rgba(0,0,0,0.1)',
+              textShadowOffset: { width: 1, height: 1 },
+              textShadowRadius: 2,
+            }}>⚙︎</Text>
           </TouchableOpacity>
         </View>
 
@@ -87,23 +111,42 @@ export default function Home() {
           paddingHorizontal: 24 
         }}>
           <View style={{ 
-            paddingVertical: 14, 
-            paddingHorizontal: 18, 
-            borderRadius: 16, 
-            backgroundColor: 'rgba(255,255,255,0.85)',
+            paddingVertical: 16, 
+            paddingHorizontal: 24, 
+            borderRadius: 20, 
+            backgroundColor: 'rgba(255,248,220,0.95)',
+            borderWidth: 3,
+            borderColor: '#D2691E',
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 3,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+            minWidth: 280,
+            alignItems: 'center',
           }}>
+            <Text style={{ 
+              fontSize: 18, 
+              fontWeight: '800', 
+              color: '#8B4513',
+              textAlign: 'center',
+              marginBottom: 4,
+              textShadowColor: 'rgba(0,0,0,0.1)',
+              textShadowOffset: { width: 1, height: 1 },
+              textShadowRadius: 2,
+            }}>
+              {latestLevelName}
+            </Text>
             <Text style={{ 
               fontSize: 20, 
               fontWeight: '800', 
               color: '#5A3E12',
-              textAlign: 'center'
+              textAlign: 'center',
+              textShadowColor: 'rgba(0,0,0,0.1)',
+              textShadowOffset: { width: 1, height: 1 },
+              textShadowRadius: 2,
             }}>
-              {latestLevelName} · IQ：{iq}
+              IQ：{iq}
             </Text>
           </View>
         </View>
@@ -112,31 +155,49 @@ export default function Home() {
         <View style={{ 
           flexDirection: 'row', 
           justifyContent: 'center', 
-          gap: 16, 
-          paddingBottom: 28,
+          gap: 20, 
+          paddingBottom: 40,
           paddingHorizontal: 20
         }}>
           <TouchableOpacity
             accessibilityLabel="闯关模式"
             onPress={() => router.push('/(tabs)/levels')}
+            activeOpacity={0.8}
             style={{ 
               minWidth: 140, 
-              height: 60, 
-              borderRadius: 999, 
-              backgroundColor: '#F58B39', 
+              height: 64, 
+              borderRadius: 32, 
+              backgroundColor: '#FF8C42', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              paddingHorizontal: 24, 
+              paddingHorizontal: 28,
+              borderWidth: 3,
+              borderColor: '#E67E22',
               shadowColor: '#000', 
-              shadowOpacity: 0.2, 
-              shadowRadius: 8, 
-              elevation: 4 
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.3, 
+              shadowRadius: 10, 
+              elevation: 8,
+              transform: [{ scale: 1 }],
+            }}
+            onPressIn={(e) => {
+              e.target.setNativeProps({
+                style: { transform: [{ scale: 0.95 }] }
+              });
+            }}
+            onPressOut={(e) => {
+              e.target.setNativeProps({
+                style: { transform: [{ scale: 1 }] }
+              });
             }}
           >
             <Text style={{ 
               color: '#fff', 
               fontSize: 18, 
-              fontWeight: '800' 
+              fontWeight: '900',
+              textShadowColor: 'rgba(0,0,0,0.3)',
+              textShadowOffset: { width: 1, height: 1 },
+              textShadowRadius: 3,
             }}>
               LEVELS
             </Text>
@@ -145,24 +206,42 @@ export default function Home() {
           <TouchableOpacity
             accessibilityLabel="挑战模式"
             onPress={() => router.push('/(tabs)/challenge')}
+            activeOpacity={0.8}
             style={{ 
               minWidth: 140, 
-              height: 60, 
-              borderRadius: 999, 
-              backgroundColor: '#F26D21', 
+              height: 64, 
+              borderRadius: 32, 
+              backgroundColor: '#E74C3C', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              paddingHorizontal: 24, 
+              paddingHorizontal: 28,
+              borderWidth: 3,
+              borderColor: '#C0392B',
               shadowColor: '#000', 
-              shadowOpacity: 0.2, 
-              shadowRadius: 8, 
-              elevation: 4 
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.3, 
+              shadowRadius: 10, 
+              elevation: 8,
+              transform: [{ scale: 1 }],
+            }}
+            onPressIn={(e) => {
+              e.target.setNativeProps({
+                style: { transform: [{ scale: 0.95 }] }
+              });
+            }}
+            onPressOut={(e) => {
+              e.target.setNativeProps({
+                style: { transform: [{ scale: 1 }] }
+              });
             }}
           >
             <Text style={{ 
               color: '#fff', 
               fontSize: 18, 
-              fontWeight: '800' 
+              fontWeight: '900',
+              textShadowColor: 'rgba(0,0,0,0.3)',
+              textShadowOffset: { width: 1, height: 1 },
+              textShadowRadius: 3,
             }}>
               ARCADE
             </Text>
@@ -178,22 +257,33 @@ export default function Home() {
         >
           <View style={{ 
             flex: 1, 
-            backgroundColor: 'rgba(0,0,0,0.45)', 
+            backgroundColor: 'rgba(0,0,0,0.6)', 
             alignItems: 'center', 
             justifyContent: 'center', 
             padding: 24 
           }}>
             <View style={{ 
               width: '90%', 
-              borderRadius: 16, 
-              backgroundColor: '#fff', 
-              padding: 20 
+              borderRadius: 20, 
+              backgroundColor: '#FFF8DC',
+              borderWidth: 3,
+              borderColor: '#D2691E',
+              padding: 24,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.4,
+              shadowRadius: 12,
+              elevation: 12,
             }}>
               <Text style={{ 
-                fontSize: 18, 
+                fontSize: 20, 
                 fontWeight: '800', 
-                marginBottom: 8,
-                color: '#333'
+                marginBottom: 16,
+                color: '#8B4513',
+                textAlign: 'center',
+                textShadowColor: 'rgba(0,0,0,0.1)',
+                textShadowOffset: { width: 1, height: 1 },
+                textShadowRadius: 2,
               }}>
                 🎉 Welcome to Daycare Dash!
               </Text>
@@ -209,17 +299,30 @@ export default function Home() {
                 <TouchableOpacity 
                   onPress={() => setShowGuide(false)} 
                   style={{ 
-                    paddingVertical: 8, 
-                    paddingHorizontal: 12,
-                    minWidth: 44,
+                    paddingVertical: 12, 
+                    paddingHorizontal: 20,
+                    backgroundColor: '#FF8C42',
+                    borderRadius: 20,
+                    borderWidth: 2,
+                    borderColor: '#E67E22',
+                    minWidth: 80,
                     minHeight: 44,
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 4,
                   }}
                 >
                   <Text style={{ 
-                    color: '#F26D21', 
-                    fontWeight: '700' 
+                    color: '#fff', 
+                    fontWeight: '800',
+                    fontSize: 16,
+                    textShadowColor: 'rgba(0,0,0,0.2)',
+                    textShadowOffset: { width: 1, height: 1 },
+                    textShadowRadius: 2,
                   }}>
                     Got it!
                   </Text>

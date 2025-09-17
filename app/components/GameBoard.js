@@ -1,7 +1,7 @@
 /**
  * GameBoard Component - Enhanced interactive puzzle board with swap mode
- * Purpose: Render game tiles with touch interactions, explosion animations, and swap functionality
- * Features: Rectangle drawing, tile swapping, shake animations, explosion effects
+ * Purpose: Render game tiles with rectangle drawing and item click interactions
+ * Features: Rectangle drawing for normal mode, click selection for item modes, explosion effects
  */
 
 import React, { useState, useRef } from 'react';
@@ -23,7 +23,7 @@ export function GameBoard({
   board, 
   onTilesClear, 
   onTileClick, 
-  itemMode = null, // 'swapMaster' | 'fractalSplit' | null
+  itemMode = null, // 'swapMaster' | 'fractalSplit' | null - changes interaction from rectangle drawing to click selection
   selectedSwapTile = null,
   disabled = false,
   swapAnimations,
@@ -38,18 +38,12 @@ export function GameBoard({
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
-  const tileShakeAnimations = useRef({}).current;
 
-  // 清理函数
+  // Cleanup function for animations
   React.useEffect(() => {
     return () => {
-      // 组件卸载时停止所有动画
+      // Stop all animations when component unmounts
       Object.values(tileScales).forEach(anim => {
-        if (anim && anim.stopAnimation) {
-          anim.stopAnimation();
-        }
-      });
-      Object.values(tileShakeAnimations).forEach(anim => {
         if (anim && anim.stopAnimation) {
           anim.stopAnimation();
         }
@@ -71,22 +65,22 @@ export function GameBoard({
   const actualWidth = width;
   const actualHeight = height;
   
-  // 计算格子大小，数字方块更小
+  // Calculate cell size for consistent layout
   const cellSize = Math.min(
     (screenWidth - 80) / actualWidth, 
     (screenHeight - 300) / actualHeight,
     50
   );
   
-  // 数字方块的实际大小（恢复到之前的设置）
+  // Actual tile size with margin
   const tileSize = cellSize * 0.7;
   const tileMargin = (cellSize - tileSize) / 2;
   
-  // 棋盘背景大小
+  // Board background size
   const boardWidth = actualWidth * cellSize + 20;
   const boardHeight = actualHeight * cellSize + 20;
 
-  // 初始化tile动画
+  // Initialize tile scale animation
   const initTileScale = (index) => {
     if (!tileScales[index]) {
       tileScales[index] = new Animated.Value(1);
@@ -94,41 +88,7 @@ export function GameBoard({
     return tileScales[index];
   };
 
-  // 初始化tile晃动动画
-  const initTileShake = (index) => {
-    if (!tileShakeAnimations[index]) {
-      tileShakeAnimations[index] = new Animated.Value(0);
-    }
-    return tileShakeAnimations[index];
-  };
-
-  // 开始所有数字方块的晃动动画
-  const startShakeAnimation = () => {
-    // 道具模式不使用晃动动画，保持与普通模式一致的静态显示
-    return;
-  };
-
-  // 停止所有晃动动画
-  const stopShakeAnimation = () => {
-    Object.values(tileShakeAnimations).forEach(anim => {
-      if (anim && anim.stopAnimation) {
-        anim.stopAnimation();
-        anim.setValue(0);
-      }
-    });
-  };
-
-  // 道具模式不启动任何额外动画
-  React.useEffect(() => {
-    // 确保所有晃动动画都停止，保持静态显示
-    stopShakeAnimation();
-    
-    return () => {
-      stopShakeAnimation();
-    };
-  }, [itemMode]);
-
-  // 缩放tile
+  // Scale tile animation
   const scaleTile = (index, scale) => {
     const tileScale = initTileScale(index);
     if (tileScale) {
@@ -228,28 +188,22 @@ export function GameBoard({
   // 全屏触摸响应器
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
-      // 道具模式下不允许画框
+      // Disable rectangle drawing in item mode
       if (itemMode) return false;
       
-      // 检查是否在禁止画框的区域
+      // Check if in restricted area
       if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
       
-      // 道具模式下不允许画框
-      if (itemMode) return false;
-      
       const { pageX, pageY } = evt.nativeEvent;
-      // 只有在网格区域内才允许启动画框
+      // Only allow rectangle drawing in grid area
       return !disabled && isInsideGridArea(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
-      // 道具模式下不允许画框
+      // Disable rectangle drawing in item mode
       if (itemMode) return false;
       
-      // 检查是否在禁止画框的区域
+      // Check if in restricted area
       if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
-      
-      // 道具模式下不允许画框
-      if (itemMode) return false;
       
       const { pageX, pageY } = evt.nativeEvent;
       return !disabled && isInsideGridArea(pageX, pageY);
@@ -258,20 +212,20 @@ export function GameBoard({
     onPanResponderGrant: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
       
-      // 双重检查：确保在网格区域内
+      // Double check: ensure in grid area
       if (!isInsideGridArea(pageX, pageY)) return;
       
-      // 计算棋盘在屏幕上的位置
+      // Calculate board position on screen
       const boardCenterX = screenWidth / 2;
       const boardCenterY = screenHeight / 2;
       const boardLeft = boardCenterX - boardWidth / 2;
       const boardTop = boardCenterY - boardHeight / 2;
       
-      // 转换为相对于棋盘的坐标
+      // Convert to board-relative coordinates
       const relativeX = pageX - boardLeft - 10;
       const relativeY = pageY - boardTop - 10;
       
-      // 转换为网格坐标
+      // Convert to grid coordinates
       const startCol = Math.floor(relativeX / cellSize);
       const startRow = Math.floor(relativeY / cellSize);
       
@@ -282,7 +236,7 @@ export function GameBoard({
         endCol: startCol,
       });
       
-      // 开始选择动画
+      // Start selection animation
       Animated.timing(selectionOpacity, {
         toValue: 0.5,
         duration: 80,
@@ -295,34 +249,34 @@ export function GameBoard({
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      // 计算棋盘在屏幕上的位置
+      // Calculate board position on screen
       const boardCenterX = screenWidth / 2;
       const boardCenterY = screenHeight / 2;
       const boardLeft = boardCenterX - boardWidth / 2;
       const boardTop = boardCenterY - boardHeight / 2;
       
-      // 检查移动点是否在棋盘区域内
+      // Check if move point is within board area
       if (pageX < boardLeft + 10 || pageX > boardLeft + boardWidth - 10 ||
           pageY < boardTop + 10 || pageY > boardTop + boardHeight - 10) {
-        // 如果移动到棋盘外，保持当前选择不变
+        // If moved outside board, keep current selection
         return;
       }
       
       const relativeX = pageX - boardLeft - 10;
       const relativeY = pageY - boardTop - 10;
       
-      // 检查是否在有效的网格区域内
+      // Check if in valid grid area
       if (relativeX < 0 || relativeX >= actualWidth * cellSize ||
           relativeY < 0 || relativeY >= actualHeight * cellSize) {
-        return; // 不在有效网格区域内，保持当前选择
+        return; // Not in valid grid area, keep current selection
       }
       
       const endCol = Math.floor(relativeX / cellSize);
       const endRow = Math.floor(relativeY / cellSize);
       
-      // 确保网格坐标在有效范围内
+      // Ensure grid coordinates are in valid range
       if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
-        return; // 网格坐标超出范围，保持当前选择
+        return; // Grid coordinates out of range, keep current selection
       }
       
       setSelection(prev => ({
@@ -331,19 +285,19 @@ export function GameBoard({
         endCol,
       }));
 
-      // 更新悬停的tiles
+      // Update hovered tiles
       const newSelection = { ...selection, endRow, endCol };
       const newSelectedTiles = getSelectedTilesForSelection(newSelection);
       const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
       
-      // 只有被框选中的数字方块才变大
+      // Only selected tiles scale up
       newSelectedTiles.forEach(tile => {
         if (!hoveredTiles.has(tile.index)) {
-          scaleTile(tile.index, 1.2); // 被选中时放大
+          scaleTile(tile.index, 1.2); // Scale up when selected
         }
       });
       
-      // 恢复不再悬停的tiles到原始大小
+      // Restore tiles no longer hovered to original size
       hoveredTiles.forEach(index => {
         if (!newHoveredSet.has(index)) {
           scaleTile(index, 1);
@@ -358,13 +312,13 @@ export function GameBoard({
         handleSelectionComplete();
       }
       
-      // 恢复所有tile的缩放
+      // Restore all tile scaling
       hoveredTiles.forEach(index => {
         scaleTile(index, 1);
       });
       setHoveredTiles(new Set());
       
-      // 清除选择状态
+      // Clear selection state
       Animated.timing(selectionOpacity, {
         toValue: 0,
         duration: 200,
@@ -374,15 +328,15 @@ export function GameBoard({
       });
     },
     
-    // 允许其他组件终止画框（按钮优先）
+    // Allow other components to terminate rectangle drawing (buttons have priority)
     onPanResponderTerminationRequest: (evt) => {
-      // 如果触摸点在按钮区域，优先给按钮处理
+      // If touch point is in button area, give priority to buttons
       const { pageX, pageY } = evt.nativeEvent;
-      const buttonAreaBottom = screenHeight - 10; // 底部按钮区域
-      const buttonAreaTop = screenHeight - 200; // 按钮区域顶部
-      const topRestrictedHeight = 200; // 顶部限制区域
+      const buttonAreaBottom = screenHeight - 10; // Bottom button area
+      const buttonAreaTop = screenHeight - 200; // Button area top
+      const topRestrictedHeight = 200; // Top restricted area
       
-      // 如果触摸在按钮区域或限制区域，让其他组件优先处理
+      // If touch is in button area or restricted area, let other components handle
       if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
           pageY < topRestrictedHeight) {
         return true;
@@ -391,13 +345,13 @@ export function GameBoard({
       return true;
     },
     
-    // 被其他组件拒绝时清理状态
+    // Clean up state when rejected by other components
     onPanResponderReject: () => {
       resetSelection();
     },
   });
 
-  // 处理数字方块点击（道具模式）
+  // Handle tile click in item mode
   const handleTilePress = (row, col, value) => {
     if (!itemMode || disabled || value === 0) return;
     
@@ -418,12 +372,12 @@ export function GameBoard({
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
 
     if (sum === 10 && selectedTiles.length > 0) {
-      // Success - 创建爆炸效果
+      // Success - create explosion effect
       if (settings?.hapticsEnabled !== false) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       }
       
-      // 计算爆炸中心位置
+      // Calculate explosion center position
       const { startRow, startCol, endRow, endCol } = selection;
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
@@ -432,7 +386,7 @@ export function GameBoard({
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
-      // 爆炸动画
+      // Explosion animation
       explosionScale.setValue(0);
       explosionOpacity.setValue(1);
       
@@ -451,7 +405,7 @@ export function GameBoard({
         setExplosionAnimation(null);
       });
 
-      // 选择框动画
+      // Selection box animation
       Animated.sequence([
         Animated.timing(selectionOpacity, {
           toValue: 0.8,
@@ -469,7 +423,7 @@ export function GameBoard({
       });
 
     } else if (selectedTiles.length > 0) {
-      // Failure - 蓝色反馈
+      // Failure - blue feedback
       if (settings?.hapticsEnabled !== false) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
@@ -568,25 +522,25 @@ export function GameBoard({
   const renderTile = (value, row, col) => {
     const index = row * width + col;
     
-    // 只渲染有效范围内且有数值的方块
+    // Only render tiles within valid range and with values
     if (row < 0 || row >= height || col < 0 || col >= width || value === 0) {
       return null;
     }
 
-    // 统一的位置计算，道具模式和普通模式完全一致
+    // Unified position calculation - item mode and normal mode are identical
     const left = col * cellSize + 10 + tileMargin;
     const top = row * cellSize + 10 + tileMargin;
 
     const tileScale = initTileScale(index);
     
-    // 获取交换和分裂动画
+    // Get swap and fractal animations
     const swapAnim = swapAnimations ? swapAnimations.get(index) : null;
     const fractalAnim = fractalAnimations ? fractalAnimations.get(index) : null;
     
-    // 计算变换 - 只包含缩放和特殊动画，不包含晃动
+    // Calculate transforms - only scaling and special animations
     const transforms = [{ scale: tileScale }];
     
-    // 如果有交换动画，添加位置变换
+    // If swap animation exists, add position transform
     if (swapAnim && swapAnim.translateX && swapAnim.translateY) {
       transforms.push({
         translateX: swapAnim.translateX,
@@ -596,22 +550,22 @@ export function GameBoard({
       });
     }
     
-    // 如果有分裂动画，添加缩放和透明度变换
+    // If fractal animation exists, add scale transform
     if (fractalAnim && fractalAnim.scale) {
       transforms.push({
         scale: fractalAnim.scale,
       });
     }
     
-    // 检查是否是选中的交换方块
+    // Check if this is the selected swap tile
     const isSelected = selectedSwapTile && selectedSwapTile.index === index;
     
-    // 普通模式和道具模式使用相同的基础样式
-    let selectedBgColor = '#FFF8E1'; // 默认背景色
-    let selectedBorderColor = '#E0E0E0'; // 默认边框色
-    let selectedTextColor = '#333'; // 默认文字色
+    // Normal mode and item mode use same base styles
+    let selectedBgColor = '#FFF8E1'; // Default background
+    let selectedBorderColor = '#E0E0E0'; // Default border
+    let selectedTextColor = '#333'; // Default text color
     
-    // 只有在选中状态下才改变样式
+    // Only change style when selected
     if (isSelected) {
       if (itemMode === 'swapMaster') {
         selectedBgColor = '#E3F2FD';
@@ -624,7 +578,7 @@ export function GameBoard({
       }
     }
 
-    // 计算透明度
+    // Calculate opacity
     let opacity = 1;
     if (fractalAnim && fractalAnim.opacity) {
       opacity = fractalAnim.opacity;
@@ -661,7 +615,7 @@ export function GameBoard({
       </Animated.View>
     );
     
-    // 如果是道具模式，包装成可点击的组件
+    // If in item mode, wrap as clickable component
     if (itemMode) {
       return (
         <TouchableOpacity
@@ -701,7 +655,7 @@ export function GameBoard({
             }
           ]}
         >
-          {/* Render tiles */}
+          {/* Render all tiles */}
           {tiles.map((value, index) => {
             const row = Math.floor(index / width);
             const col = index % width;
@@ -725,7 +679,7 @@ export function GameBoard({
             </View>
           )}
 
-          {/* Explosion effect */}
+          {/* Explosion effect for successful clears */}
           {explosionAnimation && (
             <Animated.View
               style={[
@@ -741,7 +695,7 @@ export function GameBoard({
               <View style={styles.explosionCenter}>
                 <Text style={styles.explosionText}>💥</Text>
               </View>
-              {/* 爆炸粒子效果 */}
+              {/* Explosion particle effects */}
               {[...Array(12)].map((_, i) => (
                 <View
                   key={i}

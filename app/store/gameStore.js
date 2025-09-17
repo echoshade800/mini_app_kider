@@ -47,7 +47,7 @@ export const useGameStore = create((set, get) => ({
           maxLevel: 1,
           maxScore: 0,
           swapMasterItems: 3, // SwapMaster 道具数量
-          fractalSplitItems: 2, // FractalSplit 道具数量
+          splitItems: 2, // Split 道具数量
           lastPlayedLevel: 1,
         };
         await StorageUtils.setData(gameData);
@@ -114,7 +114,7 @@ export const useGameStore = create((set, get) => ({
         maxLevel: 0,
         maxScore: 0,
         swapMasterItems: 0,
-        fractalSplitItems: 0,
+        splitItems: 0,
         lastPlayedLevel: 1,
       };
       

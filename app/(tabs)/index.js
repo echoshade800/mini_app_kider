@@ -37,7 +37,7 @@ export default function HomeScreen() {
 
   const handleStartLevel = () => {
     try {
-      router.push('/(tabs)/levels');
+      router.replace('/(tabs)/levels');
     } catch (error) {
       console.error('Navigation error:', error);
       Alert.alert('导航错误', '无法进入关卡选择页面，请重试');
@@ -46,7 +46,7 @@ export default function HomeScreen() {
 
   const handleStartChallenge = () => {
     try {
-      router.push('/(tabs)/challenge');
+      router.replace('/(tabs)/challenge');
     } catch (error) {
       console.error('Navigation error:', error);
       Alert.alert('导航错误', '无法进入挑战模式，请重试');
@@ -131,7 +131,7 @@ export default function HomeScreen() {
       <ImageBackground
         source={{ uri: 'https://twycptozlvvvqxufzhik.supabase.co/storage/v1/object/public/kider1/daycare_dash_stroller_under_1mb.jpg' }}
         style={styles.backgroundImage}
-        resizeMode="cover"
+        resizeMode="contain"
       >
         <SafeAreaView style={styles.safeArea}>
           {/* Settings Button - Top Right */}
@@ -153,19 +153,23 @@ export default function HomeScreen() {
 
           {/* Invisible buttons overlaying the image buttons */}
           <View style={styles.buttonOverlays}>
-            {/* Level Mode Button - Left side of image */}
+            {/* Level Mode Button - Left side */}
             <TouchableOpacity 
               style={styles.levelModeOverlay}
               onPress={handleStartLevel}
               activeOpacity={0.7}
-            />
+            >
+              <Text style={styles.debugText}>闯关模式</Text>
+            </TouchableOpacity>
             
-            {/* Challenge Mode Button - Right side of image */}
+            {/* Challenge Mode Button - Right side */}
             <TouchableOpacity 
               style={styles.challengeModeOverlay}
               onPress={handleStartChallenge}
               activeOpacity={0.7}
-            />
+            >
+              <Text style={styles.debugText}>挑战模式</Text>
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </ImageBackground>
@@ -239,7 +243,8 @@ const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
     width: '100%',
-    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   safeArea: {
     flex: 1,
@@ -288,23 +293,42 @@ const styles = StyleSheet.create({
   },
   buttonOverlays: {
     flex: 1,
-    position: 'relative',
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 40,
   },
   levelModeOverlay: {
-    position: 'absolute',
-    left: '5%',
-    top: '35%',
-    width: '40%',
-    height: '30%',
-    backgroundColor: 'transparent',
+    flex: 1,
+    height: 200,
+    marginRight: 20,
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(76, 175, 80, 0.3)',
   },
   challengeModeOverlay: {
-    position: 'absolute',
-    right: '5%',
-    top: '35%',
-    width: '40%',
-    height: '30%',
-    backgroundColor: 'transparent',
+    flex: 1,
+    height: 200,
+    marginLeft: 20,
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 152, 0, 0.3)',
+  },
+  debugText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   modalOverlay: {
     flex: 1,

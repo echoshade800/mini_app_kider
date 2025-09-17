@@ -17,7 +17,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { hasValidCombinations, reshuffleBoard, isBoardEmpty } from '../utils/gameLogic';
-import { getCompleteLayout, getTilePosition } from '../utils/layout';
+import { useBoardMetrics } from '../hooks/useBoardMetrics';
 import { RescueModal } from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -47,26 +47,19 @@ export function GameBoard({
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
 
-  // Generate stable random rotation for each tile
-  const { width, height, tiles } = board;
-  
-  // 使用新的统一布局系统
+  // 使用新的布局系统
   const topUsed = isChallenge ? 110 : 100;
   const bottomUsed = isChallenge ? 130 : 120;
   
-  const boardMetrics = getCompleteLayout(
-    screenWidth,
-    screenHeight,
-    level,
+  const boardMetrics = useBoardMetrics({
     isChallenge,
+    level,
     topUsed,
     bottomUsed
-  );
-  
-  // 方块位置计算函数
-  const getTilePositionForBoard = (row, col) => {
-    return getTilePosition(row, col, boardMetrics.tileSize, boardMetrics.gap, boardMetrics.padding);
-  };
+  });
+
+  // Generate stable random rotation for each tile
+  const { width, height, tiles } = board;
 
   const getTileRotation = (row, col) => {
     const seed = row * 1000 + col;
@@ -161,28 +154,30 @@ export function GameBoard({
   const isInsideGridArea = (pageX, pageY) => {
     if (isInRestrictedArea(pageY)) return false;
 
-    const boardX = boardMetrics.boardX;
-    const boardY = boardMetrics.boardY;
-    const boardWidth = boardMetrics.boardWidth;
-    const boardHeight = boardMetrics.boardHeight;
-    const padding = boardMetrics.padding;
+    const boardX = boardMetrics.boardX || 0;
+    const boardY = boardMetrics.boardY || 0;
+    const boardWidth = boardMetrics.boardWidth || 0;
+    const boardHeight = boardMetrics.boardHeight || 0;
+    const padding = boardMetrics.padding || 0;
 
-    const innerLeft = boardX;
-    const innerTop = boardY;
+    const innerLeft = boardX + padding;
+    const innerTop = boardY + padding;
+    const innerWidth = boardWidth - padding * 2;
+    const innerHeight = boardHeight - padding * 2;
 
-    if (pageX < innerLeft + padding || pageX > innerLeft + innerWidth - padding ||
-        pageY < innerTop + padding || pageY > innerTop + boardHeight - padding) {
+    if (pageX < innerLeft || pageX > innerLeft + innerWidth ||
+        pageY < innerTop || pageY > innerTop + innerHeight) {
       return false;
     }
 
-    const relativeX = pageX - innerLeft - padding;
-    const relativeY = pageY - innerTop - padding;
+    const relativeX = pageX - innerLeft;
+    const relativeY = pageY - innerTop;
 
-    const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
-    const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+    const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
+    const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
 
-    if (relativeX < 0 || relativeX >= width * cellWidth - boardMetrics.gap ||
-        relativeY < 0 || relativeY >= height * cellHeight - boardMetrics.gap) {
+    if (relativeX < 0 || relativeX >= width * cellWidth - (boardMetrics.gap || 6) ||
+        relativeY < 0 || relativeY >= height * cellHeight - (boardMetrics.gap || 6)) {
       return false;
     }
 
@@ -258,9 +253,9 @@ export function GameBoard({
       
       if (!isInsideGridArea(pageX, pageY)) return;
       
-      const boardX = boardMetrics.boardX;
-      const boardY = boardMetrics.boardY;
-      const padding = boardMetrics.padding;
+      const boardX = boardMetrics.boardX || 0;
+      const boardY = boardMetrics.boardY || 0;
+      const padding = boardMetrics.padding || 0;
 
       const innerLeft = boardX;
       const innerTop = boardY;
@@ -268,8 +263,8 @@ export function GameBoard({
       const relativeX = pageX - innerLeft - padding;
       const relativeY = pageY - innerTop - padding;
 
-      const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
-      const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+      const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
+      const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
 
       const startCol = Math.floor(relativeX / cellWidth);
       const startRow = Math.floor(relativeY / cellHeight);
@@ -293,11 +288,11 @@ export function GameBoard({
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      const boardX = boardMetrics.boardX;
-      const boardY = boardMetrics.boardY;
-      const boardWidth = boardMetrics.boardWidth;
-      const boardHeight = boardMetrics.boardHeight;
-      const padding = boardMetrics.padding;
+      const boardX = boardMetrics.boardX || 0;
+      const boardY = boardMetrics.boardY || 0;
+      const boardWidth = boardMetrics.boardWidth || 0;
+      const boardHeight = boardMetrics.boardHeight || 0;
+      const padding = boardMetrics.padding || 0;
 
       const innerLeft = boardX;
       const innerTop = boardY;
@@ -310,11 +305,11 @@ export function GameBoard({
       const relativeX = pageX - innerLeft - padding;
       const relativeY = pageY - innerTop - padding;
 
-      const cellWidth = boardMetrics.tileSize + boardMetrics.gap;
-      const cellHeight = boardMetrics.tileSize + boardMetrics.gap;
+      const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
+      const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
 
-      if (relativeX < 0 || relativeX >= width * cellWidth - boardMetrics.gap ||
-          relativeY < 0 || relativeY >= height * cellHeight - boardMetrics.gap) {
+      if (relativeX < 0 || relativeX >= width * cellWidth - (boardMetrics.gap || 6) ||
+          relativeY < 0 || relativeY >= height * cellHeight - (boardMetrics.gap || 6)) {
         return;
       }
       
@@ -427,11 +422,11 @@ export function GameBoard({
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
 
-      const cellWidth = boardMetrics.tileWidth + boardMetrics.gap;
-      const cellHeight = boardMetrics.tileHeight + boardMetrics.gap;
+      const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
+      const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
 
-      const explosionX = centerCol * cellWidth + boardMetrics.tileWidth / 2;
-      const explosionY = centerRow * cellHeight + boardMetrics.tileHeight / 2;
+      const explosionX = centerCol * cellWidth + (boardMetrics.tileSize || 30) / 2;
+      const explosionY = centerRow * cellHeight + (boardMetrics.tileSize || 30) / 2;
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
@@ -525,13 +520,13 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    const cellWidth = boardMetrics.tileWidth + boardMetrics.gap;
-    const cellHeight = boardMetrics.tileHeight + boardMetrics.gap;
+    const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
+    const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
 
     const left = minCol * cellWidth;
     const top = minRow * cellHeight;
-    const selectionWidth = (maxCol - minCol + 1) * cellWidth - boardMetrics.gap;
-    const selectionHeight = (maxRow - minRow + 1) * cellHeight - boardMetrics.gap;
+    const selectionWidth = (maxCol - minCol + 1) * cellWidth - (boardMetrics.gap || 6);
+    const selectionHeight = (maxRow - minRow + 1) * cellHeight - (boardMetrics.gap || 6);
     
     return {
       position: 'absolute',
@@ -564,11 +559,11 @@ export function GameBoard({
     const maxRow = Math.max(startRow, endRow);
     const maxCol = Math.max(startCol, endCol);
     
-    const cellWidth = boardMetrics.tileWidth + boardMetrics.gap;
-    const cellHeight = boardMetrics.tileHeight + boardMetrics.gap;
+    const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
+    const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
 
-    const left = maxCol * cellWidth + boardMetrics.tileWidth;
-    const top = maxRow * cellHeight + boardMetrics.tileHeight;
+    const left = maxCol * cellWidth + (boardMetrics.tileSize || 30);
+    const top = maxRow * cellHeight + (boardMetrics.tileSize || 30);
     
     return {
       sum,
@@ -597,8 +592,8 @@ export function GameBoard({
 
   const renderGridLines = () => {
     const lines = [];
-    const cellWidth = boardMetrics.tileWidth + boardMetrics.gap;
-    const cellHeight = boardMetrics.tileHeight + boardMetrics.gap;
+    const cellWidth = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
+    const cellHeight = (boardMetrics.tileSize || 30) + (boardMetrics.gap || 6);
 
     // Vertical lines
     for (let i = 1; i < width; i++) {
@@ -611,7 +606,7 @@ export function GameBoard({
               left: i * cellWidth - boardMetrics.gap / 2,
               top: 0,
               width: 1,
-              height: height * cellHeight - boardMetrics.gap,
+              height: height * cellHeight - (boardMetrics.gap || 6),
             }
           ]}
         />
@@ -628,7 +623,7 @@ export function GameBoard({
             {
               left: 0,
               top: i * cellHeight - boardMetrics.gap / 2,
-              width: width * cellWidth - boardMetrics.gap,
+              width: width * cellWidth - (boardMetrics.gap || 6),
               height: 1,
             }
           ]}
@@ -723,7 +718,10 @@ export function GameBoard({
       return null;
     }
 
-    const { x, y } = boardMetrics.getTilePosition(row, col);
+    const { x, y } = boardMetrics.getTilePosition ? 
+      boardMetrics.getTilePosition(row, col) : 
+      { x: col * ((boardMetrics.tileSize || 30) + (boardMetrics.gap || 6)), 
+        y: row * ((boardMetrics.tileSize || 30) + (boardMetrics.gap || 6)) };
 
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
@@ -778,8 +776,8 @@ export function GameBoard({
           position: 'absolute',
           left: x,
           top: y,
-          width: boardMetrics.tileWidth,
-          height: boardMetrics.tileHeight,
+          width: boardMetrics.tileSize || 30,
+          height: boardMetrics.tileSize || 30,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -800,8 +798,8 @@ export function GameBoard({
           <Text style={[
             styles.tileText,
             { 
-              fontSize: Math.max(14, boardMetrics.tileWidth * 0.45),
-              lineHeight: boardMetrics.tileHeight,
+              fontSize: Math.max(14, (boardMetrics.tileSize || 30) * 0.45),
+              lineHeight: boardMetrics.tileSize || 30,
             }
           ]}>
             {value}
@@ -820,10 +818,10 @@ export function GameBoard({
   // 挑战模式使用全屏尺寸，闯关模式使用固定尺寸
   const boardContainerStyle = {
     position: 'absolute',
-    left: boardMetrics.boardX,
-    top: boardMetrics.boardY,
-    width: boardMetrics.boardWidth,
-    height: boardMetrics.boardHeight,
+    left: boardMetrics.boardX || 0,
+    top: boardMetrics.boardY || 0,
+    width: boardMetrics.boardWidth || 300,
+    height: boardMetrics.boardHeight || 300,
   };
 
   const selectionStyle = getSelectionStyle();
@@ -849,10 +847,10 @@ export function GameBoard({
           <View
             style={{
               position: 'absolute',
-              width: boardMetrics.boardWidth - boardMetrics.padding * 2,
-              height: boardMetrics.boardHeight - boardMetrics.padding * 2,
-              left: boardMetrics.padding,
-              top: boardMetrics.padding,
+              width: (boardMetrics.boardWidth || 300) - (boardMetrics.padding || 12) * 2,
+              height: (boardMetrics.boardHeight || 300) - (boardMetrics.padding || 12) * 2,
+              left: boardMetrics.padding || 12,
+              top: boardMetrics.padding || 12,
             }}
           >
             {/* Grid lines */}

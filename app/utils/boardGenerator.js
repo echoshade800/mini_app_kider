@@ -18,20 +18,25 @@ function seededRandom(seed) {
 }
 
 function getBoardDimensions(level) {
-  // 棋盘尺寸设计：优先使用长方形布局，参考截图样式
-  if (level <= 5) return { width: 4, height: 3 };   // 前5关用4x3长方形
-  if (level <= 10) return { width: 5, height: 4 };  // 6-10关用5x4长方形
-  if (level <= 20) return { width: 6, height: 4 };  // 11-20关用6x4长方形
-  if (level <= 30) return { width: 7, height: 5 };  // 21-30关用7x5长方形
-  if (level <= 45) return { width: 8, height: 5 };  // 31-45关用8x5长方形
-  if (level <= 60) return { width: 8, height: 6 };  // 46-60关用8x6长方形
-  if (level <= 80) return { width: 9, height: 6 };  // 61-80关用9x6长方形
-  if (level <= 100) return { width: 10, height: 7 }; // 81-100关用10x7长方形
-  if (level <= 130) return { width: 11, height: 8 }; // 101-130关用11x8长方形
-  if (level <= 160) return { width: 12, height: 8 }; // 131-160关用12x8长方形
-  if (level <= 180) return { width: 13, height: 9 }; // 161-180关用13x9长方形
-  if (level <= 200) return { width: 14, height: 10 }; // 181-200关用14x10长方形
-  return { width: 16, height: 11 }; // 200关后用16x11长方形（类似参考图的超宽布局）
+  // 棋盘尺寸设计：更长的长方形布局，增加数字方块数量
+  if (level <= 5) return { width: 6, height: 4 };   // 前5关用6x4长方形
+  if (level <= 10) return { width: 7, height: 5 };  // 6-10关用7x5长方形
+  if (level <= 20) return { width: 8, height: 5 };  // 11-20关用8x5长方形
+  if (level <= 30) return { width: 9, height: 6 };  // 21-30关用9x6长方形
+  if (level <= 45) return { width: 10, height: 6 }; // 31-45关用10x6长方形
+  if (level <= 60) return { width: 11, height: 7 }; // 46-60关用11x7长方形
+  if (level <= 80) return { width: 12, height: 7 }; // 61-80关用12x7长方形
+  if (level <= 100) return { width: 13, height: 8 }; // 81-100关用13x8长方形
+  if (level <= 130) return { width: 14, height: 8 }; // 101-130关用14x8长方形
+  if (level <= 160) return { width: 15, height: 9 }; // 131-160关用15x9长方形
+  if (level <= 180) return { width: 16, height: 9 }; // 161-180关用16x9长方形
+  if (level <= 200) return { width: 17, height: 10 }; // 181-200关用17x10长方形
+  return { width: 18, height: 11 }; // 200关后用18x11长方形（超宽布局）
+}
+
+function getChallengeModeDimensions() {
+  // 挑战模式使用固定的大尺寸长方形棋盘
+  return { width: 16, height: 11 }; // 176个方块的超大棋盘
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）
@@ -167,12 +172,12 @@ function ensureSumIsMultipleOf10(tiles) {
   return newTiles;
 }
 
-export function generateBoard(level, forceNewSeed = false) {
+export function generateBoard(level, forceNewSeed = false, isChallengeMode = false) {
   // 使用时间戳或固定种子，根据需要生成不同的棋盘
   const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
   const seed = `level_${level}_${baseSeed}`;
   const random = seededRandom(seed);
-  const { width, height } = getBoardDimensions(level);
+  const { width, height } = isChallengeMode ? getChallengeModeDimensions() : getBoardDimensions(level);
   const size = width * height;
   
   let attempts = 0;
@@ -346,12 +351,12 @@ export function generateBoard(level, forceNewSeed = false) {
   
   // 如果无法生成可解的棋盘，返回一个简单的可解棋盘
   console.warn(`Failed to generate solvable board for level ${level}, using fallback`);
-  const { width: fallbackWidth, height: fallbackHeight } = getBoardDimensions(level);
-  return generateFallbackBoard(level, fallbackWidth, fallbackHeight);
+  const { width: fallbackWidth, height: fallbackHeight } = isChallengeMode ? getChallengeModeDimensions() : getBoardDimensions(level);
+  return generateFallbackBoard(level, fallbackWidth, fallbackHeight, isChallengeMode);
 }
 
 // 生成后备的简单可解棋盘
-function generateFallbackBoard(level, width, height) {
+function generateFallbackBoard(level, width, height, isChallengeMode = false) {
   const size = width * height;
   const tiles = new Array(size).fill(0);
   
@@ -383,6 +388,7 @@ function generateFallbackBoard(level, width, height) {
     tiles: adjustedTiles,
     requiredSwaps: 0,
     level,
-    solvable: true
+    solvable: true,
+    isChallengeMode
   };
 }

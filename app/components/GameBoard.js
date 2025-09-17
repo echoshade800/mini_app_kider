@@ -67,16 +67,16 @@ export function GameBoard({
   
   // Calculate cell size for rectangular layout (prioritize width fitting)
   const maxBoardWidth = screenWidth - 60; // 减少水平边距
-  const maxBoardHeight = screenHeight - 280; // 为顶部和底部留出空间
+  const maxBoardHeight = screenHeight - 300; // 为顶部和底部留出更多空间
   
-  // 计算单元格大小，优先适配宽度（长方形布局）
+  // 计算单元格大小，优先适配宽度（支持更长的长方形布局）
   const cellSizeByWidth = maxBoardWidth / width;
   const cellSizeByHeight = maxBoardHeight / height;
-  const cellSize = Math.max(Math.min(cellSizeByWidth, cellSizeByHeight, 35), 20); // 减小方块尺寸
+  const cellSize = Math.max(Math.min(cellSizeByWidth, cellSizeByHeight, 32), 18); // 进一步减小方块尺寸以适应更多方块
   
   // Sticky note tile size - 更接近参考图的比例
-  const tileWidth = cellSize * 0.82; // 减小占比，参考第二张图的密集度
-  const tileHeight = cellSize * 0.82; // 保持紧凑布局
+  const tileWidth = cellSize * 0.85; // 稍微增加占比以保持可读性
+  const tileHeight = cellSize * 0.85; // 保持紧凑布局
   const tileMarginX = (cellSize - tileWidth) / 2;
   const tileMarginY = (cellSize - tileHeight) / 2;
   

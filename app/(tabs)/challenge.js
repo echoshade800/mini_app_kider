@@ -106,14 +106,13 @@ export default function ChallengeScreen() {
 
   const generateFullBoard = () => {
     // Generate completely filled board for challenge mode
-    const challengeLevel = 130 + Math.floor(Math.random() * 20);
-    const board = generateBoard(challengeLevel, true);
+    const challengeLevel = 100 + Math.floor(Math.random() * 50);
+    const board = generateBoard(challengeLevel, true, true); // 第三个参数表示挑战模式
     
     // Ensure board is completely filled (no empty tiles)
     const filledTiles = board.tiles.map(tile => tile === 0 ? Math.floor(Math.random() * 9) + 1 : tile);
-    const filledBoard = { ...board, tiles: filledTiles };
     
-    setCurrentBoard(board);
+    setCurrentBoard({ ...board, tiles: filledTiles });
   };
 
   const handleTilesClear = (clearedPositions) => {

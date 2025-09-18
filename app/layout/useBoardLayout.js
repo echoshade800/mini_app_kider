@@ -13,8 +13,8 @@ function canFit(usableW, usableH, rows, cols, gap) {
   return needW <= usableW && needH <= usableH;
 }
 
-function pickRowsCols(tileCount, usableW, usableH) {
-  // 简化：直接使用常见的行列组合
+function pickRowsCols(tileCount) {
+  // 预定义的行列组合
   const combinations = [
     { rows: 4, cols: 4 },   // 16 tiles
     { rows: 4, cols: 5 },   // 20 tiles
@@ -45,11 +45,8 @@ function pickRowsCols(tileCount, usableW, usableH) {
 }
 
 export function computeBoardLayout(usableW, usableH, tileCount) {
-  console.log('🔧 Starting layout computation:', { usableW, usableH, tileCount });
-  
   try {
-    let { rows, cols } = pickRowsCols(tileCount, usableW, usableH);
-    console.log('📊 Initial rows/cols:', { rows, cols });
+    let { rows, cols } = pickRowsCols(tileCount);
 
     let foundGap = null;
     for (let gap = GAP_MAX; gap >= GAP_MIN; gap--) {
@@ -59,9 +56,9 @@ export function computeBoardLayout(usableW, usableH, tileCount) {
       }
     }
 
-    // 如果找不到合适的间距，增加行列数
+    // 如果找不到合适的间距，增加列数
     let attempts = 0;
-    while (foundGap === null && attempts < 10) {
+    while (foundGap === null && attempts < 5) {
       cols = cols + 1;
       for (let gap = GAP_MAX; gap >= GAP_MIN; gap--) {
         if (canFit(usableW, usableH, rows, cols, gap)) { 
@@ -104,20 +101,9 @@ export function computeBoardLayout(usableW, usableH, tileCount) {
       }
     }
 
-    const result = { 
+    return { 
       rows, cols, gap, padding, boardW, boardH, offsetX, offsetY, slots, tileCount 
     };
-    
-    console.log('✅ Layout computation successful:', {
-      rows: result.rows,
-      cols: result.cols,
-      gap: result.gap,
-      boardW: result.boardW,
-      boardH: result.boardH,
-      slotsCount: result.slots.length
-    });
-    
-    return result;
   } catch (error) {
     console.error('❌ Layout computation failed:', error);
     
@@ -167,7 +153,6 @@ export function useBoardLayout(usableW, usableH, tileCount) {
     }
     
     const layout = computeBoardLayout(safeUsableW, safeUsableH, safeTileCount);
-    console.log('📐 Layout result:', layout ? 'success' : 'failed');
     return layout;
   }, [usableW, usableH, tileCount]);
 }

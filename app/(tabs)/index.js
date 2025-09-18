@@ -19,25 +19,6 @@ export default function Home() {
   const [iq, setIq] = useState(0);
   const [showGuide, setShowGuide] = useState(false);
 
-  const handleChallengePress = () => {
-    console.log('🎮 [DEBUG] Challenge button clicked');
-    try {
-      console.log('🎮 [DEBUG] Current route info:', router);
-      console.log('🎮 [DEBUG] Navigating to challenge mode...');
-      // 尝试不同的导航方式
-      console.log('🎮 [DEBUG] Trying router.push...');
-      router.push('/challenge');
-      console.log('🎮 [DEBUG] Navigation command executed');
-      
-      // 延迟检查导航是否成功
-      setTimeout(() => {
-        console.log('🎮 [DEBUG] Checking navigation result after 1s...');
-      }, 1000);
-    } catch (error) {
-      console.error('🎮 [ERROR] Navigation failed:', error);
-    }
-  };
-
   useEffect(() => {
     (async () => {
       try {
@@ -114,7 +95,7 @@ export default function Home() {
           
           <TouchableOpacity
             style={[styles.mainButton, styles.arcadeButton]}
-            onPress={handleChallengePress}
+            onPress={() => router.push('/(tabs)/challenge')}
             accessibilityLabel="ARCADE 按钮"
             activeOpacity={0.8}
             pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}

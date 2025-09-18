@@ -8,16 +8,11 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
-  console.log('📱 [DEBUG] TabLayout rendering...');
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { 
-          display: 'none',
-          position: 'absolute',
-          bottom: -100,
-        },
+        tabBarStyle: { display: 'none' },
       }}>
       <Tabs.Screen
         name="index"

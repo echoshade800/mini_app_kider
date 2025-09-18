@@ -21,8 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
-import { generateBoard } from '../utils/boardGenerator';
-import { getChallengeGridConfig } from '../utils/boardLayout';
+import { generateChallengeBoard } from '../utils/boardGenerator';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CHALLENGE_DURATION = 60; // 60 seconds
@@ -92,8 +91,6 @@ function reshuffleBoard(tiles, width, height) {
 }
 
 export default function ChallengeScreen() {
-  console.log('🎯 [DEBUG] ChallengeScreen component rendering...');
-  
   const { gameData, updateGameData } = useGameStore();
   const [gameState, setGameState] = useState('ready'); // ready, playing, finished
   const [currentIQ, setCurrentIQ] = useState(0);
@@ -127,13 +124,6 @@ export default function ChallengeScreen() {
   
   const timerRef = useRef();
 
-  console.log('🎯 [DEBUG] ChallengeScreen state:', {
-    gameState,
-    currentBoard: currentBoard ? 'exists' : 'null',
-    timeLeft,
-    currentIQ
-  });
-
   const noSolutionMessages = [
     "Brain Freeze!",
     "Out of Juice!",
@@ -142,26 +132,18 @@ export default function ChallengeScreen() {
   ];
 
   useEffect(() => {
-    console.log('🎯 [DEBUG] ChallengeScreen useEffect triggered, gameState:', gameState);
-    console.log('🎯 [DEBUG] Current board state:', currentBoard ? 'exists' : 'null');
-    
     if (gameState === 'playing') {
-      console.log('🎯 [DEBUG] Starting timer and progress animation...');
       startTimer();
       startProgressAnimation();
     }
     
     // Auto-generate board when component mounts
     if (!currentBoard) {
-      console.log('🎯 [DEBUG] Generating initial board...');
       generateNewBoard();
-    } else {
-      console.log('🎯 [DEBUG] Board already exists, skipping generation');
     }
     
     return () => {
       if (timerRef.current) {
-        console.log('🎯 [DEBUG] Cleaning up timer');
         clearInterval(timerRef.current);
       }
     };
@@ -189,12 +171,10 @@ export default function ChallengeScreen() {
   };
 
   const startChallenge = () => {
-    console.log('🎯 [DEBUG] Starting challenge...');
     setGameState('playing');
     setCurrentIQ(0);
     setTimeLeft(CHALLENGE_DURATION);
     setReshuffleCount(0);
-    console.log('🎯 [DEBUG] Challenge state updated, generating new board...');
     generateNewBoard();
   };
 
@@ -214,49 +194,10 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    console.log('🎯 [DEBUG] generateNewBoard called');
-    try {
-      console.log('🎯 [DEBUG] Getting challenge grid config...');
-      const { rows, cols } = getChallengeGridConfig();
-      console.log('🎯 [DEBUG] Challenge grid config:', { rows, cols });
-      
-      console.log('🎯 [DEBUG] Calling generateBoard with level 130...');
-      const board = generateBoard(130, true, true); // 高难度关卡
-      console.log('🎯 [DEBUG] Generated board:', { 
-        width: board.width, 
-        height: board.height, 
-        tilesLength: board.tiles ? board.tiles.length : 'undefined',
-        firstFewTiles: board.tiles ? board.tiles.slice(0, 10) : 'undefined'
-      });
-      
-      // 验证棋盘数据
-      if (!board || !board.tiles || board.tiles.length === 0) {
-        console.error('🎯 [ERROR] Invalid board generated:', board);
-        return;
-      }
-      
-      setCurrentBoard(board);
-      setReshuffleCount(0);
-      console.log('🎯 [DEBUG] Board set successfully');
-    } catch (error) {
-      console.error('🎯 [ERROR] Failed to generate board:', error);
-      console.error('🎯 [ERROR] Error stack:', error.stack);
-      
-      console.log('🎯 [DEBUG] Setting fallback board due to error');
-      // 设置一个简单的后备棋盘
-      const fallbackBoard = {
-        width: 6,
-        height: 6,
-        tiles: new Array(36).fill(0).map((_, i) => (i % 2 === 0 ? 5 : 5)),
-        seed: `fallback_${Date.now()}`,
-        level: 130,
-        solvable: true,
-        isChallengeMode: true,
-      };
-      console.log('🎯 [DEBUG] Using fallback board:', fallbackBoard);
-      setCurrentBoard(fallbackBoard);
-      console.log('🎯 [DEBUG] Fallback board set');
-    }
+    // 生成满盘棋盘，传入屏幕尺寸以铺满屏幕
+    const board = generateChallengeBoard(screenWidth, screenHeight);
+    setCurrentBoard(board);
+    setReshuffleCount(0);
   };
 
   const checkForRescue = () => {
@@ -318,8 +259,10 @@ export default function ChallengeScreen() {
     // 检查棋盘是否完全清空
     const hasRemainingTiles = newTiles.some(tile => tile > 0);
     if (!hasRemainingTiles) {
-      // 棋盘全清，延迟生成新棋盘避免闪烁
-      setTimeout(generateNewBoard, 800);
+      // Board cleared, generate new full board
+      setTimeout(() => {
+        generateNewBoard();
+      }, 1000);
     } else {
       // 延迟检查是否有有效组合
       setTimeout(() => {
@@ -402,20 +345,12 @@ export default function ChallengeScreen() {
   };
 
   const handleReturn = () => {
-    console.log('🎯 [DEBUG] handleReturn called');
     if (timerRef.current) {
       clearInterval(timerRef.current);
-      console.log('🎯 [DEBUG] Timer cleared');
     }
     setShowResults(false);
     setGameState('ready');
-    console.log('🎯 [DEBUG] Navigating back to home...');
-    try {
-      router.replace('/');
-      console.log('🎯 [DEBUG] Navigation to home executed');
-    } catch (error) {
-      console.error('🎯 [ERROR] Navigation to home failed:', error);
-    }
+    router.replace('/(tabs)');
   };
 
   const handleAgain = () => {
@@ -450,23 +385,12 @@ export default function ChallengeScreen() {
   };
 
   return (
-    <>
-    {console.log('🎯 [DEBUG] ChallengeScreen rendering JSX...')}
-    {console.log('🎯 [DEBUG] Render state:', { 
-      gameState, 
-      currentBoard: currentBoard ? `${currentBoard.width}x${currentBoard.height}` : 'null',
-      timeLeft,
-      currentIQ 
-    })}
     <SafeAreaView style={styles.container}>
-      {console.log('🎯 [DEBUG] SafeAreaView rendering...')}
       {/* HUD */}
-      <View style={styles.hud} pointerEvents="box-none">
-        {console.log('🎯 [DEBUG] HUD rendering...')}
+      <View style={[styles.hud, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000 }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={handleReturn}
-          pointerEvents="auto"
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
@@ -492,67 +416,61 @@ export default function ChallengeScreen() {
         <TouchableOpacity 
           style={styles.settingsButton}
           onPress={() => setShowSettings(true)}
-          pointerEvents="auto"
         >
           <Ionicons name="settings" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      {/* 棋盘区域 */}
-      <View style={styles.boardArea}>
-        {console.log('🎯 [DEBUG] Board area rendering, gameState:', gameState)}
-        {gameState === 'ready' && (
-          <>
-          {console.log('🎯 [DEBUG] Rendering ready overlay...')}
-          <View style={styles.readyOverlay}>
-            <View style={styles.readyContent}>
-              <Text style={styles.readyTitle}>Challenge Mode</Text>
-              <Text style={styles.readySubtitle}>Draw large rectangles to clear tiles!</Text>
-              <TouchableOpacity style={styles.startButton} onPress={startChallenge}>
-                <Text style={styles.startButtonText}>START CHALLENGE</Text>
-              </TouchableOpacity>
+      {/* Game Board - Full Screen */}
+      {(gameState === 'ready' || gameState === 'playing') && (
+        <>
+          {gameState === 'ready' && (
+            <View style={[styles.readyOverlay, { zIndex: 2000 }]}>
+              <View style={styles.readyContent}>
+                <Text style={styles.readyTitle}>Challenge Mode</Text>
+                <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
+                <TouchableOpacity style={styles.startButton} onPress={startChallenge}>
+                  <Text style={styles.startButtonText}>START CHALLENGE</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-          </>
-        )}
-        
-        {currentBoard && (
-          <>
-          {console.log('🎯 [DEBUG] Rendering GameBoard with board:', {
-            width: currentBoard.width,
-            height: currentBoard.height,
-            tilesCount: currentBoard.tiles ? currentBoard.tiles.length : 'undefined'
-          })}
-          <GameBoard 
-            board={currentBoard}
-            onTilesClear={handleTilesClear}
-            onTileClick={handleTileClick}
-            itemMode={itemMode}
-            selectedSwapTile={selectedSwapTile}
-            swapAnimations={swapAnimationsRef.current}
-            fractalAnimations={fractalAnimationsRef.current}
-            onBoardRefresh={handleBoardRefresh}
-            disabled={gameState !== 'playing'}
-            isChallenge={true}
-            availableWidth={screenWidth - 20} // 减少边距，铺满界面
-            availableHeight={screenHeight - 180} // 扣除顶部HUD和底部道具栏，铺满有效区域
-          />
-          </>
-        )}
-        
-        {!currentBoard && (
-          <>
-          {console.log('🎯 [DEBUG] No board available, showing loading...')}
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ color: '#fff', fontSize: 18 }}>Loading board...</Text>
-          </View>
-          </>
-        )}
-      </View>
+          )}
+          
+          {currentBoard && (
+            <GameBoard 
+              board={currentBoard}
+              onTilesClear={handleTilesClear}
+              onTileClick={handleTileClick}
+              itemMode={itemMode}
+              selectedSwapTile={selectedSwapTile}
+              swapAnimations={swapAnimationsRef.current}
+              fractalAnimations={fractalAnimationsRef.current}
+              onBoardRefresh={handleBoardRefresh}
+              disabled={gameState !== 'playing'}
+              isChallenge={true}
+            />
+          )}
+        </>
+      )}
+
+      {gameState === 'finished' && currentBoard && (
+        <GameBoard 
+          board={currentBoard}
+          onTilesClear={handleTilesClear}
+          onTileClick={handleTileClick}
+          itemMode={itemMode}
+          selectedSwapTile={selectedSwapTile}
+          swapAnimations={swapAnimationsRef.current}
+          fractalAnimations={fractalAnimationsRef.current}
+          onBoardRefresh={handleBoardRefresh}
+          disabled={true}
+          isChallenge={true}
+        />
+      )}
 
       {/* 底部道具栏 - 固定在屏幕最底部 */}
       {gameState === 'playing' && (
-        <View style={styles.itemsBar} pointerEvents="box-none">
+        <View style={[styles.itemsBar, { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000 }]}>
           <TouchableOpacity 
             style={[
               styles.itemButton,
@@ -562,7 +480,6 @@ export default function ChallengeScreen() {
             onPress={itemMode === 'swapMaster' ? handleCancelItem : handleUseSwapMaster}
             disabled={(gameData?.swapMasterItems || 0) <= 0 && itemMode !== 'swapMaster'}
             activeOpacity={0.7}
-            pointerEvents="auto"
           >
             <Ionicons 
               name={itemMode === 'swapMaster' ? "close" : "shuffle"} 
@@ -585,7 +502,6 @@ export default function ChallengeScreen() {
             onPress={itemMode === 'fractalSplit' ? handleCancelItem : handleUseFractalSplit}
             disabled={(gameData?.fractalSplitItems || 0) <= 0 && itemMode !== 'fractalSplit'}
             activeOpacity={0.7}
-            pointerEvents="auto"
           >
             <Ionicons 
               name={itemMode === 'fractalSplit' ? "close" : "git-branch"} 
@@ -603,7 +519,7 @@ export default function ChallengeScreen() {
 
       {/* No Solution Overlay */}
       {showNoSolution && (
-        <View style={styles.noSolutionOverlay}>
+        <View style={[styles.noSolutionOverlay, { zIndex: 3000 }]}>
           <Text style={styles.noSolutionText}>{noSolutionMessage}</Text>
         </View>
       )}
@@ -654,7 +570,6 @@ export default function ChallengeScreen() {
         </View>
       </Modal>
     </SafeAreaView>
-    </>
   );
 }
 
@@ -662,6 +577,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a2e',
+  },
+  fullScreenBoard: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   hud: {
     flexDirection: 'row',
@@ -671,7 +594,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingTop: 50, // 为状态栏留出空间
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    zIndex: 1000,
   },
   backButton: {
     padding: 8,
@@ -706,9 +628,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
-  boardArea: {
+  readyScreen: {
     flex: 1,
-    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
   },
   readyOverlay: {
     position: 'absolute',
@@ -719,7 +643,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(26, 26, 46, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 100,
+    zIndex: 1000,
   },
   readyContent: {
     alignItems: 'center',
@@ -749,6 +673,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  gameArea: {
+    flex: 1,
+    backgroundColor: '#1E5A3C', // 绿色背景铺满
+    margin: 20, // 与屏幕边缘的距离
+    borderRadius: 16,
+    borderWidth: 8,
+    borderColor: '#8B5A2B', // 木框边框
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
+  },
   noSolutionOverlay: {
     position: 'absolute',
     top: 0,
@@ -758,7 +698,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 200,
   },
   noSolutionText: {
     color: '#ff6b6b',
@@ -868,7 +807,6 @@ const styles = StyleSheet.create({
     paddingBottom: 30, // 为底部安全区域留出空间
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     gap: 20,
-    zIndex: 1000,
   },
   itemButton: {
     width: 60,

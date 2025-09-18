@@ -46,7 +46,7 @@ export default function LevelDetailScreen() {
   useEffect(() => {
     if (level && level > 0 && level <= 200) {
       try {
-        const board = generateBoard(level);
+        const board = generateBoard(level, false, false); // 闯关模式
         setCurrentBoard(board);
       } catch (error) {
         console.error('Failed to generate board:', error);
@@ -426,7 +426,7 @@ export default function LevelDetailScreen() {
           text: '确定', 
           onPress: () => {
             try {
-              const board = generateBoard(level, true, false, screenWidth, screenHeight); // Force new board
+              const board = generateBoard(level, true, false); // 闯关模式，强制新棋盘
               setCurrentBoard(board);
               setShowSuccess(false);
             } catch (error) {

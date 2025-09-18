@@ -194,8 +194,8 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 生成满盘棋盘，传入屏幕尺寸以铺满屏幕
-    const board = generateChallengeBoard(screenWidth, screenHeight);
+    // 生成挑战模式棋盘
+    const board = generateBoard(130, true, true); // 挑战模式，强制新种子
     setCurrentBoard(board);
     setReshuffleCount(0);
   };

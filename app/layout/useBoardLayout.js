@@ -78,8 +78,18 @@ export function computeBoardLayout(usableW, usableH, tileCount) {
 
 export function useBoardLayout(usableW, usableH, tileCount) {
   return useMemo(() => {
-    console.log('🎯 useBoardLayout called with:', { usableW, usableH, tileCount });
-    if (usableW <= 0 || usableH <= 0 || tileCount <= 0) return null;
+    // 确保有合理的默认值
+    const safeUsableW = Math.max(usableW || 350, 350);
+    const safeUsableH = Math.max(usableH || 400, 400);
+    const safeTileCount = Math.max(tileCount || 16, 1);
+    
+    console.log('🎯 useBoardLayout called with:', { 
+      original: { usableW, usableH, tileCount },
+      safe: { safeUsableW, safeUsableH, safeTileCount }
+    });
+    
+    if (safeTileCount <= 0) return null;
+    
     const layout = computeBoardLayout(usableW, usableH, tileCount);
     console.log('📐 Layout computed:', {
       rows: layout.rows,

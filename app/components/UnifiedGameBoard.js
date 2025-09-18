@@ -24,23 +24,24 @@ export function UnifiedGameBoard({
   disabled = false,
   swapAnimations = new Map(),
   fractalAnimations = new Map(),
-  containerHeight = 600 // 设置默认高度
+  containerHeight = 600
 }) {
   const { settings } = useGameStore();
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [containerSize, setContainerSize] = useState({ width: 350, height: 600 }); // 设置合理的默认值
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
 
-  // 计算可用区域（扣除安全区域）
-  const usableHeight = containerSize.height > 0 ? containerSize.height - 240 : 400; // 扣除顶部120px + 底部120px，设置最小高度
+  // 计算可用区域
+  const usableWidth = Math.max(containerSize.width, 350); // 最小宽度350
+  const usableHeight = Math.max(containerSize.height - 240, 400); // 扣除安全区域，最小高度400
   const layout = useBoardLayout(containerSize.width, usableHeight, board?.tiles?.filter(t => t > 0).length || 0);
 
   const onContainerLayout = useCallback((event) => {
     const { width, height } = event.nativeEvent.layout;
-    console.log('🔍 Container layout:', { width, height, containerHeight });
+    console.log('🔍 Container layout:', { width, height, containerHeight, usableWidth: width, usableHeight: height - 240 });
     setContainerSize({ width, height });
   }, []);
 
@@ -424,7 +425,7 @@ export function UnifiedGameBoard({
   const selectionStyle = getSelectionStyle();
 
   return (
-    <View style={styles.container} onLayout={onContainerLayout}>
+    <View style={[styles.container, { minWidth: 350, minHeight: 600 }]} onLayout={onContainerLayout}>
       <View 
         style={[
           styles.boardContainer,
@@ -453,6 +454,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
+    minWidth: 350,
+    minHeight: 600,
   },
   loadingContainer: {
     flex: 1,

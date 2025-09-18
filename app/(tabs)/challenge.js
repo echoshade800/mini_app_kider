@@ -320,7 +320,7 @@ export default function ChallengeScreen() {
               swapAnimations={swapAnimationsRef.current}
               fractalAnimations={fractalAnimationsRef.current}
               disabled={gameState !== 'playing'}
-              containerHeight={0} // 让组件自己计算
+              containerHeight={600}
             />
           )}
         </>
@@ -335,7 +335,7 @@ export default function ChallengeScreen() {
           swapAnimations={swapAnimationsRef.current}
           fractalAnimations={fractalAnimationsRef.current}
           disabled={true}
-          containerHeight={0}
+          containerHeight={600}
         />
       )}
 

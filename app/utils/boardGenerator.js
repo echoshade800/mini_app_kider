@@ -28,20 +28,27 @@ function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
 // 挑战模式：直接使用最大尺寸铺满屏幕
 function getChallengeModeDimensions(screenWidth = 390, screenHeight = 844) {
   // 挑战模式使用更大的尺寸以充分利用屏幕空间
-  // 考虑到顶部HUD(约74px)和底部道具栏(约70px)，剩余空间
-  const availableHeight = screenHeight - 144; // 预留顶部和底部空间
+  // 精确计算顶部HUD和底部道具栏的实际占用空间
+  // 顶部HUD: paddingVertical(12) + paddingTop(50) + 内容高度(24) = 86px
+  // 底部道具栏: paddingVertical(20) + paddingBottom(30) + 按钮高度(60) = 110px
+  const topReserved = 86;
+  const bottomReserved = 110;
+  const availableHeight = screenHeight - topReserved - bottomReserved;
   const availableWidth = screenWidth - 40; // 预留左右边距
   
-  // 基于可用空间计算最优行列数
-  const idealTileSize = 28; // 挑战模式使用更小的方块以容纳更多
-  const gap = 3; // 更紧密的间距
+  // 缩小方块尺寸以容纳更多方块
+  const idealTileSize = 24; // 进一步缩小方块尺寸
+  const gap = 2; // 更紧密的间距
+  const boardPadding = 8; // 木头边框内边距
   
-  const maxCols = Math.floor((availableWidth - 24) / (idealTileSize + gap));
-  const maxRows = Math.floor((availableHeight - 24) / (idealTileSize + gap));
+  // 计算在可用空间内能放置的最大行列数
+  // 公式: (可用空间 - 2*边距) / (方块尺寸 + 间距) 向下取整，最后一个方块不需要间距
+  const maxCols = Math.floor((availableWidth - 2 * boardPadding + gap) / (idealTileSize + gap));
+  const maxRows = Math.floor((availableHeight - 2 * boardPadding + gap) / (idealTileSize + gap));
   
-  // 限制在合理范围内，确保可玩性
-  const cols = Math.min(Math.max(maxCols, 10), 14);
-  const rows = Math.min(Math.max(maxRows, 15), 20);
+  // 确保最小可玩性，但尽量使用计算出的最大值
+  const cols = Math.max(maxCols, 8); // 最少8列
+  const rows = Math.max(maxRows, 12); // 最少12行
   
   return { width: cols, height: rows };
 }

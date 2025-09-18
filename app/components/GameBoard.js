@@ -23,11 +23,16 @@ import { RescueModal } from './RescueModal';
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // 统一尺寸计算常量
-const GAP = 6;         // 方块间距
-const PAD = 12;        // 棋盘内边距
-const TILE_MIN = 30;
+const GAP = 6;         // 方块间距（闯关模式）
+const PAD = 12;        // 棋盘内边距（闯关模式）
+const TILE_MIN = 30;   // 闯关模式方块尺寸
 const TILE_IDEAL = 36;
 const TILE_MAX = 42;
+
+// 挑战模式专用常量
+const CHALLENGE_GAP = 2;     // 挑战模式方块间距
+const CHALLENGE_PAD = 8;     // 挑战模式棋盘内边距
+const CHALLENGE_TILE = 24;   // 挑战模式固定方块尺寸
 
 // 像素对齐函数
 function roundPx(v) {
@@ -35,20 +40,37 @@ function roundPx(v) {
 }
 
 // 统一网格布局计算
-function computeGridLayout({ rows, cols, boardWidth, boardHeight }) {
+function computeGridLayout({ rows, cols, boardWidth, boardHeight, isChallenge = false }) {
+  if (isChallenge) {
+    // 挑战模式使用固定尺寸，最大化利用空间
+    const tile = roundPx(CHALLENGE_TILE);
+    const gap = roundPx(CHALLENGE_GAP);
+    const pad = roundPx(CHALLENGE_PAD);
+    
+    return {
+      tile,
+      gap,
+      pad,
+      getXY: (r, c) => ({
+        x: roundPx(pad + c * (tile + gap)),
+        y: roundPx(pad + r * (tile + gap)),
+      }),
+      innerWidth: roundPx(pad * 2 + cols * tile + (cols - 1) * gap),
+      innerHeight: roundPx(pad * 2 + rows * tile + (rows - 1) * gap),
+    };
+  }
+  
+  // 闯关模式的原有逻辑
   const innerW = boardWidth - PAD * 2 - GAP * (cols - 1);
   const innerH = boardHeight - PAD * 2 - GAP * (rows - 1);
 
-  // 按列和按行能容纳的最大 tile 尺寸
   let sizeByW = innerW / cols;
   let sizeByH = innerH / rows;
 
-  // 取较小者并贴近理想值，再做区间夹取
   let tileSize = Math.min(sizeByW, sizeByH);
   if (Math.abs(tileSize - TILE_IDEAL) <= 4) tileSize = TILE_IDEAL;
   tileSize = Math.max(TILE_MIN, Math.min(TILE_MAX, tileSize));
 
-  // 重新计算并四舍五入到像素
   const tile = roundPx(tileSize);
   const gap = roundPx(GAP);
   const pad = roundPx(PAD);
@@ -863,6 +885,7 @@ export function GameBoard({
       cols: width,
       boardWidth,
       boardHeight,
+      isChallenge,
     });
     
     setBoardLayout({

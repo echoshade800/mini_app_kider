@@ -3,7 +3,7 @@
  * Purpose: Generate solvable number puzzles with appropriate difficulty scaling
  * Features: Fixed board size per level, guaranteed solvability, line selection support
  */
-import { getGridByLevel, getLevelLayout } from '../utils/levelGrid';
+import { getGridByLevel } from '../utils/layout';
 
 // Deterministic random number generator
 function seededRandom(seed) {
@@ -16,41 +16,6 @@ function seededRandom(seed) {
     state = ((state * 1103515245) + 12345) & 0x7fffffff;
     return state / 0x7fffffff;
   };
-}
-
-// 闯关模式：使用新的关卡增长规则
-function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
-  // 使用新的关卡增长规则
-  const { rows, cols } = getGridByLevel(level);
-  return { width: cols, height: rows };
-}
-
-// 挑战模式：直接使用最大尺寸铺满屏幕
-function getChallengeModeDimensions(screenWidth = 390, screenHeight = 844) {
-  // 挑战模式使用更大的尺寸以充分利用屏幕空间
-  // 精确计算顶部HUD和底部道具栏的实际占用空间
-  // 顶部HUD: paddingVertical(12) + paddingTop(50) + 内容高度(24) = 86px
-  // 底部道具栏: paddingVertical(20) + paddingBottom(30) + 按钮高度(60) = 110px
-  const topReserved = 86;
-  const bottomReserved = 110;
-  const availableHeight = screenHeight - topReserved - bottomReserved;
-  const availableWidth = screenWidth - 40; // 预留左右边距
-  
-  // 缩小方块尺寸以容纳更多方块
-  const idealTileSize = 28; // 稍微增大方块尺寸
-  const gap = 2; // 更紧密的间距
-  const boardPadding = 8; // 木头边框内边距
-  
-  // 计算在可用空间内能放置的最大行列数
-  // 公式: (可用空间 - 2*边距) / (方块尺寸 + 间距) 向下取整，最后一个方块不需要间距
-  const maxCols = Math.floor((availableWidth - 2 * boardPadding + gap) / (idealTileSize + gap));
-  const maxRows = Math.floor((availableHeight - 2 * boardPadding + gap) / (idealTileSize + gap));
-  
-  // 确保最小可玩性，但尽量使用计算出的最大值
-  const cols = Math.max(maxCols, 8); // 最少8列
-  const rows = Math.max(maxRows, 12); // 最少12行
-  
-  return { width: cols, height: rows };
 }
 
 // 检查两个位置是否可以形成有效的矩形选择（包括线条）
@@ -186,147 +151,16 @@ function ensureSumIsMultipleOf10(tiles) {
   return newTiles;
 }
 
-// 生成挑战模式专用的满盘棋盘
-export function generateChallengeBoard(screenWidth = 390, screenHeight = 844) {
-  const seed = `challenge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  const random = seededRandom(seed);
-  
-  // 使用最大尺寸铺满屏幕
-  const { width, height } = getChallengeModeDimensions(screenWidth, screenHeight);
-  const size = width * height;
-  
-  // 初始化棋盘，填满所有位置
-  const tiles = new Array(size);
-  
-  // 挑战模式高难度设置
-  const guaranteedPairs = Math.floor(size * 0.35); // 35%保证可解配对
-  const adjacentRatio = 0.2; // 20%相邻配对，80%需要大范围框选
-  
-  // 生成目标配对（和为10）
-  const targetPairs = [
-    [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
-  ];
-  
-  // 放置保证可消除的配对
-  const placedPositions = new Set();
-  let pairsPlaced = 0;
-  
-  // 少量相邻配对（容易找到）
-  const easyPairsToPlace = Math.floor(guaranteedPairs * adjacentRatio);
-  
-  for (let i = 0; i < easyPairsToPlace && pairsPlaced < guaranteedPairs; i++) {
-    const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-    const [val1, val2] = pairType;
-    
-    let placed = false;
-    let attempts = 0;
-    
-    while (!placed && attempts < 50) {
-      const pos1 = Math.floor(random() * size);
-      
-      if (placedPositions.has(pos1)) {
-        attempts++;
-        continue;
-      }
-      
-      const row1 = Math.floor(pos1 / width);
-      const col1 = pos1 % width;
-      
-      // 尝试相邻位置
-      const candidateOffsets = [
-        [0, 1], [1, 0], [0, -1], [-1, 0],
-        [0, 2], [2, 0], [0, -2], [-2, 0]
-      ];
-      
-      for (const [dr, dc] of candidateOffsets) {
-        const row2 = row1 + dr;
-        const col2 = col1 + dc;
-        const pos2 = row2 * width + col2;
-        
-        if (row2 >= 0 && row2 < height && col2 >= 0 && col2 < width &&
-            !placedPositions.has(pos2)) {
-          
-          tiles[pos1] = val1;
-          tiles[pos2] = val2;
-          placedPositions.add(pos1);
-          placedPositions.add(pos2);
-          pairsPlaced++;
-          placed = true;
-          break;
-        }
-      }
-      
-      attempts++;
-    }
-  }
-  
-  // 放置剩余的保证配对（需要大范围框选）
-  while (pairsPlaced < guaranteedPairs) {
-    const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-    const [val1, val2] = pairType;
-    
-    const availablePositions = [];
-    for (let i = 0; i < size; i++) {
-      if (!placedPositions.has(i)) {
-        availablePositions.push(i);
-      }
-    }
-    
-    if (availablePositions.length >= 2) {
-      const pos1 = availablePositions[Math.floor(random() * availablePositions.length)];
-      const remainingPositions = availablePositions.filter(p => p !== pos1);
-      const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
-      
-      tiles[pos1] = val1;
-      tiles[pos2] = val2;
-      placedPositions.add(pos1);
-      placedPositions.add(pos2);
-      pairsPlaced++;
-    } else {
-      break;
-    }
-  }
-  
-  // 填满剩余所有位置 - 挑战模式高频低频分布
-  for (let i = 0; i < size; i++) {
-    if (!placedPositions.has(i)) {
-      // 70%高频数字，30%低频数字
-      const highFreqNumbers = [5, 6, 7, 8, 9];
-      const lowFreqNumbers = [1, 2, 3, 4];
-      if (random() < 0.7) {
-        tiles[i] = highFreqNumbers[Math.floor(random() * highFreqNumbers.length)];
-      } else {
-        tiles[i] = lowFreqNumbers[Math.floor(random() * lowFreqNumbers.length)];
-      }
-    }
-  }
-  
-  // 确保总和为10的倍数
-  const adjustedTiles = ensureSumIsMultipleOf10(tiles);
-  
-  return {
-    seed,
-    width,
-    height,
-    tiles: adjustedTiles,
-    requiredSwaps: 0,
-    level: 'challenge',
-    solvable: true,
-    isChallengeMode
-    isChallengeMode: true,
-  };
-}
-
-export function generateBoard(level, forceNewSeed = false, isChallengeMode = false, screenWidth = 390, screenHeight = 844) {
+export function generateBoard(level, forceNewSeed = false, isChallengeMode = false) {
   // 使用时间戳或固定种子，根据需要生成不同的棋盘
   const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
   const seed = `level_${level}_${baseSeed}`;
   const random = seededRandom(seed);
   
   // 获取棋盘尺寸
-  const { width, height } = isChallengeMode 
-    ? getChallengeModeDimensions(screenWidth, screenHeight)
-    : getBoardDimensions(level, screenWidth, screenHeight);
+  const { rows, cols } = getGridByLevel(level);
+  const width = cols;
+  const height = rows;
     
   const difficultyLevel = isChallengeMode ? 130 : level;
   const size = width * height;
@@ -520,7 +354,7 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
 }
 
 // 生成后备的简单可解棋盘
-function generateFallbackBoard(level, width, height, isChallengeMode = false, screenWidth = 390, screenHeight = 844) {
+function generateFallbackBoard(level, width, height, isChallengeMode = false) {
   const size = width * height;
   const tiles = new Array(size).fill(0);
   
@@ -553,6 +387,5 @@ function generateFallbackBoard(level, width, height, isChallengeMode = false, sc
     requiredSwaps: 0,
     level,
     solvable: true,
-    isChallengeMode,
   };
 }

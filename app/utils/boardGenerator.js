@@ -18,17 +18,46 @@ import RescueModal from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// 有效游戏区域配置
-const EFFECTIVE_AREA_CONFIG = {
+// 响应式游戏区域配置
+const RESPONSIVE_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
-  GRID_ROWS: 20,        // 固定网格行数
-  GRID_COLS: 14,        // 固定网格列数
+  MIN_TILE_SIZE: 32,    // 最小方块尺寸
+  PREFERRED_TILE_SIZE: 36, // 理想方块尺寸
 };
 
-// 计算有效游戏区域和棋盘布局
+// 计算响应式棋盘布局
+function calculateResponsiveLayout(boardWidth, boardHeight, isChallenge = false) {
+  const effectiveHeight = screenHeight - RESPONSIVE_CONFIG.TOP_RESERVED - RESPONSIVE_CONFIG.BOTTOM_RESERVED;
+  const effectiveWidth = screenWidth;
+  
+  const boardPadding = RESPONSIVE_CONFIG.BOARD_PADDING;
+  const tileGap = RESPONSIVE_CONFIG.TILE_GAP;
+  
+  const availableWidth = effectiveWidth - boardPadding * 2;
+  const availableHeight = effectiveHeight - boardPadding * 2;
+  
+  let gridCols, gridRows;
+  
+  if (isChallenge) {
+    // 挑战模式：计算能放置的最大数量
+    const maxCols = Math.floor((availableWidth + tileGap) / (RESPONSIVE_CONFIG.MIN_TILE_SIZE + tileGap));
+    const maxRows = Math.floor((availableHeight + tileGap) / (RESPONSIVE_CONFIG.MIN_TILE_SIZE + tileGap));
+    gridCols = Math.max(boardWidth, maxCols);
+    gridRows = Math.max(boardHeight, maxRows);
+  } else {
+    // 普通模式：使用传入的尺寸，但确保方块不会太小
+    gridCols = boardWidth;
+    gridRows = boardHeight;
+  }
+  
+  const tileWidth = (availableWidth - (gridCols - 1) * tileGap) / gridCols;
+  const tileHeight = (availableHeight - (gridRows - 1) * tileGap) / gridRows;
+  
+  // 确保方块大小合理
+  let tileSize = Math.min(tileWidth, tileHeight);
 // 有效游戏区域配置
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
@@ -41,9 +70,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-  // Function implementation would go here
-  return {};
-}
 
 const GameBoard = ({ 
   tiles, 
@@ -95,14 +121,14 @@ const GameBoard = ({
   };
 
   const calculateBoardLayout = () => {
-    return calculateEffectiveAreaLayout();
+    return calculateResponsiveLayout(width, height, isChallenge);
   };
 
   // 初始化布局
   React.useEffect(() => {
     const layout = calculateBoardLayout();
     setBoardLayout(layout);
-  }, [width, height, isChallenge]);
+  }, [width, height, isChallenge, screenWidth, screenHeight]);
 
   const resetSelection = () => {
     setSelection(null);
@@ -130,8 +156,8 @@ const GameBoard = ({
   };
 
   const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-    const bottomRestrictedHeight = screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+    const topRestrictedHeight = RESPONSIVE_CONFIG.TOP_RESERVED;
+    const bottomRestrictedHeight = screenHeight - RESPONSIVE_CONFIG.BOTTOM_RESERVED;
     
     return pageY < topRestrictedHeight || pageY > bottomRestrictedHeight;
   };

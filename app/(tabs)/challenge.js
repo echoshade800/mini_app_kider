@@ -360,7 +360,7 @@ export default function ChallengeScreen() {
     }
     setShowResults(false);
     setGameState('ready');
-    router.replace('/(tabs)');
+    router.replace('/');
   };
 
   const handleAgain = () => {

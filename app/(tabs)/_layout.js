@@ -12,7 +12,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { display: 'none' },
+        tabBarStyle: { 
+          display: 'none',
+          position: 'absolute',
+          bottom: -100,
+        },
       }}>
       <Tabs.Screen
         name="index"

@@ -80,13 +80,6 @@ function calculateEffectiveAreaLayout() {
     tileGap,
     gridCols,
     gridRows,
-    getTilePosition: (row, col) => ({
-      x: col * (tileSize + tileGap),
-      y: row * (tileSize + tileGap)
-    })
-  };
-}
-
 const GameBoard = ({ 
   tiles, 
   width, 
@@ -151,6 +144,11 @@ const GameBoard = ({
   React.useEffect(() => {
     const layout = calculateBoardLayout();
     setBoardLayout(layout);
+    
+    // 导出布局计算函数供其他模块使用
+    if (typeof global !== 'undefined') {
+      global.calculateEffectiveAreaLayout = () => layout;
+    }
   }, [width, height, isChallenge]);
 
   const resetSelection = () => {

@@ -17,38 +17,42 @@ function seededRandom(seed) {
   };
 }
 
-// 获取有效区域布局的安全函数
-function getEffectiveAreaLayout() {
+// 默认棋盘格配置 - 独立于组件
+const DEFAULT_BOARD_CONFIG = {
+  gridCols: 14,
+  gridRows: 21,
+  maxCapacity: 294, // 14 * 21
+  getTilePosition: (row, col) => ({
+    x: col * 36, // 默认方块尺寸 + 间距
+    y: row * 36
+  })
+};
+
+// 获取棋盘配置 - 优先使用动态配置，否则使用默认配置
+function getBoardConfig() {
+  // 尝试获取动态配置
   if (typeof global !== 'undefined' && global.calculateEffectiveAreaLayout) {
     try {
-      return global.calculateEffectiveAreaLayout();
+      const dynamicLayout = global.calculateEffectiveAreaLayout();
+      return {
+        gridCols: dynamicLayout.gridCols,
+        gridRows: dynamicLayout.gridRows,
+        maxCapacity: dynamicLayout.gridCols * dynamicLayout.gridRows,
+        getTilePosition: dynamicLayout.getTilePosition
+      };
     } catch (error) {
-      console.warn('Failed to get dynamic layout, using default:', error);
+      console.warn('Failed to get dynamic board config, using default:', error);
     }
   }
   
-  // 默认布局配置
-  return {
-    gridCols: 14,
-    gridRows: 21,
-    getTilePosition: (row, col) => ({
-      x: col * 36, // 默认方块尺寸 + 间距
-      y: row * 36
-    })
-  };
+  // 使用默认配置
+  return DEFAULT_BOARD_CONFIG;
 }
 
-// 获取自适应棋盘格的最大容量
-function getMaxBoardCapacity() {
-  const layout = typeof global !== 'undefined' && global.calculateEffectiveAreaLayout 
-    ? global.calculateEffectiveAreaLayout() 
-    : { gridCols: 14, gridRows: 21 }; // 默认尺寸作为后备
-  return layout.gridCols * layout.gridRows;
-}
-
-// 重新设计的难度系统 - 基于自适应棋盘格限制
+// 重新设计的难度系统 - 基于棋盘格容量限制
 function getTileFillCount(level) {
-  const maxCount = getMaxBoardCapacity(); // 动态计算最大容量
+  const config = getBoardConfig();
+  const maxCount = config.maxCapacity;
   
   // 1-200关的数字方块数量递进表
   if (level >= 1 && level <= 5) {
@@ -85,40 +89,12 @@ function getTileFillCount(level) {
   // 200关以后保持最大填充
   return maxCount;
 }
-// 计算整齐四边形的激活区域尺寸
-function calculateRectangularActivationArea(level, totalCols, totalRows) {
-  const fillRatio = getTileFillRatio(level);
-  const totalCells = totalCols * totalRows;
-  const targetCells = Math.floor(totalCells * fillRatio);
-  
-  // 寻找最接近目标数量的矩形尺寸
-  let bestCols = totalCols;
-  let bestRows = totalRows;
-  let bestDiff = Math.abs(totalCells - targetCells);
-  
-  // 尝试不同的矩形尺寸组合
-  for (let cols = Math.ceil(Math.sqrt(targetCells)); cols <= totalCols; cols++) {
-    const rows = Math.floor(targetCells / cols);
-    if (rows > 0 && rows <= totalRows) {
-      const actualCells = cols * rows;
-      const diff = Math.abs(actualCells - targetCells);
-      
-      if (diff < bestDiff) {
-        bestCols = cols;
-        bestRows = rows;
-        bestDiff = diff;
-      }
-    }
-  }
-  
-  return { cols: bestCols, rows: bestRows };
-}
 
 // 根据目标填充数量计算最佳矩形尺寸（在棋盘格限制内）
 function calculateOptimalRect(targetCount) {
-  const layout = calculateEffectiveAreaLayout();
-  const maxCols = layout.gridCols;
-  const maxRows = layout.gridRows;
+  const config = getBoardConfig();
+  const maxCols = config.gridCols;
+  const maxRows = config.gridRows;
   
   // 如果目标数量超过最大容量，返回最大尺寸
   if (targetCount >= maxCols * maxRows) {
@@ -172,24 +148,6 @@ function getNumberDistribution(level) {
       largeNumbers: 0.2
     };
   }
-}
-
-// Get tile fill ratio based on level (how many tiles are filled)
-function getTileFillRatio(level) {
-  if (level <= 10) return 0.35;      // 1-10关: 35%填充
-  if (level <= 20) return 0.40;      // 11-20关: 40%填充
-  if (level <= 30) return 0.45;      // 21-30关: 45%填充
-  if (level <= 50) return 0.50;      // 31-50关: 50%填充
-  if (level <= 70) return 0.55;      // 51-70关: 55%填充
-  if (level <= 90) return 0.60;      // 71-90关: 60%填充
-  if (level <= 110) return 0.65;     // 91-110关: 65%填充
-  if (level <= 130) return 0.70;     // 111-130关: 70%填充
-  if (level <= 150) return 0.75;     // 131-150关: 75%填充
-  if (level <= 170) return 0.80;     // 151-170关: 80%填充
-  if (level <= 200) return 0.85;     // 171-200关: 85%填充
-  
-  // 200关以后保持最高填充率
-  return 0.85;
 }
 
 // Get target combinations that sum to 10 based on level difficulty
@@ -277,11 +235,10 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   const random = seededRandom(seed);
   
-  // 获取动态棋盘尺寸
-  const layout = getEffectiveAreaLayout();
-  
-  const width = layout.gridCols;
-  const height = layout.gridRows;
+  // 获取棋盘配置
+  const config = getBoardConfig();
+  const width = config.gridCols;
+  const height = config.gridRows;
   
   let activeRows, activeCols, activeSize;
   
@@ -422,7 +379,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
       rowOffset,
       colOffset,
       activeSize,
-      targetFillCount,
+      targetFillCount: isChallenge ? activeSize : getTileFillCount(level),
       actualFillCount
     }
   };

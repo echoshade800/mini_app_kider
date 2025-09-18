@@ -24,9 +24,8 @@ const EFFECTIVE_AREA_CONFIG = {
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
-  MIN_TILE_SIZE: 24,    // 最小方块尺寸
-  MAX_TILE_SIZE: 48,    // 最大方块尺寸
-  PREFERRED_TILE_SIZE: 32, // 理想方块尺寸
+  GRID_ROWS: 20,        // 固定网格行数
+  GRID_COLS: 14,        // 固定网格列数
 };
 
 // 计算有效游戏区域和棋盘布局
@@ -40,29 +39,13 @@ function calculateEffectiveAreaLayout() {
   const availableWidth = effectiveWidth - boardPadding * 2;
   const availableHeight = effectiveHeight - boardPadding * 2;
   
-  // 🎯 自适应计算网格尺寸
-  const { MIN_TILE_SIZE, MAX_TILE_SIZE, PREFERRED_TILE_SIZE } = EFFECTIVE_AREA_CONFIG;
+  const gridCols = EFFECTIVE_AREA_CONFIG.GRID_COLS;
+  const gridRows = EFFECTIVE_AREA_CONFIG.GRID_ROWS;
   
-  // 基于理想方块尺寸计算网格数量
-  let gridCols = Math.floor((availableWidth + tileGap) / (PREFERRED_TILE_SIZE + tileGap));
-  let gridRows = Math.floor((availableHeight + tileGap) / (PREFERRED_TILE_SIZE + tileGap));
-  
-  // 确保最小网格数量
-  gridCols = Math.max(gridCols, 8);
-  gridRows = Math.max(gridRows, 10);
-  
-  // 计算实际方块尺寸
   const tileWidth = (availableWidth - (gridCols - 1) * tileGap) / gridCols;
   const tileHeight = (availableHeight - (gridRows - 1) * tileGap) / gridRows;
   
-  let tileSize = Math.min(tileWidth, tileHeight);
-  
-  // 限制方块尺寸范围
-  tileSize = Math.max(MIN_TILE_SIZE, Math.min(MAX_TILE_SIZE, tileSize));
-  
-  // 根据最终方块尺寸重新计算网格数量（确保铺满）
-  gridCols = Math.floor((availableWidth + tileGap) / (tileSize + tileGap));
-  gridRows = Math.floor((availableHeight + tileGap) / (tileSize + tileGap));
+  const tileSize = Math.min(tileWidth, tileHeight);
   
   const boardWidth = gridCols * tileSize + (gridCols - 1) * tileGap + boardPadding * 2;
   const boardHeight = gridRows * tileSize + (gridRows - 1) * tileGap + boardPadding * 2;
@@ -78,16 +61,10 @@ function calculateEffectiveAreaLayout() {
     boardPadding,
     tileSize,
     tileGap,
-    gridCols,
-    gridRows,
-    getTilePosition: (row, col) => {
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
-      return {
-        x: col * cellWidth,
-        y: row * cellHeight,
-      };
-    },
+    getTilePosition: (row, col) => ({
+      x: col * (tileSize + tileGap),
+      y: row * (tileSize + tileGap)
+    })
   };
 }
 
@@ -144,22 +121,10 @@ const GameBoard = ({
     return calculateEffectiveAreaLayout();
   };
 
-  // 导出布局计算函数供其他模块使用
-  React.useEffect(() => {
-    if (typeof global !== 'undefined') {
-      global.calculateEffectiveAreaLayout = calculateEffectiveAreaLayout;
-    }
-  }, []);
-
   // 初始化布局
   React.useEffect(() => {
     const layout = calculateBoardLayout();
     setBoardLayout(layout);
-    
-    // 导出布局计算函数供其他模块使用
-    if (typeof global !== 'undefined') {
-      global.calculateEffectiveAreaLayout = () => layout;
-    }
   }, [width, height, isChallenge]);
 
   const resetSelection = () => {
@@ -582,13 +547,13 @@ const GameBoard = ({
   const renderGridBackground = () => {
     if (!boardLayout) return null;
 
-    const { tileSize, tileGap, gridCols, gridRows } = boardLayout;
+    const { tileSize, tileGap } = boardLayout;
     const lines = [];
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
 
     // 垂直网格线
-    for (let i = 0; i <= gridCols; i++) {
+    for (let i = 0; i <= width; i++) {
       lines.push(
         <View
           key={`v-${i}`}
@@ -597,8 +562,8 @@ const GameBoard = ({
             {
               left: i * cellWidth - (i === 0 ? 0 : tileGap / 2),
               top: 0,
-              width: i === 0 || i === gridCols ? 2 : 1,
-              height: gridRows * cellHeight - tileGap,
+              width: i === 0 || i === width ? 2 : 1,
+              height: height * cellHeight - tileGap,
             }
           ]}
         />
@@ -606,7 +571,7 @@ const GameBoard = ({
     }
 
     // 水平网格线
-    for (let i = 0; i <= gridRows; i++) {
+    for (let i = 0; i <= height; i++) {
       lines.push(
         <View
           key={`h-${i}`}
@@ -615,8 +580,8 @@ const GameBoard = ({
             {
               left: 0,
               top: i * cellHeight - (i === 0 ? 0 : tileGap / 2),
-              width: gridCols * cellWidth - tileGap,
-              height: i === 0 || i === gridRows ? 2 : 1,
+              width: width * cellWidth - tileGap,
+              height: i === 0 || i === height ? 2 : 1,
             }
           ]}
         />
@@ -631,12 +596,8 @@ const GameBoard = ({
 
     const index = row * width + col;
     
-    // 只有非零值才显示数字方块
-    if (value === 0) {
-      return null; // 空格子不渲染任何内容
-    }
-    
-    const displayValue = value;
+    // 所有格子都显示数字方块，值为0时显示随机数字
+    const displayValue = value === 0 ? Math.floor(Math.random() * 9) + 1 : value;
 
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
@@ -761,8 +722,8 @@ const GameBoard = ({
               position: 'absolute',
               left: boardLayout.boardPadding,
               top: boardLayout.boardPadding,
-              width: boardLayout.gridCols * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
-              height: boardLayout.gridRows * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
+              width: width * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
+              height: height * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
             }}
           >
             {renderGridBackground()}

@@ -30,22 +30,65 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-    const { boardLeft, boardTop, boardWidth, boardHeight } = boardLayout;
-    
-    return pageX >= boardLeft && 
-           pageX <= boardLeft + boardWidth && 
-           pageY >= boardTop && 
-           pageY <= boardTop + boardHeight;
+  const effectiveHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+  const effectiveWidth = screenWidth;
+  
+  const availableWidth = effectiveWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  const availableHeight = effectiveHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  
+  const tileWidth = (availableWidth - (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_COLS;
+  const tileHeight = (availableHeight - (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_ROWS;
+  
+  const tileSize = Math.min(tileWidth, tileHeight);
+  
+  const boardWidth = EFFECTIVE_AREA_CONFIG.GRID_COLS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  const boardHeight = EFFECTIVE_AREA_CONFIG.GRID_ROWS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  
+  const boardLeft = (screenWidth - boardWidth) / 2;
+  const boardTop = EFFECTIVE_AREA_CONFIG.TOP_RESERVED + (effectiveHeight - boardHeight) / 2;
+  
+  return {
+    boardLeft,
+    boardTop,
+    boardWidth,
+    boardHeight,
+    tileSize,
+    tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
+    boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
+    getTilePosition: (row, col) => {
+      const x = col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP);
+      const y = row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP);
+      return { x, y };
+    }
+  };
 }
 
-const GameBoard = ({ tiles, width, height, onTilesClear, disabled, itemMode, onTileClick, selectedSwapTile, swapAnimations, fractalAnimations, settings, boardLayout, onRescueNeeded, showRescueModal, setShowRescueModal, reshuffleCount, setReshuffleCount }) => {
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  onTilesClear, 
+  disabled, 
+  itemMode, 
+  onTileClick, 
+  selectedSwapTile,
+  swapAnimations,
+  fractalAnimations,
+  settings,
+  isChallenge,
+  reshuffleCount,
+  setReshuffleCount,
+  onRescueNeeded
+}) => {
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [boardLayout, setBoardLayout] = useState(null);
+  const [showRescueModal, setShowRescueModal] = useState(false);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const explosionScale = useRef(new Animated.Value(0.5)).current;
-  const explosionOpacity = useRef(new Animated.Value(1)).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef(new Map()).current;
 
   const initTileScale = (index) => {
@@ -59,15 +102,25 @@ const GameBoard = ({ tiles, width, height, onTilesClear, disabled, itemMode, onT
     const tileScale = initTileScale(index);
     Animated.timing(tileScale, {
       toValue: scale,
-      duration: 150,
+      duration: 100,
       useNativeDriver: true,
     }).start();
   };
 
   const getTileRotation = (row, col) => {
-    const seed = row * 31 + col * 17;
-    return ((seed % 7) - 3) * 0.8;
+    const seed = row * 13 + col * 7;
+    return (seed % 7) - 3;
   };
+
+  const calculateBoardLayout = () => {
+    return calculateEffectiveAreaLayout();
+  };
+
+  // 初始化布局
+  React.useEffect(() => {
+    const layout = calculateBoardLayout();
+    setBoardLayout(layout);
+  }, [width, height, isChallenge]);
 
   const resetSelection = () => {
     setSelection(null);

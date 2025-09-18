@@ -107,6 +107,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     getBoardLayoutConfig(tileCount, cols / rows, null) : 
     getBoardLayoutConfig(tileCount, null, level);
     
+  // 确保使用布局配置中的实际行列数
+  rows = layoutConfig.rows;
+  cols = layoutConfig.cols;
   const totalSlots = rows * cols;
   
   // Initialize empty board

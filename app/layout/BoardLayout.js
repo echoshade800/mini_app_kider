@@ -172,9 +172,13 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
     if (level35TileSize.isValid) {
       const targetTileSize = level35TileSize.tileSize;
       
-      // 使用目标方块尺寸反推棋盘尺寸
-      const contentWidth = 2 * BOARD_PADDING + cols * targetTileSize + (cols - 1) * TILE_GAP;
-      const contentHeight = 2 * BOARD_PADDING + rows * targetTileSize + (rows - 1) * TILE_GAP;
+      // 计算数字方块矩形尺寸
+      const tilesRectWidth = cols * targetTileSize + (cols - 1) * TILE_GAP;
+      const tilesRectHeight = rows * targetTileSize + (rows - 1) * TILE_GAP;
+      
+      // 计算棋盘内容区和总尺寸
+      const contentWidth = tilesRectWidth + 2 * BOARD_PADDING;
+      const contentHeight = tilesRectHeight + 2 * BOARD_PADDING;
       const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
       const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
       
@@ -185,6 +189,8 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
         
         return {
           tileSize: targetTileSize,
+          tilesRectWidth,
+          tilesRectHeight,
           boardWidth,
           boardHeight,
           contentWidth,

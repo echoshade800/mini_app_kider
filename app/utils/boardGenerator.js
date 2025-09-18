@@ -28,9 +28,8 @@ function getBoardDimensions(level, screenWidth = 390, screenHeight = 844) {
 // 挑战模式：直接使用最大尺寸铺满屏幕
 function getChallengeModeDimensions(screenWidth = 390, screenHeight = 844) {
   // 挑战模式使用更大的尺寸以充分利用屏幕空间
-  // 考虑到顶部HUD(约80px)和底部道具栏(约100px)，剩余空间约664px
-  // 考虑到顶部HUD(约120px)和底部道具栏(约120px)，剩余空间
-  const availableHeight = screenHeight - 240; // 预留顶部和底部空间
+  // 考虑到顶部HUD(约74px)和底部道具栏(约70px)，剩余空间
+  const availableHeight = screenHeight - 144; // 预留顶部和底部空间
   const availableWidth = screenWidth - 40; // 预留左右边距
   
   // 基于可用空间计算最优行列数

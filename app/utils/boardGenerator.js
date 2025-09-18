@@ -30,6 +30,187 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
+  const effectiveWidth = screenWidth;
+  const effectiveHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+  
+  const availableWidth = effectiveWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  const availableHeight = effectiveHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  
+  const tileWidth = (availableWidth - (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_COLS;
+  const tileHeight = (availableHeight - (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_ROWS;
+  
+  const tileSize = Math.min(tileWidth, tileHeight);
+  
+  const boardWidth = EFFECTIVE_AREA_CONFIG.GRID_COLS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  const boardHeight = EFFECTIVE_AREA_CONFIG.GRID_ROWS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  
+  const boardLeft = (screenWidth - boardWidth) / 2;
+  const boardTop = EFFECTIVE_AREA_CONFIG.TOP_RESERVED + (effectiveHeight - boardHeight) / 2;
+  
+  return {
+    boardLeft,
+    boardTop,
+    boardWidth,
+    boardHeight,
+    boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
+    tileSize,
+    tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
+    getTilePosition: (row, col) => ({
+      x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+      y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+    }),
+  };
+}
+
+const GameBoard = ({
+  tiles = [],
+  width = 14,
+  height = 20,
+  onTilesClear,
+  disabled = false,
+  settings = {},
+  itemMode = null,
+  onTileClick,
+  selectedSwapTile,
+  swapAnimations,
+  fractalAnimations,
+  showRescueModal = false,
+  setShowRescueModal,
+  reshuffleCount = 0,
+  setReshuffleCount,
+}) => {
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [boardLayout] = useState(() => calculateEffectiveAreaLayout());
+  
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0.5)).current;
+  const explosionOpacity = useRef(new Animated.Value(1)).current;
+  const tileScales = useRef(new Map()).current;
+
+  const initTileScale = (index) => {
+    if (!tileScales.has(index)) {
+      tileScales.set(index, new Animated.Value(1));
+    }
+    return tileScales.get(index);
+  };
+
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.timing(tileScale, {
+      toValue: scale,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const getTileRotation = (row, col) => {
+    const seed = row * width + col;
+    return ((seed * 17) % 7) - 3;
+  };
+
+  const isInRestrictedArea = (pageY) => {
+    return pageY < EFFECTIVE_AREA_CONFIG.TOP_RESERVED || 
+           pageY > screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+  };
+
+  const isInsideGridArea = (pageX, pageY) => {
+    if (!boardLayout) return false;
+    
+    const { boardLeft, boardTop, boardWidth, boardHeight } = boardLayout;
+    
+    return pageX >= boardLeft && 
+           pageX <= boardLeft + boardWidth && 
+           pageY >= boardTop && 
+           pageY <= boardTop + boardHeight;
+  };
+
+  const getSelectedTiles = () => {
+    if (!selection) return [];
+    
+    const { startRow, startCol, endRow, endCol } = selection;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = [];
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value > 0) {
+            selectedTiles.push({ row, col, value, index });
+          }
+        }
+      }
+    }
+    
+    return selectedTiles;
+  };
+
+  const getSelectedTilesForSelection = (sel) => {
+    if (!sel) return [];
+    
+    const { startRow, startCol, endRow, endCol } = sel;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = [];
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value > 0) {
+            selectedTiles.push({ row, col, value, index });
+          }
+        }
+      }
+    }
+    
+    return selectedTiles;
+  };
+
+  const resetSelection = () => {
+    setSelection(null);
+    hoveredTiles.forEach(index => {
+      scaleTile(index, 1);
+    });
+    setHoveredTiles(new Set());
+    
+    Animated.timing(selectionOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const handleSelectionComplete = () => {
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    
+    if (sum === 10 && selectedTiles.length > 0) {
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      
+      const tilePositions = selectedTiles.map(tile => ({
+        row: tile.row,
+        col: tile.col,
+        x: boardLayout.getTilePosition(tile.row, tile.col).x + boardLayout.boardLeft + boardLayout.boardPadding + boardLayout.tileSize / 2,
+        y: boardLayout.getTilePosition(tile.row, tile.col).y + boardLayout.boardTop + boardLayout.boardPadding + boardLayout.tileSize / 2,
+      }));
+      
+      const centerX = tilePositions.reduce((sum, pos) => sum + pos.x, 0) / tilePositions.length;
+      const centerY = tilePositions.reduce((sum, pos) => sum + pos.y, 0) / tilePositions.length;
+      
+      setExplosionAnimation({ x: centerX, y: centerY });
+      
       explosionScale.setValue(0.5);
       explosionOpacity.setValue(1);
       

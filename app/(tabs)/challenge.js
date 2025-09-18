@@ -143,7 +143,10 @@ export default function ChallengeScreen() {
 
   useEffect(() => {
     console.log('🎯 [DEBUG] ChallengeScreen useEffect triggered, gameState:', gameState);
+    console.log('🎯 [DEBUG] Current board state:', currentBoard ? 'exists' : 'null');
+    
     if (gameState === 'playing') {
+      console.log('🎯 [DEBUG] Starting timer and progress animation...');
       startTimer();
       startProgressAnimation();
     }
@@ -152,10 +155,13 @@ export default function ChallengeScreen() {
     if (!currentBoard) {
       console.log('🎯 [DEBUG] Generating initial board...');
       generateNewBoard();
+    } else {
+      console.log('🎯 [DEBUG] Board already exists, skipping generation');
     }
     
     return () => {
       if (timerRef.current) {
+        console.log('🎯 [DEBUG] Cleaning up timer');
         clearInterval(timerRef.current);
       }
     };
@@ -183,10 +189,12 @@ export default function ChallengeScreen() {
   };
 
   const startChallenge = () => {
+    console.log('🎯 [DEBUG] Starting challenge...');
     setGameState('playing');
     setCurrentIQ(0);
     setTimeLeft(CHALLENGE_DURATION);
     setReshuffleCount(0);
+    console.log('🎯 [DEBUG] Challenge state updated, generating new board...');
     generateNewBoard();
   };
 
@@ -207,22 +215,42 @@ export default function ChallengeScreen() {
 
   const generateNewBoard = () => {
     console.log('🎯 [DEBUG] generateNewBoard called');
-    // 生成挑战模式棋盘（高难度）
-    const { rows, cols } = getChallengeGridConfig();
-    const board = generateBoard(130, true, true); // 高难度关卡
-    // 重写尺寸为挑战模式配置
-    board.width = cols;
-    board.height = rows;
-    // 重新生成对应尺寸的tiles数组
-    const newSize = rows * cols;
-    const newTiles = new Array(newSize);
-    for (let i = 0; i < newSize; i++) {
-      newTiles[i] = Math.floor(Math.random() * 9) + 1;
+    try {
+      console.log('🎯 [DEBUG] Getting challenge grid config...');
+      const { rows, cols } = getChallengeGridConfig();
+      console.log('🎯 [DEBUG] Challenge grid config:', { rows, cols });
+      
+      console.log('🎯 [DEBUG] Calling generateBoard with level 130...');
+      const board = generateBoard(130, true, true); // 高难度关卡
+      console.log('🎯 [DEBUG] Generated board:', { 
+        width: board.width, 
+        height: board.height, 
+        tilesLength: board.tiles ? board.tiles.length : 'undefined',
+        firstFewTiles: board.tiles ? board.tiles.slice(0, 10) : 'undefined'
+      });
+      
+      // 重写尺寸为挑战模式配置
+      board.width = cols;
+      board.height = rows;
+      console.log('🎯 [DEBUG] Updated board dimensions:', { width: board.width, height: board.height });
+      
+      // 重新生成对应尺寸的tiles数组
+      const newSize = rows * cols;
+      console.log('🎯 [DEBUG] Generating new tiles array, size:', newSize);
+      const newTiles = new Array(newSize);
+      for (let i = 0; i < newSize; i++) {
+        newTiles[i] = Math.floor(Math.random() * 9) + 1;
+      }
+      board.tiles = newTiles;
+      console.log('🎯 [DEBUG] New tiles generated, first 10:', newTiles.slice(0, 10));
+      
+      setCurrentBoard(board);
+      setReshuffleCount(0);
+      console.log('🎯 [DEBUG] Board set successfully');
+    } catch (error) {
+      console.error('🎯 [ERROR] Failed to generate board:', error);
+      console.error('🎯 [ERROR] Error stack:', error.stack);
     }
-    board.tiles = newTiles;
-    setCurrentBoard(board);
-    setReshuffleCount(0);
-    console.log('🎯 [DEBUG] New board generated:', { width: board.width, height: board.height, tilesCount: board.tiles.length });
   };
 
   const checkForRescue = () => {
@@ -418,9 +446,17 @@ export default function ChallengeScreen() {
   return (
     <>
     {console.log('🎯 [DEBUG] ChallengeScreen rendering JSX...')}
+    {console.log('🎯 [DEBUG] Render state:', { 
+      gameState, 
+      currentBoard: currentBoard ? `${currentBoard.width}x${currentBoard.height}` : 'null',
+      timeLeft,
+      currentIQ 
+    })}
     <SafeAreaView style={styles.container}>
+      {console.log('🎯 [DEBUG] SafeAreaView rendering...')}
       {/* HUD */}
       <View style={styles.hud} pointerEvents="box-none">
+        {console.log('🎯 [DEBUG] HUD rendering...')}
         <TouchableOpacity 
           style={styles.backButton}
           onPress={handleReturn}
@@ -458,7 +494,10 @@ export default function ChallengeScreen() {
 
       {/* 棋盘区域 */}
       <View style={styles.boardArea}>
+        {console.log('🎯 [DEBUG] Board area rendering, gameState:', gameState)}
         {gameState === 'ready' && (
+          <>
+          {console.log('🎯 [DEBUG] Rendering ready overlay...')}
           <View style={styles.readyOverlay}>
             <View style={styles.readyContent}>
               <Text style={styles.readyTitle}>Challenge Mode</Text>
@@ -468,9 +507,16 @@ export default function ChallengeScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          </>
         )}
         
         {currentBoard && (
+          <>
+          {console.log('🎯 [DEBUG] Rendering GameBoard with board:', {
+            width: currentBoard.width,
+            height: currentBoard.height,
+            tilesCount: currentBoard.tiles ? currentBoard.tiles.length : 'undefined'
+          })}
           <GameBoard 
             board={currentBoard}
             onTilesClear={handleTilesClear}
@@ -485,6 +531,16 @@ export default function ChallengeScreen() {
             availableWidth={screenWidth - 40}
             availableHeight={screenHeight - 200} // 扣除顶部HUD和底部道具栏
           />
+          </>
+        )}
+        
+        {!currentBoard && (
+          <>
+          {console.log('🎯 [DEBUG] No board available, showing loading...')}
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: '#fff', fontSize: 18 }}>Loading board...</Text>
+          </View>
+          </>
         )}
       </View>
 

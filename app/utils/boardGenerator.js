@@ -295,9 +295,13 @@ export function generateChallengeBoard(screenWidth = 390, screenHeight = 844) {
 }
 
 export function generateBoard(level, forceNewSeed = false, isChallengeMode = false, screenWidth = 390, screenHeight = 844) {
+  console.log('🎯 [DEBUG] generateBoard called with:', { level, forceNewSeed, isChallengeMode, screenWidth, screenHeight });
+  
   // 使用时间戳或固定种子，根据需要生成不同的棋盘
   const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
   const seed = `level_${level}_${baseSeed}`;
+  console.log('🎯 [DEBUG] Generated seed:', seed);
+  
   const random = seededRandom(seed);
   
   // 获取棋盘尺寸
@@ -305,8 +309,11 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
     ? getChallengeModeDimensions(screenWidth, screenHeight)
     : getBoardDimensions(level, screenWidth, screenHeight);
     
+  console.log('🎯 [DEBUG] Board dimensions:', { width, height });
+    
   const difficultyLevel = isChallengeMode ? 130 : level;
   const size = width * height;
+  console.log('🎯 [DEBUG] Board size and difficulty:', { size, difficultyLevel });
   
   let attempts = 0;
   const maxAttempts = 50;

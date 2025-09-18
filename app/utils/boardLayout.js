@@ -141,6 +141,9 @@ export function getLevelGridConfig(level) {
  * @returns {Object} 行列数配置
  */
 export function getChallengeGridConfig() {
+  console.log('🎯 [DEBUG] getChallengeGridConfig called');
   // 挑战模式使用高密度配置
-  return { rows: 12, cols: 18, timeLimit: 60 };
+  const config = { rows: 12, cols: 18, timeLimit: 60 };
+  console.log('🎯 [DEBUG] Challenge grid config:', config);
+  return config;
 }

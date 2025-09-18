@@ -86,12 +86,27 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   const random = seededRandom(seed);
   
-  // 获取数字方块数量
-  const tileCount = getTileCount(level, isChallenge);
+  // 获取数字方块数量和布局
+  let tileCount, rows, cols;
   
-  // 使用新的自适应布局系统
-  const layoutConfig = getBoardLayoutConfig(tileCount, null, isChallenge ? null : level);
-  const { rows, cols } = layoutConfig;
+  if (isChallenge) {
+    // 挑战模式：固定14行11列
+    rows = 14;
+    cols = 11;
+    tileCount = rows * cols; // 154个方块
+  } else {
+    // 关卡模式：使用原有逻辑
+    tileCount = getTileCount(level, isChallenge);
+    const layoutConfig = getBoardLayoutConfig(tileCount, null, level);
+    rows = layoutConfig.rows;
+    cols = layoutConfig.cols;
+  }
+  
+  // 为挑战模式创建布局配置
+  const layoutConfig = isChallenge ? 
+    getBoardLayoutConfig(tileCount, cols / rows, null) : 
+    getBoardLayoutConfig(tileCount, null, level);
+    
   const totalSlots = rows * cols;
   
   // Initialize empty board

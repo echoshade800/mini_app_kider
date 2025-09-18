@@ -355,11 +355,14 @@ export default function ChallengeScreen() {
   };
 
   const handleReturn = () => {
+    console.log('🎯 [DEBUG] handleReturn called');
     if (timerRef.current) {
       clearInterval(timerRef.current);
+      console.log('🎯 [DEBUG] Timer cleared');
     }
     setShowResults(false);
     setGameState('ready');
+    console.log('🎯 [DEBUG] Navigating back to home...');
     router.replace('/');
   };
 

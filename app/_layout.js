@@ -18,13 +18,20 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const { initializeApp, isLoading, error } = useGameStore();
 
+  // 添加路由调试日志
+  console.log('🚀 [DEBUG] RootLayout rendered');
+  console.log('🚀 [DEBUG] Loading state:', isLoading);
+  console.log('🚀 [DEBUG] Error state:', error);
+
   useEffect(() => {
+    console.log('🚀 [DEBUG] RootLayout useEffect - initializing app');
     initializeApp();
   }, []);
 
   useEffect(() => {
     if (!isLoading) {
       // Hide splash screen when app is ready
+      console.log('🚀 [DEBUG] App ready, hiding splash screen');
       SplashScreen.hideAsync();
     }
   }, [isLoading]);

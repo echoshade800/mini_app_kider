@@ -95,7 +95,7 @@ export default function Home() {
           
           <TouchableOpacity
             style={[styles.mainButton, styles.arcadeButton]}
-            onPress={() => router.replace('/(tabs)/challenge')}
+            onPress={handleChallengePress}
             accessibilityLabel="ARCADE 按钮"
             activeOpacity={0.8}
             pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}

@@ -97,10 +97,10 @@ export const GameBoard = ({
     return tileScales.get(index);
   };
 
-  const scaleTile = (index, targetScale) => {
-    const scale = initTileScale(index);
-    Animated.timing(scale, {
-      toValue: targetScale,
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.timing(tileScale, {
+      toValue: scale,
       duration: 100,
       useNativeDriver: true,
     }).start();

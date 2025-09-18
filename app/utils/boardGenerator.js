@@ -17,9 +17,32 @@ function seededRandom(seed) {
   };
 }
 
+// 获取有效区域布局的安全函数
+function getEffectiveAreaLayout() {
+  if (typeof global !== 'undefined' && global.calculateEffectiveAreaLayout) {
+    try {
+      return global.calculateEffectiveAreaLayout();
+    } catch (error) {
+      console.warn('Failed to get dynamic layout, using default:', error);
+    }
+  }
+  
+  // 默认布局配置
+  return {
+    gridCols: 14,
+    gridRows: 21,
+    getTilePosition: (row, col) => ({
+      x: col * 36, // 默认方块尺寸 + 间距
+      y: row * 36
+    })
+  };
+}
+
 // 获取自适应棋盘格的最大容量
 function getMaxBoardCapacity() {
-  const layout = calculateEffectiveAreaLayout();
+  const layout = typeof global !== 'undefined' && global.calculateEffectiveAreaLayout 
+    ? global.calculateEffectiveAreaLayout() 
+    : { gridCols: 14, gridRows: 21 }; // 默认尺寸作为后备
   return layout.gridCols * layout.gridRows;
 }
 
@@ -255,9 +278,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const random = seededRandom(seed);
   
   // 获取动态棋盘尺寸
-  const layout = typeof global !== 'undefined' && global.calculateEffectiveAreaLayout 
-    ? global.calculateEffectiveAreaLayout() 
-    : { gridCols: 14, gridRows: 21 }; // 默认尺寸作为后备
+  const layout = getEffectiveAreaLayout();
   
   const width = layout.gridCols;
   const height = layout.gridRows;

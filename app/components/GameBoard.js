@@ -87,6 +87,11 @@ function calculateEffectiveAreaLayout() {
   };
 }
 
+// 导出布局计算函数供其他模块使用
+export function calculateEffectiveAreaLayout() {
+  return calculateEffectiveAreaLayout();
+}
+
 const GameBoard = ({ 
   tiles, 
   width, 

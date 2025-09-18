@@ -181,27 +181,26 @@ export function GameBoard({
   };
 
   const isInsideGridArea = (pageX, pageY) => {
-    if (!boardLayout || isInRestrictedArea(pageY)) return false;
+    if (!fixedLayout || isInRestrictedArea(pageY)) return false;
 
-    const { boardLeft, boardTop, layout } = boardLayout;
-    const { pad, innerWidth, innerHeight } = layout;
+    const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = fixedLayout;
 
-    const innerLeft = boardLeft + (boardLayout.boardWidth - innerWidth) / 2;
-    const innerTop = boardTop + (boardLayout.boardHeight - innerHeight) / 2;
+    const innerLeft = boardLeft + boardPadding;
+    const innerTop = boardTop + boardPadding;
 
-    if (pageX < innerLeft + pad || pageX > innerLeft + innerWidth - pad ||
-        pageY < innerTop + pad || pageY > innerTop + innerHeight - pad) {
+    if (pageX < innerLeft || pageX > innerLeft + (width * (tileSize + tileGap) - tileGap) ||
+        pageY < innerTop || pageY > innerTop + (height * (tileSize + tileGap) - tileGap)) {
       return false;
     }
 
-    const relativeX = pageX - innerLeft - pad;
-    const relativeY = pageY - innerTop - pad;
+    const relativeX = pageX - innerLeft;
+    const relativeY = pageY - innerTop;
 
-    const cellWidth = layout.tile + layout.gap;
-    const cellHeight = layout.tile + layout.gap;
+    const cellWidth = tileSize + tileGap;
+    const cellHeight = tileSize + tileGap;
 
-    if (relativeX < 0 || relativeX >= width * cellWidth - layout.gap ||
-        relativeY < 0 || relativeY >= height * cellHeight - layout.gap) {
+    if (relativeX < 0 || relativeX >= width * cellWidth - tileGap ||
+        relativeY < 0 || relativeY >= height * cellHeight - tileGap) {
       return false;
     }
 

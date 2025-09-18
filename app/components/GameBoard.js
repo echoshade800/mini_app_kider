@@ -172,6 +172,7 @@ const GameBoard = ({
 
   // 初始化布局
   React.useEffect(() => {
+    console.log('📐 重新计算棋盘布局', { width, height, screenWidth, screenHeight });
     const layout = calculateBoardLayout();
     setBoardLayout(layout);
     
@@ -179,7 +180,6 @@ const GameBoard = ({
     if (layout.tileSize === EFFECTIVE_AREA_CONFIG.MIN_TILE_SIZE) {
       console.log('🔧 使用最小方块尺寸限制');
     }
-  }, [width, height, isChallenge, screenWidth, screenHeight]);
 
   const resetSelection = () => {
     setSelection(null);

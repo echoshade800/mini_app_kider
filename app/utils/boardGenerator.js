@@ -129,6 +129,13 @@ function checkDistanceRequirement(positions, minDistance, width) {
   return true;
 }
 
+// Calculate centered position for activation rectangle
+function getActivationOffset(boardHeight, boardWidth, activeRows, activeCols) {
+  const rowOffset = Math.floor((boardHeight - activeRows) / 2);
+  const colOffset = Math.floor((boardWidth - activeCols) / 2);
+  return { rowOffset, colOffset };
+}
+
 // 检查位置是否在激活矩形内
 function isInActivationRect(row, col, rowOffset, colOffset, activeRows, activeCols) {
   return row >= rowOffset && 

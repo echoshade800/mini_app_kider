@@ -30,40 +30,31 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-    const innerWidth = availableWidth - BOARD_PADDING * 2;
-    const innerHeight = availableHeight - BOARD_PADDING * 2;
-    
-    // 使用实际的棋盘尺寸而不是固定网格
-    const tileWidth = (innerWidth - (width - 1) * TILE_GAP) / width;
-    const tileHeight = (innerHeight - (height - 1) * TILE_GAP) / height;
-    let tileSize = Math.min(tileWidth, tileHeight);
-    
-    // 挑战模式方块大小+2px
-    if (isChallenge) {
-      tileSize += 2;
-    }
-    
-    const boardWidth = width * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
-    const boardHeight = height * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
-    
-    const boardLeft = (screenWidth - boardWidth) / 2;
-    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-    
-    return {
-      tileSize,
-      tileGap: TILE_GAP,
-      boardPadding: BOARD_PADDING,
-      boardWidth,
-      boardHeight,
-      boardLeft,
-      boardTop,
-      gridRows: height,
-      gridCols: width,
-      getTilePosition: (row, col) => ({
-        x: col * (tileSize + TILE_GAP),
-        y: row * (tileSize + TILE_GAP),
-      }),
-    };
+        
+        const boardWidth = width * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+        const boardHeight = height * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+        
+        const boardLeft = (screenWidth - boardWidth) / 2;
+        const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+        
+        return {
+          tileSize,
+          tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
+          boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
+          boardWidth,
+          boardHeight,
+          boardLeft,
+          boardTop,
+          gridRows: height,
+          gridCols: width,
+          getTilePosition: (row, col) => ({
+            x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+            y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+          }),
+        };
+      }
+      
+      return calculateEffectiveAreaLayout();
   };
 
   const resetSelection = () => {
@@ -748,165 +739,3 @@ function calculateEffectiveAreaLayout() {
             }}
           >
             {/* Render tiles based on board data */}
-            {tiles.map((value, index) => {
-              const row = Math.floor(index / width);
-              const col = index % width;
-              return renderTile(value, row, col);
-            })}
-            
-            {/* Selection overlay */}
-            {selectionStyle && (
-              <Animated.View style={selectionStyle} />
-            )}
-            
-            {/* Selection sum display */}
-            {selectionSum && (
-              <View style={selectionSum.style}>
-                <Text style={[
-                  styles.sumText,
-                  { color: selectionSum.isSuccess ? '#333' : 'white' }
-                ]}>
-                  {selectionSum.sum}
-                </Text>
-              </View>
-            )}
-            
-            {/* Explosion effect */}
-            {explosionAnimation && (
-              <Animated.View
-                style={[
-                  styles.explosion,
-                  {
-                    left: explosionAnimation.x - 40,
-                    top: explosionAnimation.y - 30,
-                    transform: [{ scale: explosionScale }],
-                    opacity: explosionOpacity,
-                  }
-                ]}
-              >
-                <View style={styles.explosionNote}>
-                  <Text style={styles.explosionText}>10</Text>
-                </View>
-              </Animated.View>
-            )}
-          </View>
-        </View>
-      </View>
-      
-      {/* Rescue Modal */}
-      <RescueModal
-        visible={showRescueModal}
-        onContinue={handleRescueContinue}
-        onReturn={handleRescueReturn}
-      />
-    </View>
-  );
-};
-
-const styles = StyleSheet.create({
-  fullScreenContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingContainer: {
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  chalkboard: {
-    backgroundColor: '#1E5A3C', // Deep green chalkboard
-    borderRadius: 16,
-    borderWidth: 8,
-    borderColor: '#8B5A2B', // Wooden frame
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  gridLine: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)', // Semi-transparent white grid lines
-  },
-  tileInner: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF9E6', // Cream white sticky note
-    borderRadius: 3, // 更小的圆角，更接近参考图片
-    borderWidth: 1,
-    borderColor: '#333',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 1,
-      height: 1,
-    },
-    shadowOpacity: 0.2, // 减轻阴影，更接近参考图片
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  tileSwapSelected: {
-    backgroundColor: '#E3F2FD',
-    borderColor: '#2196F3',
-  },
-  tileFractalSelected: {
-    backgroundColor: '#F3E5F5',
-    borderColor: '#9C27B0',
-  },
-  tileText: {
-    fontWeight: 'bold',
-    color: '#111',
-    textAlign: 'center',
-  },
-  sumText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  explosion: {
-    position: 'absolute',
-    width: 80,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  explosionNote: {
-    width: 80,
-    height: 60,
-    backgroundColor: '#FFEB3B', // Yellow sticky note
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#F57F17',
-    shadowColor: '#000',
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  explosionText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-});
-
-export default GameBoard;

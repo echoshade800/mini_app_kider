@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Dimensions, Animated } from 'react-native';
+import { Dimensions } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';

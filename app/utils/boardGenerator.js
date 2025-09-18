@@ -129,6 +129,14 @@ function checkDistanceRequirement(positions, minDistance, width) {
   return true;
 }
 
+// 检查位置是否在激活矩形内
+function isInActivationRect(row, col, rowOffset, colOffset, activeRows, activeCols) {
+  return row >= rowOffset && 
+         row < rowOffset + activeRows && 
+         col >= colOffset && 
+         col < colOffset + activeCols;
+}
+
 // Generate a game board for the specified level
 export function generateBoard(level, ensureSolvable = true, isChallenge = false) {
   const seed = isChallenge ? 

@@ -24,9 +24,58 @@ const EFFECTIVE_AREA_CONFIG = {
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
+  GRID_ROWS: 20,        // 固定网格行数
+  GRID_COLS: 14,        // 固定网格列数
 };
 
-const GameBoard = () => {
+// 计算有效游戏区域和棋盘布局
+function calculateEffectiveAreaLayout() {
+  const effectiveWidth = screenWidth;
+  const effectiveHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+  
+  return {
+    width: effectiveWidth,
+    height: effectiveHeight,
+    top: EFFECTIVE_AREA_CONFIG.TOP_RESERVED,
+    left: 0,
+  };
+}
+
+// 检查棋盘是否为空
+const isBoardEmpty = (tiles) => {
+  return tiles.every(tile => tile === 0);
+};
+
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  onTilesClear, 
+  settings,
+  isChallenge,
+  onBoardRefresh,
+  itemMode,
+  selectedSwapTile,
+  onTilePress,
+  swapAnimations,
+  fractalAnimations,
+  initTileScale,
+}) => {
+  const [selection, setSelection] = useState(null);
+  const [fixedLayout, setFixedLayout] = useState(null);
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+  
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+
+  const getTileRotation = (row, col) => {
+    const seed = row * 13 + col * 7;
+    return (seed % 7) - 3; // -3 to 3 degrees
+  };
+
   const handleSelectionComplete = async () => {
     if (!selection) return;
 
@@ -118,6 +167,43 @@ const GameBoard = () => {
     } else {
       setSelection(null);
     }
+  };
+
+  const getFixedBoardLayout = (availableWidth, availableHeight) => {
+    const { GRID_ROWS, GRID_COLS, TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
+    
+    // Calculate tile size based on available space
+    const maxTileWidth = (availableWidth - 2 * BOARD_PADDING - (GRID_COLS - 1) * TILE_GAP) / GRID_COLS;
+    const maxTileHeight = (availableHeight - 2 * BOARD_PADDING - (GRID_ROWS - 1) * TILE_GAP) / GRID_ROWS;
+    
+    const tileSize = Math.floor(Math.min(maxTileWidth, maxTileHeight));
+    
+    const gridWidth = GRID_COLS * tileSize + (GRID_COLS - 1) * TILE_GAP;
+    const gridHeight = GRID_ROWS * tileSize + (GRID_ROWS - 1) * TILE_GAP;
+    
+    const boardWidth = gridWidth + 2 * BOARD_PADDING;
+    const boardHeight = gridHeight + 2 * BOARD_PADDING;
+    
+    const boardLeft = (availableWidth - boardWidth) / 2;
+    const boardTop = (availableHeight - boardHeight) / 2;
+    
+    return {
+      tileSize,
+      tileGap: TILE_GAP,
+      boardPadding: BOARD_PADDING,
+      gridWidth,
+      gridHeight,
+      boardWidth,
+      boardHeight,
+      boardLeft,
+      boardTop,
+      gridRows: GRID_ROWS,
+      gridCols: GRID_COLS,
+      getTilePosition: (row, col) => ({
+        x: col * (tileSize + TILE_GAP),
+        y: row * (tileSize + TILE_GAP),
+      }),
+    };
   };
 
   // 处理救援选择

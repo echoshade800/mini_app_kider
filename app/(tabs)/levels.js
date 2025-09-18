@@ -160,7 +160,6 @@ export default function LevelsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -179,7 +178,6 @@ export default function LevelsScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
           <View 
@@ -194,7 +192,6 @@ export default function LevelsScreen() {
         </Text>
       </View>
 
-      {/* Filter Buttons */}
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
@@ -204,7 +201,6 @@ export default function LevelsScreen() {
         {FILTER_OPTIONS.map(renderFilterButton)}
       </ScrollView>
 
-      {/* Levels Grid */}
       <FlatList
         data={filteredLevels}
         renderItem={renderLevelItem}

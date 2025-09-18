@@ -197,6 +197,10 @@ export function generateChallengeBoard() {
       }
     }
   }
+  
+  // 确保总和为10的倍数
+  const adjustedTiles = ensureSumIsMultipleOf10(tiles);
+  
   return {
     seed,
     tiles: adjustedTiles,

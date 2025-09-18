@@ -6,6 +6,40 @@
 
 import { Dimensions } from 'react-native';
 
+// 根据关卡获取数字方块数量（从boardGenerator复制过来避免循环依赖）
+function getTileCount(level, isChallenge = false) {
+  if (isChallenge) {
+    // 挑战模式：使用高数量提供最大挑战
+    return 200; // 固定高数量
+  }
+  
+  // 关卡模式：渐进式增长
+  if (level >= 1 && level <= 10) {
+    return Math.floor(12 + level * 2); // 14-32个方块
+  }
+  if (level >= 11 && level <= 20) {
+    return Math.floor(30 + (level - 10) * 3); // 33-60个方块
+  }
+  if (level >= 21 && level <= 30) {
+    return Math.floor(60 + (level - 20) * 4); // 64-100个方块
+  }
+  if (level >= 31 && level <= 50) {
+    return Math.floor(100 + (level - 30) * 3); // 103-160个方块
+  }
+  if (level >= 51 && level <= 80) {
+    return Math.floor(160 + (level - 50) * 2); // 162-220个方块
+  }
+  if (level >= 81 && level <= 120) {
+    return Math.floor(220 + (level - 80) * 1.5); // 221-280个方块
+  }
+  if (level >= 121 && level <= 200) {
+    return Math.floor(280 + (level - 120) * 1); // 281-360个方块
+  }
+  
+  // 200关以后继续增长
+  return Math.floor(360 + (level - 200) * 0.5);
+}
+
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // 布局常量

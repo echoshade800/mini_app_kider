@@ -32,7 +32,7 @@ const TILE_MAX = 42;
 // 挑战模式专用常量
 const CHALLENGE_GAP = 2;     // 挑战模式方块间距
 const CHALLENGE_PAD = 8;     // 挑战模式棋盘内边距
-const CHALLENGE_TILE = 32;   // 挑战模式固定方块尺寸
+const CHALLENGE_TILE = 28;   // 挑战模式固定方块尺寸
 
 // 像素对齐函数
 function roundPx(v) {
@@ -43,9 +43,9 @@ function roundPx(v) {
 function computeGridLayout({ rows, cols, boardWidth, boardHeight, isChallenge = false }) {
   if (isChallenge) {
     // 挑战模式使用固定尺寸，最大化利用空间
-    const tile = roundPx(32);  // 适中的方块尺寸
-    const gap = roundPx(4);    // 适中的间距
-    const pad = roundPx(12);   // 标准内边距
+    const tile = roundPx(CHALLENGE_TILE);
+    const gap = roundPx(CHALLENGE_GAP);
+    const pad = roundPx(CHALLENGE_PAD);
     
     return {
       tile,
@@ -912,9 +912,11 @@ export function GameBoard({
 
   // 挑战模式使用全屏尺寸，闯关模式使用固定尺寸
   const boardContainerStyle = isChallenge ? {
-    // 挑战模式在有效区域内居中显示，不铺满屏幕
-    alignSelf: 'center',
-    marginVertical: 20,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   } : {
     width: 320,
     height: 400,

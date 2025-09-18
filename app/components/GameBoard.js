@@ -17,10 +17,78 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { hasValidCombinations, reshuffleBoard, isBoardEmpty } from '../utils/gameLogic';
-import { computeBoardLayout } from '../utils/layout';
+import { getLevelLayout, adjustLayoutForSmallScreen } from '../utils/levelGrid';
 import { RescueModal } from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// 统一尺寸计算常量
+const GAP = 6;         // 方块间距（闯关模式）
+const PAD = 12;        // 棋盘内边距（闯关模式）
+const TILE_MIN = 30;   // 闯关模式方块尺寸
+const TILE_IDEAL = 36;
+const TILE_MAX = 42;
+
+// 挑战模式专用常量
+const CHALLENGE_GAP = 2;     // 挑战模式方块间距
+const CHALLENGE_PAD = 8;     // 挑战模式棋盘内边距
+const CHALLENGE_TILE = 28;   // 挑战模式固定方块尺寸
+
+// 像素对齐函数
+function roundPx(v) {
+  return PixelRatio.roundToNearestPixel(v);
+}
+
+// 统一网格布局计算
+function computeGridLayout({ rows, cols, boardWidth, boardHeight, isChallenge = false }) {
+  if (isChallenge) {
+    // 挑战模式使用固定尺寸，最大化利用空间
+    const tile = roundPx(CHALLENGE_TILE);
+    const gap = roundPx(CHALLENGE_GAP);
+    const pad = roundPx(CHALLENGE_PAD);
+    
+    return {
+      tile,
+      gap,
+      pad,
+      getXY: (r, c) => ({
+        x: roundPx(pad + c * (tile + gap)),
+        y: roundPx(pad + r * (tile + gap)),
+      }),
+      innerWidth: roundPx(pad * 2 + cols * tile + (cols - 1) * gap),
+      innerHeight: roundPx(pad * 2 + rows * tile + (rows - 1) * gap),
+    };
+  }
+  
+  // 闯关模式的原有逻辑
+  const innerW = boardWidth - PAD * 2 - GAP * (cols - 1);
+  const innerH = boardHeight - PAD * 2 - GAP * (rows - 1);
+
+  let sizeByW = innerW / cols;
+  let sizeByH = innerH / rows;
+
+  let tileSize = Math.min(sizeByW, sizeByH);
+  if (Math.abs(tileSize - TILE_IDEAL) <= 4) tileSize = TILE_IDEAL;
+  tileSize = Math.max(TILE_MIN, Math.min(TILE_MAX, tileSize));
+
+  const tile = roundPx(tileSize);
+  const gap = roundPx(GAP);
+  const pad = roundPx(PAD);
+
+  return {
+    tile,
+    gap,
+    pad,
+    // 计算每个 cell 左上角坐标
+    getXY: (r, c) => ({
+      x: roundPx(pad + c * (tile + gap)),
+      y: roundPx(pad + r * (tile + gap)),
+    }),
+    // 内层真实使用尺寸
+    innerWidth: roundPx(pad * 2 + cols * tile + (cols - 1) * gap),
+    innerHeight: roundPx(pad * 2 + rows * tile + (rows - 1) * gap),
+  };
+}
 
 export function GameBoard({ 
   board, 
@@ -32,7 +100,8 @@ export function GameBoard({
   disabled = false,
   swapAnimations,
   fractalAnimations,
-  isChallenge = false
+  isChallenge = false,
+  maxBoardHeight = null
 }) {
   const { settings } = useGameStore();
   const [selection, setSelection] = useState(null);
@@ -40,7 +109,7 @@ export function GameBoard({
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [reshuffleCount, setReshuffleCount] = useState(0);
   const [showRescueModal, setShowRescueModal] = useState(false);
-  const [layout, setLayout] = useState(null);
+  const [boardLayout, setBoardLayout] = useState(null);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -143,27 +212,43 @@ export function GameBoard({
   };
 
   const isInsideGridArea = (pageX, pageY) => {
-    if (!layout) return false;
+    if (!boardLayout) return false;
     
-    // 检查是否在限制区域
-    if (isInRestrictedArea(pageY)) return false;
+    // 挑战模式下不检查限制区域，允许在整个棋盘区域画框
+    if (!isChallenge && isInRestrictedArea(pageY)) return false;
 
-    const { slots, offsetX, offsetY, boardWidth, boardHeight } = layout;
+    const { boardLeft, boardTop, layout } = boardLayout;
+    const { pad, innerWidth, innerHeight } = layout;
 
-    // 转换为相对于棋盘容器的坐标
-    const relativeX = pageX - offsetX;
-    const relativeY = pageY - offsetY;
+    const innerLeft = boardLeft + (boardLayout.boardWidth - innerWidth) / 2;
+    const innerTop = boardTop + (boardLayout.boardHeight - innerHeight) / 2;
 
-    // 检查是否在棋盘范围内
-    if (relativeX < 0 || relativeX > boardWidth ||
-        relativeY < 0 || relativeY > boardHeight) {
+    if (pageX < innerLeft + pad || pageX > innerLeft + innerWidth - pad ||
+        pageY < innerTop + pad || pageY > innerTop + innerHeight - pad) {
       return false;
     }
 
-    return true;
+    const relativeX = pageX - innerLeft - pad;
+    const relativeY = pageY - innerTop - pad;
+
+    const cellWidth = layout.tile + layout.gap;
+    const cellHeight = layout.tile + layout.gap;
+
+    if (relativeX < 0 || relativeX >= width * cellWidth - layout.gap ||
+        relativeY < 0 || relativeY >= height * cellHeight - layout.gap) {
+      return false;
+    }
+
+    const col = Math.floor(relativeX / cellWidth);
+    const row = Math.floor(relativeY / cellHeight);
+
+    return row >= 0 && row < height && col >= 0 && col < width;
   };
 
   const isInRestrictedArea = (pageY) => {
+    // 挑战模式下不限制区域
+    if (isChallenge) return false;
+    
     const topRestrictedHeight = 86; // 顶部HUD实际高度
     const bottomRestrictedHeight = 110; // 底部道具栏实际高度
     
@@ -229,22 +314,20 @@ export function GameBoard({
       
       if (!isInsideGridArea(pageX, pageY)) return;
       
-      // 找到点击的格子
-      const { slots, offsetX, offsetY } = layout;
-      const relativeX = pageX - offsetX;
-      const relativeY = pageY - offsetY;
-      
-      let startRow = -1, startCol = -1;
-      for (const slot of slots) {
-        if (relativeX >= slot.x && relativeX < slot.x + slot.w &&
-            relativeY >= slot.y && relativeY < slot.y + slot.h) {
-          startRow = slot.r;
-          startCol = slot.c;
-          break;
-        }
-      }
-      
-      if (startRow === -1 || startCol === -1) return;
+      const { boardLeft, boardTop, layout } = boardLayout;
+      const { pad, innerWidth, innerHeight } = layout;
+
+      const innerLeft = boardLeft + (boardLayout.boardWidth - innerWidth) / 2;
+      const innerTop = boardTop + (boardLayout.boardHeight - innerHeight) / 2;
+
+      const relativeX = pageX - innerLeft - pad;
+      const relativeY = pageY - innerTop - pad;
+
+      const cellWidth = layout.tile + layout.gap;
+      const cellHeight = layout.tile + layout.gap;
+
+      const startCol = Math.floor(relativeX / cellWidth);
+      const startRow = Math.floor(relativeY / cellHeight);
       
       setSelection({
         startRow,
@@ -265,22 +348,32 @@ export function GameBoard({
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      // 找到当前位置的格子
-      const { slots, offsetX, offsetY } = layout;
-      const relativeX = pageX - offsetX;
-      const relativeY = pageY - offsetY;
-      
-      let endRow = -1, endCol = -1;
-      for (const slot of slots) {
-        if (relativeX >= slot.x && relativeX < slot.x + slot.w &&
-            relativeY >= slot.y && relativeY < slot.y + slot.h) {
-          endRow = slot.r;
-          endCol = slot.c;
-          break;
-        }
+      const { boardLeft, boardTop, layout } = boardLayout;
+      const { pad, innerWidth, innerHeight } = layout;
+
+      const innerLeft = boardLeft + (boardLayout.boardWidth - innerWidth) / 2;
+      const innerTop = boardTop + (boardLayout.boardHeight - innerHeight) / 2;
+
+      if (pageX < innerLeft + pad || pageX > innerLeft + innerWidth - pad ||
+          pageY < innerTop + pad || pageY > innerTop + innerHeight - pad) {
+        return;
       }
       
-      if (endRow === -1 || endCol === -1) {
+      const relativeX = pageX - innerLeft - pad;
+      const relativeY = pageY - innerTop - pad;
+
+      const cellWidth = layout.tile + layout.gap;
+      const cellHeight = layout.tile + layout.gap;
+
+      if (relativeX < 0 || relativeX >= width * cellWidth - layout.gap ||
+          relativeY < 0 || relativeY >= height * cellHeight - layout.gap) {
+        return;
+      }
+      
+      const endCol = Math.floor(relativeX / cellWidth);
+      const endRow = Math.floor(relativeY / cellHeight);
+      
+      if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
         return;
       }
       
@@ -336,6 +429,9 @@ export function GameBoard({
     onPanResponderTerminationRequest: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
       
+      // 挑战模式下允许在任何地方画框，不终止手势
+      if (isChallenge) return false;
+      
       const buttonAreaBottom = screenHeight - 110; // 底部道具栏区域
       const buttonAreaTop = screenHeight - 110;
       const topRestrictedHeight = 86; // 顶部HUD区域
@@ -387,11 +483,11 @@ export function GameBoard({
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
 
-      if (!layout) return;
+      if (!boardLayout) return;
 
-      const { tileSize, gap } = layout;
-      const cellWidth = tileSize + gap;
-      const cellHeight = tileSize + gap;
+      const { layout } = boardLayout;
+      const cellWidth = layout.tile + layout.gap;
+      const cellHeight = layout.tile + layout.gap;
 
       const explosionX = centerCol * cellWidth + layout.tile / 2;
       const explosionY = centerRow * cellHeight + layout.tile / 2;
@@ -488,16 +584,16 @@ export function GameBoard({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    if (!layout) return null;
+    if (!boardLayout) return null;
 
-    const { tileSize, gap } = layout;
-    const cellWidth = tileSize + gap;
-    const cellHeight = tileSize + gap;
+    const { layout } = boardLayout;
+    const cellWidth = layout.tile + layout.gap;
+    const cellHeight = layout.tile + layout.gap;
 
     const left = minCol * cellWidth;
     const top = minRow * cellHeight;
-    const selectionWidth = (maxCol - minCol + 1) * cellWidth - gap;
-    const selectionHeight = (maxRow - minRow + 1) * cellHeight - gap;
+    const selectionWidth = (maxCol - minCol + 1) * cellWidth - layout.gap;
+    const selectionHeight = (maxRow - minRow + 1) * cellHeight - layout.gap;
     
     return {
       position: 'absolute',
@@ -530,14 +626,14 @@ export function GameBoard({
     const maxRow = Math.max(startRow, endRow);
     const maxCol = Math.max(startCol, endCol);
     
-    if (!layout) return null;
+    if (!boardLayout) return null;
 
-    const { tileSize, gap } = layout;
-    const cellWidth = tileSize + gap;
-    const cellHeight = tileSize + gap;
+    const { layout } = boardLayout;
+    const cellWidth = layout.tile + layout.gap;
+    const cellHeight = layout.tile + layout.gap;
 
-    const left = maxCol * cellWidth + tileSize;
-    const top = maxRow * cellHeight + tileSize;
+    const left = maxCol * cellWidth + layout.tile;
+    const top = maxRow * cellHeight + layout.tile;
     
     return {
       sum,
@@ -564,9 +660,56 @@ export function GameBoard({
     };
   };
 
-  const renderTile = (value, row, col) => {
+  const renderGridLines = (layout) => {
     if (!layout) return null;
 
+    const lines = [];
+    const cellWidth = layout.tile + layout.gap;
+    const cellHeight = layout.tile + layout.gap;
+
+    // Vertical lines
+    for (let i = 1; i < width; i++) {
+      lines.push(
+        <View
+          key={`v-${i}`}
+          style={[
+            styles.gridLine,
+            {
+              left: roundPx(i * cellWidth - layout.gap / 2),
+              top: 0,
+              width: 1,
+              height: roundPx(height * cellHeight - layout.gap),
+            }
+          ]}
+        />
+      );
+    }
+
+    // Horizontal lines
+    for (let i = 1; i < height; i++) {
+      lines.push(
+        <View
+          key={`h-${i}`}
+          style={[
+            styles.gridLine,
+            {
+              left: 0,
+              top: roundPx(i * cellHeight - layout.gap / 2),
+              width: roundPx(width * cellWidth - layout.gap),
+              height: 1,
+            }
+          ]}
+        />
+      );
+    }
+
+    return lines;
+  };
+
+  const renderTile = (value, row, col) => {
+    if (!boardLayout) return null;
+
+    const { layout } = boardLayout;
     const index = row * width + col;
     
     if (value === 0) {
@@ -580,7 +723,7 @@ export function GameBoard({
           const tempAnim = fractalAnimations.get(tempKey);
           if (!tempAnim) return null;
           
-          const slot = layout.slots.find(s => s.r === row && s.c === col);
+          const { x, y } = layout.getXY(row, col);
           const rotation = isChallenge ? 0 : getTileRotation(row, col);
           
           const transforms = [
@@ -599,10 +742,10 @@ export function GameBoard({
               style={[
                 { 
                   position: 'absolute',
-                  left: slot.x,
-                  top: slot.y,
-                  width: slot.w,
-                  height: slot.h,
+                  left: x,
+                  top: y,
+                  width: layout.tile,
+                  height: layout.tile,
                   transform: transforms,
                   opacity: tempAnim.opacity,
                   alignItems: 'center',
@@ -614,8 +757,8 @@ export function GameBoard({
                 <Text style={[
                   styles.tileText,
                   { 
-                    fontSize: Math.max(14, slot.w * 0.45),
-                    lineHeight: slot.h,
+                    fontSize: Math.max(14, layout.tile * 0.45),
+                    lineHeight: layout.tile,
                   }
                 ]}>
                   {displayValue}
@@ -650,8 +793,7 @@ export function GameBoard({
       return null;
     }
 
-    const slot = layout.slots.find(s => s.r === row && s.c === col);
-    if (!slot) return null;
+    const { x, y } = layout.getXY(row, col);
 
     const tileScale = initTileScale(index);
     const rotation = isChallenge ? 0 : getTileRotation(row, col);
@@ -704,10 +846,10 @@ export function GameBoard({
         key={`${row}-${col}`}
         style={{
           position: 'absolute',
-          left: slot.x,
-          top: slot.y,
-          width: slot.w,
-          height: slot.h,
+          left: x,
+          top: y,
+          width: layout.tile,
+          height: layout.tile,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -728,8 +870,8 @@ export function GameBoard({
           <Text style={[
             styles.tileText,
             { 
-              fontSize: Math.max(14, slot.w * 0.45),
-              lineHeight: slot.h,
+              fontSize: Math.max(14, layout.tile * 0.45),
+              lineHeight: layout.tile,
             }
           ]}>
             {value}
@@ -743,25 +885,41 @@ export function GameBoard({
   const handleBoardLayout = (event) => {
     const { width: boardWidth, height: boardHeight } = event.nativeEvent.layout;
     
-    // 使用统一的布局计算函数
-    const computedLayout = computeBoardLayout({
-      availWidth: boardWidth,
-      availHeight: boardHeight,
+    // 计算棋盘在屏幕中的位置（挑战模式使用全屏定位）
+    const boardLeft = isChallenge ? 0 : screenWidth / 2 - boardWidth / 2;
+    const boardTop = isChallenge ? 0 : screenHeight / 2 - boardHeight / 2;
+    
+    // 计算网格布局
+    const layout = computeGridLayout({
       rows: height,
       cols: width,
+      boardWidth,
+      boardHeight,
+      isChallenge,
     });
     
-    setLayout(computedLayout);
+    setBoardLayout({
+      boardWidth,
+      boardHeight,
+      boardLeft,
+      boardTop,
+      layout,
+    });
   };
 
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();
 
-  // 统一使用固定尺寸
-  const boardContainerStyle = {
-    flex: 1,
-    alignSelf: 'center',
-    marginVertical: 20,
+  // 挑战模式使用全屏尺寸，闯关模式使用固定尺寸
+  const boardContainerStyle = isChallenge ? {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  } : {
+    width: 320,
+    height: 400,
   };
 
   return (
@@ -771,16 +929,19 @@ export function GameBoard({
           style={[styles.chalkboard, boardContainerStyle]}
           onLayout={handleBoardLayout}
         >
-          {layout && (
+          {boardLayout && (
             <View
               style={{
                 position: 'absolute',
-                width: layout.boardWidth,
-                height: layout.boardHeight,
-                left: layout.offsetX,
-                top: layout.offsetY,
+                width: boardLayout.layout.innerWidth,
+                height: boardLayout.layout.innerHeight,
+                left: (boardLayout.boardWidth - boardLayout.layout.innerWidth) / 2,
+                top: (boardLayout.boardHeight - boardLayout.layout.innerHeight) / 2,
               }}
             >
+              {/* Grid lines */}
+              {renderGridLines(boardLayout.layout)}
+              
               {/* Render all tiles */}
               {tiles.map((value, index) => {
                 const row = Math.floor(index / width);
@@ -867,8 +1028,9 @@ const styles = StyleSheet.create({
   },
   chalkboard: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
+    padding: 20, // 统一内边距，确保数字方块在棋盘中央
     borderRadius: 16,
-    borderWidth: 6,
+    borderWidth: 8,
     borderColor: '#8B5A2B', // Wooden frame
     shadowColor: '#000',
     shadowOffset: {
@@ -879,6 +1041,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 10,
     position: 'relative',
+    alignSelf: 'center',
+  },
+  gridLine: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)', // Semi-transparent white grid lines
   },
   tileInner: {
     width: '100%',

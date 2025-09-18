@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
-import { generateBoard } from '../utils/boardGenerator';
+import { generateChallengeBoard } from '../utils/boardGenerator';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CHALLENGE_DURATION = 60; // 60 seconds
@@ -194,8 +194,8 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 生成挑战模式棋盘（使用高难度设置）
-    const board = generateBoard(130, true, true);
+    // 生成满盘棋盘，传入屏幕尺寸以铺满屏幕
+    const board = generateChallengeBoard(screenWidth, screenHeight);
     setCurrentBoard(board);
     setReshuffleCount(0);
   };
@@ -576,8 +576,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a2e',
   },
-  boardContainer: {
-    flex: 1,
+  fullScreenBoard: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   hud: {
     flexDirection: 'row',
@@ -621,6 +626,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
+  readyScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
   readyOverlay: {
     position: 'absolute',
     top: 0,
@@ -630,6 +641,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(26, 26, 46, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1000,
   },
   readyContent: {
     alignItems: 'center',
@@ -658,6 +670,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  gameArea: {
+    flex: 1,
+    backgroundColor: '#1E5A3C', // 绿色背景铺满
+    margin: 20, // 与屏幕边缘的距离
+    borderRadius: 16,
+    borderWidth: 8,
+    borderColor: '#8B5A2B', // 木框边框
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
   },
   noSolutionOverlay: {
     position: 'absolute',

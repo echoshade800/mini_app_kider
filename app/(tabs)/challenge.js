@@ -89,7 +89,6 @@ export default function ChallengeScreen() {
     setGameState('playing');
     setCurrentIQ(0);
     setTimeLeft(CHALLENGE_DURATION);
-    setReshuffleCount(0);
     generateNewBoard();
   };
 

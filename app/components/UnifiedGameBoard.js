@@ -24,7 +24,7 @@ export function UnifiedGameBoard({
   disabled = false,
   swapAnimations = new Map(),
   fractalAnimations = new Map(),
-  containerHeight = 0
+  containerHeight = 600 // 设置默认高度
 }) {
   const { settings } = useGameStore();
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -35,11 +35,12 @@ export function UnifiedGameBoard({
   const tileScales = useRef({}).current;
 
   // 计算可用区域（扣除安全区域）
-  const usableHeight = containerHeight > 0 ? containerHeight - 240 : containerSize.height - 240; // 扣除顶部120px + 底部120px
+  const usableHeight = containerSize.height > 0 ? containerSize.height - 240 : 400; // 扣除顶部120px + 底部120px，设置最小高度
   const layout = useBoardLayout(containerSize.width, usableHeight, board?.tiles?.filter(t => t > 0).length || 0);
 
   const onContainerLayout = useCallback((event) => {
     const { width, height } = event.nativeEvent.layout;
+    console.log('Container layout:', { width, height });
     setContainerSize({ width, height });
   }, []);
 
@@ -393,12 +394,20 @@ export function UnifiedGameBoard({
   };
 
   if (!board || !layout) {
+    console.log('Board or layout missing:', { board: !!board, layout: !!layout, containerSize });
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
       </View>
     );
   }
+
+  console.log('Rendering board with layout:', { 
+    boardTiles: board.tiles?.length, 
+    layoutSlots: layout.slots?.length,
+    containerSize,
+    usableHeight 
+  });
 
   const selectionStyle = getSelectionStyle();
 

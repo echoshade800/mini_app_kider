@@ -78,7 +78,10 @@ export function computeBoardLayout(usableW, usableH, tileCount) {
 
 export function useBoardLayout(usableW, usableH, tileCount) {
   return useMemo(() => {
+    console.log('useBoardLayout called with:', { usableW, usableH, tileCount });
     if (usableW <= 0 || usableH <= 0 || tileCount <= 0) return null;
-    return computeBoardLayout(usableW, usableH, tileCount);
+    const layout = computeBoardLayout(usableW, usableH, tileCount);
+    console.log('Layout computed:', layout);
+    return layout;
   }, [usableW, usableH, tileCount]);
 }

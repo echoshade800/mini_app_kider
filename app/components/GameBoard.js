@@ -172,6 +172,7 @@ const GameBoard = ({
 
   // 初始化布局
   React.useEffect(() => {
+    console.log('📐 重新计算棋盘布局', { width, height, screenWidth, screenHeight });
     const layout = calculateBoardLayout();
     setBoardLayout(layout);
     
@@ -179,14 +180,7 @@ const GameBoard = ({
     if (layout.tileSize === EFFECTIVE_AREA_CONFIG.MIN_TILE_SIZE) {
       console.log('🔧 使用最小方块尺寸限制');
     }
-  }, [width, height, screenWidth, screenHeight]);
-
-  // 🎯 监控tiles变化，避免在选择过程中更新
-  React.useEffect(() => {
-    if (selection) {
-      console.log('⚠️  检测到在选择过程中tiles发生变化，可能导致刷新问题');
-    }
-  }, [tiles, selection]);
+  }, [width, height]);
 
   const resetSelection = () => {
     setSelection(null);
@@ -657,10 +651,8 @@ const GameBoard = ({
 
     const index = row * width + col;
     
-    // 🎯 只有非零值才显示数字方块，0值显示空格子
-    if (value === 0) {
-      return null; // 空格子不渲染任何内容
-    }
+    // 所有格子都显示数字方块，值为0时显示随机数字
+    const displayValue = value === 0 ? Math.floor(Math.random() * 9) + 1 : value;
 
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
@@ -747,7 +739,7 @@ const GameBoard = ({
             styles.tileText,
             { fontSize }
           ]}>
-            {value}
+            {displayValue}
           </Text>
         </Animated.View>
       </View>

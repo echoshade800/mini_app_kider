@@ -254,9 +254,13 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   const random = seededRandom(seed);
   
-  // 使用棋盘格限制
-  const width = BOARD_GRID_LIMITS.MAX_COLS;  // 14
-  const height = BOARD_GRID_LIMITS.MAX_ROWS; // 21
+  // 获取动态棋盘尺寸
+  const layout = typeof global !== 'undefined' && global.calculateEffectiveAreaLayout 
+    ? global.calculateEffectiveAreaLayout() 
+    : { gridCols: 14, gridRows: 21 }; // 默认尺寸作为后备
+  
+  const width = layout.gridCols;
+  const height = layout.gridRows;
   
   // 根据关卡获取目标填充数量，然后计算最佳矩形
   const targetFillCount = getTileFillCount(level);

@@ -17,6 +17,35 @@ function seededRandom(seed) {
   };
 }
 
+// 计算整齐四边形的激活区域尺寸
+function calculateRectangularActivationArea(level, totalCols, totalRows) {
+  const fillRatio = getTileFillRatio(level);
+  const totalCells = totalCols * totalRows;
+  const targetCells = Math.floor(totalCells * fillRatio);
+  
+  // 寻找最接近目标数量的矩形尺寸
+  let bestCols = totalCols;
+  let bestRows = totalRows;
+  let bestDiff = Math.abs(totalCells - targetCells);
+  
+  // 尝试不同的矩形尺寸组合
+  for (let cols = Math.ceil(Math.sqrt(targetCells)); cols <= totalCols; cols++) {
+    const rows = Math.floor(targetCells / cols);
+    if (rows > 0 && rows <= totalRows) {
+      const actualCells = cols * rows;
+      const diff = Math.abs(actualCells - targetCells);
+      
+      if (diff < bestDiff) {
+        bestCols = cols;
+        bestRows = rows;
+        bestDiff = diff;
+      }
+    }
+  }
+  
+  return { cols: bestCols, rows: bestRows };
+}
+
 // 关卡 → 激活矩形（行×列）映射表
 function getActivationRect(level) {
   if (level >= 1 && level <= 10) return { rows: 6, cols: 4 };     // 24格
@@ -154,8 +183,8 @@ function getActivationOffset(boardHeight, boardWidth, activeRows, activeCols) {
   return { rowOffset, colOffset };
 }
 
-// 检查位置是否在激活矩形内
-function isInActivationRect(row, col, rowOffset, colOffset, activeRows, activeCols) {
+// 检查位置是否在激活矩形内（整齐四边形区域）
+function isInRectangularActivationArea(row, col, rowOffset, colOffset, activeRows, activeCols) {
   return row >= rowOffset && 
          row < rowOffset + activeRows && 
          col >= colOffset && 
@@ -174,10 +203,10 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const width = 14;
   const height = 21;
   
-  // Get activation rectangle for this level
-  const activationRect = getActivationRect(level);
-  const activeRows = activationRect.rows;
-  const activeCols = activationRect.cols;
+  // 计算整齐四边形的激活区域
+  const rectangularArea = calculateRectangularActivationArea(level, width, height);
+  const activeRows = rectangularArea.rows;
+  const activeCols = rectangularArea.cols;
   const activeSize = activeRows * activeCols;
   
   // Calculate centered position
@@ -191,10 +220,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const distribution = getNumberDistribution(level);
   const targetCombinations = getTargetCombinations(level);
   const minDistance = getMinDistance(level);
-  const fillRatio = getTileFillRatio(level);
   
-  // Calculate target fill count based on active area and fill ratio
-  const targetFillCount = Math.floor(activeSize * fillRatio);
+  // 填充整个激活矩形区域
+  const targetFillCount = activeSize;
   
   // Calculate number of target combinations (pairs/triples/quads that sum to 10)
   const combinationRatio = level <= 50 ? 0.4 : level <= 100 ? 0.35 : 0.3;
@@ -202,6 +230,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   const placedPositions = new Set();
   let combinationsPlaced = 0;
+  
   // Place target combinations
   while (combinationsPlaced < combinationCount) {
     // Choose combination type based on availability
@@ -210,13 +239,13 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     const combinations = targetCombinations[chosenType];
     const combination = combinations[Math.floor(random() * combinations.length)];
     
-    // Get available positions within activation rect only
+    // Get available positions within rectangular activation area only
     const availablePositions = [];
     for (let row = 0; row < height; row++) {
       for (let col = 0; col < width; col++) {
         const index = row * width + col;
         if (!placedPositions.has(index) && 
-            isInActivationRect(row, col, rowOffset, colOffset, activeRows, activeCols)) {
+            isInRectangularActivationArea(row, col, rowOffset, colOffset, activeRows, activeCols)) {
           availablePositions.push(index);
         }
       }
@@ -261,7 +290,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     }
   }
   
-  // Fill remaining spots in activation rect with random numbers
+  // Fill remaining spots in rectangular activation area with random numbers
   const totalPlacedTiles = Array.from(placedPositions).length;
   const remainingCount = Math.max(0, targetFillCount - totalPlacedTiles);
   
@@ -270,7 +299,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     for (let col = 0; col < width; col++) {
       const index = row * width + col;
       if (!placedPositions.has(index) && 
-          isInActivationRect(row, col, rowOffset, colOffset, activeRows, activeCols)) {
+          isInRectangularActivationArea(row, col, rowOffset, colOffset, activeRows, activeCols)) {
         availablePositions.push(index);
       }
     }

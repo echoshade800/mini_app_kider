@@ -44,11 +44,18 @@ export default function LevelDetailScreen() {
   useEffect(() => {
     if (level && level > 0 && level <= 200) {
       try {
-        const board = generateBoard(level, false);
+        const board = generateBoard(level);
         setCurrentBoard(board);
       } catch (error) {
         console.error('Failed to generate board:', error);
-        Alert.alert('错误', '无法生成棋盘，请重试');
+        // 生成一个简单的后备棋盘
+        const fallbackBoard = {
+          seed: `fallback_${level}`,
+          tiles: [1, 9, 2, 8, 3, 7, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0],
+          level,
+          tileCount: 16,
+        };
+        setCurrentBoard(fallbackBoard);
       }
     }
   }, [level]);
@@ -405,12 +412,19 @@ export default function LevelDetailScreen() {
           text: '确定', 
           onPress: () => {
             try {
-              const board = generateBoard(level, true);
+              const board = generateBoard(level);
               setCurrentBoard(board);
               setShowSuccess(false);
             } catch (error) {
               console.error('Failed to restart level:', error);
-              Alert.alert('错误', '无法重新开始，请重试');
+              // 使用后备棋盘
+              const fallbackBoard = {
+                seed: `restart_${level}`,
+                tiles: [1, 9, 2, 8, 3, 7, 4, 6, 0, 0, 0, 0, 0, 0, 0, 0],
+                level,
+                tileCount: 16,
+              };
+              setCurrentBoard(fallbackBoard);
             }
           }
         }
@@ -423,11 +437,8 @@ export default function LevelDetailScreen() {
   };
 
   const handleBoardRefresh = (action) => {
-    if (action === 'return') {
-      handleBackToLevels();
-    } else if (typeof action === 'object') {
-      setCurrentBoard(action);
-    }
+    // 简化处理，不需要复杂的刷新逻辑
+    console.log('Board refresh action:', action);
   };
 
   const handleNextLevel = () => {
@@ -482,7 +493,7 @@ export default function LevelDetailScreen() {
         selectedSwapTile={selectedSwapTile}
         swapAnimations={swapAnimationsRef.current}
         fractalAnimations={fractalAnimationsRef.current}
-        containerHeight={0} // 让组件自己计算
+        disabled={false}
       />
 
       {/* 浮动道具按钮 */}

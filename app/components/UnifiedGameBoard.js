@@ -40,7 +40,7 @@ export function UnifiedGameBoard({
 
   const onContainerLayout = useCallback((event) => {
     const { width, height } = event.nativeEvent.layout;
-    console.log('Container layout:', { width, height });
+    console.log('🔍 Container layout:', { width, height, containerHeight });
     setContainerSize({ width, height });
   }, []);
 
@@ -394,7 +394,13 @@ export function UnifiedGameBoard({
   };
 
   if (!board || !layout) {
-    console.log('Board or layout missing:', { board: !!board, layout: !!layout, containerSize });
+    console.log('❌ Board or layout missing:', { 
+      hasBoard: !!board, 
+      hasLayout: !!layout, 
+      containerSize,
+      boardTiles: board?.tiles?.length,
+      usableHeight: containerSize.height > 0 ? containerSize.height - 240 : 400
+    });
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -402,11 +408,17 @@ export function UnifiedGameBoard({
     );
   }
 
-  console.log('Rendering board with layout:', { 
+  console.log('✅ Rendering board with layout:', { 
     boardTiles: board.tiles?.length, 
     layoutSlots: layout.slots?.length,
     containerSize,
-    usableHeight 
+    usableHeight,
+    layoutDetails: {
+      rows: layout.rows,
+      cols: layout.cols,
+      boardW: layout.boardW,
+      boardH: layout.boardH
+    }
   });
 
   const selectionStyle = getSelectionStyle();

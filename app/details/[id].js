@@ -44,9 +44,14 @@ export default function LevelDetailScreen() {
   useEffect(() => {
     if (level && level > 0 && level <= 200) {
       try {
-        console.log('Generating board for level:', level);
+        console.log('🎮 Generating board for level:', level);
         const board = generateBoard(level);
-        console.log('Generated board:', board);
+        console.log('🎲 Generated board:', {
+          level: board.level,
+          tilesLength: board.tiles?.length,
+          tileCount: board.tileCount,
+          seed: board.seed
+        });
         setCurrentBoard(board);
       } catch (error) {
         console.error('Failed to generate board:', error);

@@ -30,6 +30,35 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
+  return {
+    // Add implementation here
+  };
+}
+
+const GameBoard = () => {
+  const handleSelectionComplete = async () => {
+    if (!selection) return;
+
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+
+    if (sum === 10 && selectedTiles.length > 0) {
+      // 重置重排计数
+      setReshuffleCount(0);
+      
+      // Success - create explosion effect with yellow "10" note
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      
+      // Calculate explosion center position
+      const { startRow, startCol, endRow, endCol } = selection;
+      const centerRow = (startRow + endRow) / 2;
+      const centerCol = (startCol + endCol) / 2;
+
+      if (!fixedLayout) return;
+
       const { tileSize, tileGap } = fixedLayout;
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -536,8 +565,6 @@ function calculateEffectiveAreaLayout() {
         onReturn={handleRescueReturn}
       />
     </View>
-  );
-};
   );
 };
 

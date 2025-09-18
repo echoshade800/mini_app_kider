@@ -95,7 +95,7 @@ export default function ChallengeScreen() {
   }, [gameState, timeLeft]);
 
   const generateNewBoard = () => {
-    const newBoard = generateBoard(100, true, true); // High difficulty challenge board
+    const newBoard = generateBoard(100); // High difficulty challenge board
     setBoard(newBoard);
   };
 

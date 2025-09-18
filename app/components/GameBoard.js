@@ -32,7 +32,7 @@ const TILE_MAX = 42;
 // 挑战模式专用常量
 const CHALLENGE_GAP = 2;     // 挑战模式方块间距
 const CHALLENGE_PAD = 8;     // 挑战模式棋盘内边距
-const CHALLENGE_TILE = 24;   // 挑战模式固定方块尺寸
+const CHALLENGE_TILE = 28;   // 挑战模式固定方块尺寸
 
 // 像素对齐函数
 function roundPx(v) {

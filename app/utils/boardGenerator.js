@@ -37,7 +37,7 @@ function getChallengeModeDimensions(screenWidth = 390, screenHeight = 844) {
   const availableWidth = screenWidth - 40; // 预留左右边距
   
   // 缩小方块尺寸以容纳更多方块
-  const idealTileSize = 24; // 进一步缩小方块尺寸
+  const idealTileSize = 28; // 稍微增大方块尺寸
   const gap = 2; // 更紧密的间距
   const boardPadding = 8; // 木头边框内边距
   

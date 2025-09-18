@@ -657,8 +657,10 @@ const GameBoard = ({
 
     const index = row * width + col;
     
-    // 所有格子都显示数字方块，值为0时显示随机数字
-    const displayValue = value === 0 ? Math.floor(Math.random() * 9) + 1 : value;
+    // 🎯 只有非零值才显示数字方块，0值显示空格子
+    if (value === 0) {
+      return null; // 空格子不渲染任何内容
+    }
 
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
@@ -745,7 +747,7 @@ const GameBoard = ({
             styles.tileText,
             { fontSize }
           ]}>
-            {displayValue}
+            {value}
           </Text>
         </Animated.View>
       </View>

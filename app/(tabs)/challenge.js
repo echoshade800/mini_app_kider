@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import GameBoard from '../components/GameBoard';
 import { useGameStore } from '../store/gameStore';
+import { generateChallengeBoard } from '../utils/boardGenerator';
 
 const CHALLENGE_TIME = 60; // 60 seconds
 const POINTS_PER_CLEAR = 3; // IQ points per successful clear
@@ -36,49 +37,9 @@ export default function ChallengeScreen() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Generate challenge board
-  const generateChallengeBoard = () => {
-    // Generate a challenging board (similar to level 100+)
-    const width = 8;
-    const height = 8;
-    const tiles = new Array(width * height).fill(0);
-    
-    // Fill with numbers that can form pairs summing to 10
-    const pairs = [[1,9], [2,8], [3,7], [4,6], [5,5]];
-    const fillRatio = 0.75;
-    const totalTiles = Math.floor(width * height * fillRatio);
-    
-    // Place some guaranteed pairs
-    const pairCount = Math.floor(totalTiles / 3);
-    let placedCount = 0;
-    
-    for (let i = 0; i < pairCount && placedCount < totalTiles - 1; i++) {
-      const pair = pairs[Math.floor(Math.random() * pairs.length)];
-      const availablePositions = [];
-      
-      for (let j = 0; j < tiles.length; j++) {
-        if (tiles[j] === 0) availablePositions.push(j);
-      }
-      
-      if (availablePositions.length >= 2) {
-        const pos1 = availablePositions[Math.floor(Math.random() * availablePositions.length)];
-        const remainingPositions = availablePositions.filter(p => p !== pos1);
-        const pos2 = remainingPositions[Math.floor(Math.random() * remainingPositions.length)];
-        
-        tiles[pos1] = pair[0];
-        tiles[pos2] = pair[1];
-        placedCount += 2;
-      }
-    }
-    
-    // Fill remaining positions with random numbers
-    for (let i = 0; i < tiles.length && placedCount < totalTiles; i++) {
-      if (tiles[i] === 0) {
-        tiles[i] = Math.floor(Math.random() * 9) + 1;
-        placedCount++;
-      }
-    }
-    
-    return { width, height, tiles };
+  const generateNewBoard = () => {
+    const newBoard = generateChallengeBoard();
+    return newBoard;
   };
 
   const startGame = () => {
@@ -86,7 +47,7 @@ export default function ChallengeScreen() {
     setTimeLeft(CHALLENGE_TIME);
     setCurrentIQ(0);
     setClearsCount(0);
-    setBoard(generateChallengeBoard());
+    setBoard(generateNewBoard());
     
     // Start timer
     timerRef.current = setInterval(() => {
@@ -146,7 +107,7 @@ export default function ChallengeScreen() {
     
     // Generate new board immediately
     setTimeout(() => {
-      setBoard(generateChallengeBoard());
+      setBoard(generateNewBoard());
     }, 300);
   };
 

@@ -41,18 +41,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-      setTimeout(() => {
-        console.log('Checking if board needs refresh...');
-        const hasValidMoves = hasValidCombinations(updatedBoard.tiles, updatedBoard.width, updatedBoard.height);
-        console.log('Has valid combinations:', hasValidMoves);
-        
-        if (!hasValidMoves) {
-          console.log('No valid combinations found, generating new board');
-          const newBoard = generateBoard(1, true, true);
-          setBoard(newBoard);
-        }
-      }, 800);
-    }
 
 const GameBoard = ({ 
   tiles, 

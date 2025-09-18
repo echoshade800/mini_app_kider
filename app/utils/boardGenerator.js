@@ -1,7 +1,7 @@
 /**
  * Board Generator - Generate game boards with target pairs and difficulty scaling
  * Purpose: Create solvable puzzles with guaranteed 10-sum combinations
- * Features: Deterministic generation, difficulty progression, balanced distribution
+ * Features: Level-based activation rectangles, centered placement, difficulty progression
  */
 
 // Deterministic random number generator for consistent board generation
@@ -17,29 +17,31 @@ function seededRandom(seed) {
   };
 }
 
-// Get number distribution strategy based on level
-function getNumberDistribution(level) {
-  if (level <= 30) {
-    return {
-      smallNumbers: 0.6,  // 1-3的比例
-      mediumNumbers: 0.3, // 4-6的比例
-      largeNumbers: 0.1   // 7-9的比例
-    };
-  }
+// 关卡 → 激活矩形（行×列）映射表
+function getActivationRect(level) {
+  if (level >= 1 && level <= 10) return { rows: 6, cols: 4 };     // 24格
+  if (level >= 11 && level <= 20) return { rows: 7, cols: 5 };    // 35格
+  if (level >= 21 && level <= 30) return { rows: 8, cols: 6 };    // 48格
+  if (level >= 31 && level <= 40) return { rows: 9, cols: 6 };    // 54格
+  if (level >= 41 && level <= 50) return { rows: 9, cols: 7 };    // 63格
+  if (level >= 51 && level <= 60) return { rows: 10, cols: 7 };   // 70格
+  if (level >= 61 && level <= 70) return { rows: 10, cols: 8 };   // 80格
+  if (level >= 71 && level <= 80) return { rows: 11, cols: 8 };   // 88格
+  if (level >= 81 && level <= 90) return { rows: 11, cols: 9 };   // 99格
+  if (level >= 91 && level <= 100) return { rows: 12, cols: 9 };  // 108格
+  if (level >= 101 && level <= 110) return { rows: 12, cols: 10 }; // 120格
+  if (level >= 111 && level <= 120) return { rows: 13, cols: 10 }; // 130格
+  if (level >= 121 && level <= 130) return { rows: 13, cols: 11 }; // 143格
+  if (level >= 131 && level <= 140) return { rows: 14, cols: 11 }; // 154格
+  if (level >= 141 && level <= 150) return { rows: 14, cols: 12 }; // 168格
+  if (level >= 151 && level <= 160) return { rows: 14, cols: 13 }; // 182格
+  if (level >= 161 && level <= 170) return { rows: 14, cols: 14 }; // 196格
+  if (level >= 171 && level <= 180) return { rows: 14, cols: 15 }; // 210格
+  if (level >= 181 && level <= 190) return { rows: 14, cols: 17 }; // 238格
+  if (level >= 191 && level <= 200) return { rows: 14, cols: 21 }; // 294格（满屏）
   
-  if (level <= 80) {
-    return {
-      smallNumbers: 0.5,
-      mediumNumbers: 0.4,
-      largeNumbers: 0.1
-    };
-  }
-  
-  return {
-    smallNumbers: 0.4,
-    mediumNumbers: 0.4,
-    largeNumbers: 0.2
-  };
+  // 200关以后继续使用满屏
+  return { rows: 14, cols: 21 };
 }
 
 // Get target combinations that sum to 10 based on level difficulty
@@ -147,11 +149,15 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     const combinations = targetCombinations[chosenType];
     const combination = combinations[Math.floor(random() * combinations.length)];
     
-    // Get available positions
+    // Get available positions within activation rect only
     const availablePositions = [];
-    for (let i = 0; i < size; i++) {
-      if (!placedPositions.has(i)) {
-        availablePositions.push(i);
+    for (let row = 0; row < height; row++) {
+      for (let col = 0; col < width; col++) {
+        const index = row * width + col;
+        if (!placedPositions.has(index) && 
+            isInActivationRect(row, col, rowOffset, colOffset, activeRows, activeCols)) {
+          availablePositions.push(index);
+        }
       }
     }
     
@@ -194,15 +200,19 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     }
   }
   
-  // Fill remaining spots with random numbers based on distribution
+  // Fill remaining spots in activation rect with random numbers
   const totalPlacedTiles = Array.from(placedPositions).length;
-  const targetFillCount = Math.floor(size * 0.6); // 60% fill rate
+  const targetFillCount = Math.floor(activeSize * 0.6); // 60% of active area
   const remainingCount = Math.max(0, targetFillCount - totalPlacedTiles);
   
   const availablePositions = [];
-  for (let i = 0; i < size; i++) {
-    if (!placedPositions.has(i)) {
-      availablePositions.push(i);
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      const index = row * width + col;
+      if (!placedPositions.has(index) && 
+          isInActivationRect(row, col, rowOffset, colOffset, activeRows, activeCols)) {
+        availablePositions.push(index);
+      }
     }
   }
   
@@ -227,5 +237,12 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     width,
     height,
     tiles,
+    activationRect: {
+      rows: activeRows,
+      cols: activeCols,
+      rowOffset,
+      colOffset,
+      activeSize
+    }
   };
 }

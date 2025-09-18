@@ -300,71 +300,77 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
   try {
     console.log('🎯 [DEBUG] Starting board generation...');
     
-    // 使用时间戳或固定种子，根据需要生成不同的棋盘
-    const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
-    const seed = `level_${level}_${baseSeed}`;
-    console.log('🎯 [DEBUG] Generated seed:', seed);
-    
-    console.log('🎯 [DEBUG] Creating seeded random function...');
-    const random = seededRandom(seed);
-    console.log('🎯 [DEBUG] Seeded random function created');
-    
-    // 获取棋盘尺寸
-    console.log('🎯 [DEBUG] Getting board dimensions...');
-    const { width, height } = isChallengeMode 
-      ? getChallengeModeDimensions(screenWidth, screenHeight)
-      : getBoardDimensions(level, screenWidth, screenHeight);
+    if (isChallengeMode) {
+      console.log('🎯 [DEBUG] Generating challenge mode board...');
       
-    console.log('🎯 [DEBUG] Board dimensions:', { width, height });
+      // 挑战模式：铺满屏幕，需要大框消除
+      const { width, height } = getChallengeModeDimensions(screenWidth, screenHeight);
+      const size = width * height;
+      console.log('🎯 [DEBUG] Challenge board size:', { width, height, size });
       
-    const difficultyLevel = isChallengeMode ? 130 : level;
-    const size = width * height;
-    console.log('🎯 [DEBUG] Board size and difficulty:', { size, difficultyLevel });
-    
-    // 简化的棋盘生成 - 直接生成简单可玩的棋盘
-    console.log('🎯 [DEBUG] Creating simple board...');
-    const tiles = new Array(size);
-    
-    // 填充简单的数字模式
-    console.log('🎯 [DEBUG] Filling tiles...');
-    for (let i = 0; i < size; i++) {
-      if (i % 2 === 0) {
-        tiles[i] = 5; // 一半是5
-      } else {
-        tiles[i] = 5; // 另一半也是5，这样5+5=10可以消除
+      const tiles = new Array(size);
+      
+      // 生成需要大框消除的数字分布
+      // 策略：分散放置小数字，需要框选多个才能凑成10
+      for (let i = 0; i < size; i++) {
+        // 70% 是 1-3 的小数字，需要框选多个
+        // 30% 是 4-6 的中等数字，增加组合难度
+        if (Math.random() < 0.7) {
+          tiles[i] = Math.floor(Math.random() * 3) + 1; // 1, 2, 3
+        } else {
+          tiles[i] = Math.floor(Math.random() * 3) + 4; // 4, 5, 6
+        }
       }
+      
+      console.log('🎯 [DEBUG] Challenge board generated successfully');
+      return {
+        seed: `challenge_${Date.now()}`,
+        width,
+        height,
+        tiles,
+        requiredSwaps: 0,
+        level: 'challenge',
+        solvable: true,
+        isChallengeMode: true,
+      };
     }
     
-    console.log('🎯 [DEBUG] Board generation completed successfully');
-    const result = {
-      seed,
+    // 闯关模式保持原有逻辑
+    console.log('🎯 [DEBUG] Generating level mode board...');
+    const { width, height } = getBoardDimensions(level, screenWidth, screenHeight);
+    const size = width * height;
+    const tiles = new Array(size);
+    
+    // 简单的闯关模式棋盘
+    for (let i = 0; i < size; i++) {
+      tiles[i] = Math.floor(Math.random() * 9) + 1;
+    }
+    
+    return {
+      seed: `level_${level}_${Date.now()}`,
       width,
       height,
       tiles,
       requiredSwaps: 0,
       level,
       solvable: true,
-      isChallengeMode,
+      isChallengeMode: false,
     };
     
-    console.log('🎯 [DEBUG] Returning board:', {
-      width: result.width,
-      height: result.height,
-      tilesLength: result.tiles ? result.tiles.length : 'undefined',
-      firstFewTiles: result.tiles ? result.tiles.slice(0, 10) : 'undefined'
-    });
-    
-    return result;
   } catch (error) {
     console.error('🎯 [ERROR] generateBoard failed:', error);
     console.error('🎯 [ERROR] Error stack:', error.stack);
     
     // 返回一个最简单的棋盘作为后备
+    const { width, height } = isChallengeMode 
+      ? getChallengeModeDimensions(screenWidth, screenHeight)
+      : { width: 6, height: 6 };
+      
     const simpleBoard = {
       seed: `error_fallback_${Date.now()}`,
-      width: 6,
-      height: 6,
-      tiles: new Array(36).fill(0).map((_, i) => i % 2 === 0 ? 5 : 5), // 全是5，可以组成10
+      width,
+      height,
+      tiles: new Array(width * height).fill(0).map(() => Math.floor(Math.random() * 3) + 1),
       requiredSwaps: 0,
       level,
       solvable: true,

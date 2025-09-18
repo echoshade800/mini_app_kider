@@ -142,8 +142,8 @@ export function getLevelGridConfig(level) {
  */
 export function getChallengeGridConfig() {
   console.log('🎯 [DEBUG] getChallengeGridConfig called');
-  // 挑战模式使用高密度配置
-  const config = { rows: 12, cols: 18, timeLimit: 60 };
+  // 挑战模式使用铺满屏幕的配置
+  const config = { rows: 14, cols: 20, timeLimit: 60 };
   console.log('🎯 [DEBUG] Challenge grid config:', config);
   return config;
 }

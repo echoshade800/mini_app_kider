@@ -20,6 +20,7 @@ import { Dimensions, Animated } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
+import { SAFE_TOP, SAFE_BOTTOM } from '../utils/gridLayout';
 import { STAGE_NAMES } from '../utils/stageNames';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -135,15 +136,15 @@ export default function LevelDetailScreen() {
   const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // 使用固定的单元格大小（从gridLayout获取）
-    const cellSize = 30 + 8; // TILE_SIZE + gap
+    // 使用统一的单元格大小
+    const cellSize = 30 + 10; // TILE_SIZE + 默认gap
     
-    // 计算两个方块的位置
-    // 注意：这里需要根据实际的布局计算，暂时使用简化版本
-    const row1 = Math.floor(tile1.index / 10); // 假设10列
-    const col1 = tile1.index % 10;
-    const row2 = Math.floor(tile2.index / 10);
-    const col2 = tile2.index % 10;
+    // 计算两个方块的位置（简化版本）
+    const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
+    const row1 = Math.floor(tile1.index / estimatedCols);
+    const col1 = tile1.index % estimatedCols;
+    const row2 = Math.floor(tile2.index / estimatedCols);
+    const col2 = tile2.index % estimatedCols;
     
     const deltaX = (col2 - col1) * cellSize;
     const deltaY = (row2 - row1) * cellSize;
@@ -215,9 +216,9 @@ export default function LevelDetailScreen() {
     if (!currentBoard) return;
 
     const { value, index } = tile;
-    // 注意：这里需要根据实际的布局计算，暂时使用简化版本
-    const row = Math.floor(index / 10); // 假设10列
-    const col = index % 10;
+    const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
+    const row = Math.floor(index / estimatedCols);
+    const col = index % estimatedCols;
 
     // 生成不同数字的分解方案，确保总和等于原数字
     const generateSplitCombination = (num) => {
@@ -325,11 +326,11 @@ export default function LevelDetailScreen() {
     });
 
     // 创建分裂动画 - 显示正确的分解数值
-    const cellSize = 30 + 8; // TILE_SIZE + gap
+    const cellSize = 30 + 10; // TILE_SIZE + 默认gap
     
     selectedEmptyPositions.forEach((targetPos, i) => {
-      const targetRow = Math.floor(targetPos / 10); // 假设10列
-      const targetCol = targetPos % 10;
+      const targetRow = Math.floor(targetPos / estimatedCols);
+      const targetCol = targetPos % estimatedCols;
       
       // 计算跳跃距离
       const deltaX = (targetCol - col) * cellSize;
@@ -420,7 +421,7 @@ export default function LevelDetailScreen() {
           text: '确定', 
           onPress: () => {
             try {
-              const board = generateBoard(level, true, false, screenWidth, screenHeight); // Force new board
+              const board = generateBoard(level, true, false, screenWidth, screenHeight);
               setCurrentBoard(board);
               setShowSuccess(false);
             } catch (error) {
@@ -439,10 +440,8 @@ export default function LevelDetailScreen() {
 
   const handleBoardRefresh = (action) => {
     if (action === 'return') {
-      // 救援选择返回主页
       handleBackToLevels();
     } else if (typeof action === 'object') {
-      // 重排后的棋盘
       setCurrentBoard(action);
     }
   };
@@ -503,9 +502,8 @@ export default function LevelDetailScreen() {
         isChallenge={false}
       />
 
-      {/* Floating Action Buttons */}
+      {/* 浮动道具按钮 */}
       <View style={styles.floatingButtons}>
-        {/* SwapMaster Button */}
         <TouchableOpacity 
           style={[
             styles.floatingButton,
@@ -528,7 +526,6 @@ export default function LevelDetailScreen() {
           )}
         </TouchableOpacity>
         
-        {/* FractalSplit Button */}
         <TouchableOpacity 
           style={[
             styles.floatingButton,
@@ -552,7 +549,7 @@ export default function LevelDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Success Modal */}
+      {/* 成功弹窗 */}
       <Modal
         visible={showSuccess}
         transparent
@@ -653,7 +650,7 @@ const styles = StyleSheet.create({
   },
   floatingButtons: {
     position: 'absolute',
-    bottom: 30,
+    bottom: SAFE_BOTTOM - 60,
     left: 0,
     right: 0,
     flexDirection: 'row',

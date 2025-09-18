@@ -109,12 +109,6 @@ export default function ChallengeScreen() {
   };
 
   const handleTilesClear = (clearedPositions) => {
-    // 🎯 防止在选择过程中触发清除（避免画框时刷新）
-    if (!board) {
-      console.warn('⚠️ 棋盘不存在，跳过清除操作');
-      return;
-    }
-
     // Award points
     const newIQ = currentIQ + POINTS_PER_CLEAR;
     setCurrentIQ(newIQ);
@@ -122,29 +116,29 @@ export default function ChallengeScreen() {
     // Reset reshuffle count on successful clear
     setReshuffleCount(0);
 
-    // 🎯 更新棋盘：将消除的方块设置为0（空格子）
-    const newTiles = [...board.tiles];
-    clearedPositions.forEach(pos => {
-      const index = pos.row * board.width + pos.col;
-      newTiles[index] = 0; // 设置为0，显示为空格子
-    });
-    
-    // 检查是否所有方块都被消除（只有0值）
-    const remainingTiles = newTiles.filter(tile => tile > 0).length;
-    
-    if (remainingTiles === 0) {
-      // 🎯 只有当所有数字方块都被消除时才生成新棋盘
-      console.log('🎉 棋盘完全清空，500ms后生成新棋盘');
-      setTimeout(() => {
-        generateNewBoard();
-      }, 500);
-    } else {
-      // 🔄 还有剩余数字方块，更新当前棋盘（保留空格子）
-      console.log(`📊 剩余 ${remainingTiles} 个数字方块，继续当前棋盘`);
-      setBoard(prev => ({
-        ...prev,
-        tiles: newTiles
-      }));
+    // Update board by removing cleared tiles
+    if (board) {
+      const newTiles = [...board.tiles];
+      clearedPositions.forEach(pos => {
+        const index = pos.row * board.width + pos.col;
+        newTiles[index] = 0;
+      });
+      
+      // Check if board is completely empty
+      const remainingTiles = newTiles.filter(tile => tile > 0).length;
+      
+      if (remainingTiles === 0) {
+        // Board completely cleared - generate new board after short delay
+        setTimeout(() => {
+          generateNewBoard();
+        }, 500);
+      } else {
+        // Update current board
+        setBoard(prev => ({
+          ...prev,
+          tiles: newTiles
+        }));
+      }
     }
   };
 

@@ -11,7 +11,8 @@ import {
   TouchableOpacity, 
   StyleSheet,
   Alert,
-  Modal
+  Modal,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -31,14 +32,22 @@ export default function LevelDetailScreen() {
   
   const { gameData, updateGameData } = useGameStore();
   const [currentBoard, setCurrentBoard] = useState(null);
+  const [gameState, setGameState] = useState('ready'); // ready, playing, finished
+  const [currentIQ, setCurrentIQ] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   const [itemMode, setItemMode] = useState(null); // 'swapMaster' | 'fractalSplit' | null
   const [selectedSwapTile, setSelectedSwapTile] = useState(null);
+  const [levelConfig, setLevelConfig] = useState(null);
   
   // 使用 useRef 来存储动画对象，避免重新渲染时丢失
   const swapAnimationsRef = useRef(new Map());
   const fractalAnimationsRef = useRef(new Map());
   const [animationTrigger, setAnimationTrigger] = useState(0); // 用于触发重新渲染
+  
+  // 计时器相关
+  const timerRef = useRef();
+  const progressAnim = useRef(new Animated.Value(1)).current;
 
   const swapMasterItems = gameData?.swapMasterItems || 0;
   const fractalSplitItems = gameData?.fractalSplitItems || 0;
@@ -47,6 +56,9 @@ export default function LevelDetailScreen() {
   useEffect(() => {
     if (level && level > 0 && level <= 200) {
       try {
+        const config = getLevelGridConfig(level);
+        setLevelConfig(config);
+        setTimeLeft(config.timeLimit);
         const board = generateBoard(level);
         setCurrentBoard(board);
       } catch (error) {
@@ -54,10 +66,65 @@ export default function LevelDetailScreen() {
         Alert.alert('错误', '无法生成棋盘，请重试');
       }
     }
+    
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
   }, [level]);
 
+  const startGame = () => {
+    setGameState('playing');
+    setCurrentIQ(0);
+    if (levelConfig) {
+      setTimeLeft(levelConfig.timeLimit);
+      startTimer();
+      startProgressAnimation();
+    }
+  };
+
+  const startTimer = () => {
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          endGame();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const startProgressAnimation = () => {
+    if (!levelConfig) return;
+    progressAnim.setValue(1);
+    Animated.timing(progressAnim, {
+      toValue: 0,
+      duration: levelConfig.timeLimit * 1000,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const endGame = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    setGameState('finished');
+    setShowSuccess(true);
+    
+    // 更新最佳成绩
+    const currentBest = gameData?.maxScore || 0;
+    if (currentIQ > currentBest) {
+      updateGameData({ maxScore: currentIQ });
+    }
+  };
+
   const handleTilesClear = (clearedPositions) => {
-    if (showSuccess) return;
+    if (gameState !== 'playing') return;
+    
+    // 计算IQ积分：每次消除获得3分
+    setCurrentIQ(prev => prev + 3);
     
     // Check if board is completely cleared
     const newTiles = [...currentBoard.tiles];
@@ -69,21 +136,15 @@ export default function LevelDetailScreen() {
     const hasRemainingTiles = newTiles.some(tile => tile > 0);
     
     if (!hasRemainingTiles) {
-      // Level completed!
-      setShowSuccess(true);
-      
-      // Update progress
-      const currentMaxLevel = gameData?.maxLevel || 0;
-      const newMaxLevel = Math.max(currentMaxLevel, level);
-      const newSwapMasterItems = swapMasterItems + 1; // Award 1 SwapMaster item
-      const newFractalSplitItems = fractalSplitItems + 1; // Award 1 FractalSplit item
-      
-      updateGameData({
-        maxLevel: newMaxLevel,
-        swapMasterItems: newSwapMasterItems,
-        fractalSplitItems: newFractalSplitItems,
-        lastPlayedLevel: level
-      });
+      // 棋盘全清，生成新棋盘继续游戏
+      setTimeout(() => {
+        try {
+          const board = generateBoard(level, true, false);
+          setCurrentBoard(board);
+        } catch (error) {
+          console.error('Failed to generate new board:', error);
+        }
+      }, 800);
     } else {
       // Update board with cleared tiles
       setCurrentBoard(prev => ({
@@ -455,6 +516,9 @@ export default function LevelDetailScreen() {
   };
 
   const handleNextLevel = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
     setShowSuccess(false);
     const nextLevel = level + 1;
     router.replace(`/details/${nextLevel}`);
@@ -463,6 +527,19 @@ export default function LevelDetailScreen() {
   const handleCancelSwap = () => {
     setItemMode(null);
     setSelectedSwapTile(null);
+  };
+
+  const getIQTitle = (iq) => {
+    if (iq >= 145) return 'Cosmic Genius';
+    if (iq >= 130) return 'Puzzle Master';
+    if (iq >= 115) return 'Rising Star';
+    if (iq >= 100) return 'Everyday Scholar';
+    if (iq >= 85) return 'Hardworking Student';
+    if (iq >= 70) return 'Slow but Steady';
+    if (iq >= 65) return 'Little Explorer';
+    if (iq >= 55) return 'Learning Hatchling';
+    if (iq >= 40) return 'Tiny Adventurer';
+    return 'Newborn Dreamer';
   };
 
   if (!currentBoard) {
@@ -478,17 +555,35 @@ export default function LevelDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={styles.header} pointerEvents="box-none">
         <TouchableOpacity 
           style={styles.backButton}
           onPress={handleBackToLevels}
+          pointerEvents="auto"
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.levelTitle}>Level {level}</Text>
-          <Text style={styles.stageName}>{stageName}</Text>
+        
+        <View style={styles.headerCenter}>
+          <Text style={styles.iqText}>IQ: {currentIQ}</Text>
+          {gameState === 'playing' && (
+            <View style={styles.progressContainer}>
+              <Animated.View 
+                style={[
+                  styles.progressBar,
+                  {
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%']
+                    })
+                  }
+                ]} 
+              />
+            </View>
+          )}
+          <Text style={styles.timeText}>{timeLeft}s</Text>
         </View>
+        
         <View style={styles.itemsContainer}>
           <Ionicons name="shuffle" size={20} color="#2196F3" style={styles.itemIcon} />
           <Text style={styles.itemText}>{swapMasterItems}</Text>
@@ -496,6 +591,19 @@ export default function LevelDetailScreen() {
           <Text style={styles.itemText}>{fractalSplitItems}</Text>
         </View>
       </View>
+      
+      {/* Ready Overlay */}
+      {gameState === 'ready' && (
+        <View style={styles.readyOverlay}>
+          <View style={styles.readyContent}>
+            <Text style={styles.readyTitle}>{stageName}</Text>
+            <Text style={styles.readySubtitle}>Time Limit: {levelConfig?.timeLimit || 60}s</Text>
+            <TouchableOpacity style={styles.startButton} onPress={startGame}>
+              <Text style={styles.startButtonText}>START</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Game Board */}
       <GameBoard 
@@ -507,7 +615,7 @@ export default function LevelDetailScreen() {
         selectedSwapTile={selectedSwapTile}
         swapAnimations={swapAnimationsRef.current}
         fractalAnimations={fractalAnimationsRef.current}
-        isChallenge={false}
+        disabled={gameState !== 'playing'}
         availableWidth={screenWidth - 40}
         availableHeight={screenHeight - 200}
       />
@@ -569,30 +677,38 @@ export default function LevelDetailScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.successModal}>
-            <Ionicons name="trophy" size={60} color="#FFD700" />
-            <Text style={styles.successTitle}>Level Complete!</Text>
-            <Text style={styles.successMessage}>
-              Congratulations! You've completed {stageName}
-            </Text>
-            <Text style={styles.rewardText}>
-              +1 SwapMaster & +1 FractalSplit Earned!
-            </Text>
+            <Ionicons name="timer" size={60} color="#4CAF50" />
+            <Text style={styles.successTitle}>Time's Up!</Text>
+            <Text style={styles.finalIQ}>Final IQ: {currentIQ}</Text>
+            <Text style={styles.iqTitle}>{getIQTitle(currentIQ)}</Text>
+            
+            {currentIQ > (gameData?.maxScore || 0) && (
+              <Text style={styles.newRecord}>🎉 New Record!</Text>
+            )}
             
             <View style={styles.modalButtons}>
               <TouchableOpacity 
-                style={styles.modalButton}
-                onPress={handleBackToLevels}
+                style={styles.againButton}
+                onPress={() => {
+                  setShowSuccess(false);
+                  handleRestart();
+                }}
               >
-                <Text style={styles.modalButtonText}>Back to Levels</Text>
+                <Text style={styles.againButtonText}>AGAIN</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.modalButton, styles.primaryModalButton]}
+                style={styles.returnButton}
+                onPress={handleBackToLevels}
+              >
+                <Text style={styles.returnButtonText}>BACK</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.nextButton}
                 onPress={handleNextLevel}
               >
-                <Text style={[styles.modalButtonText, styles.primaryModalButtonText]}>
-                  Next Level
-                </Text>
+                <Text style={styles.nextButtonText}>NEXT</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -621,26 +737,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    paddingTop: 50,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    zIndex: 1000,
   },
   backButton: {
     padding: 8,
   },
-  headerContent: {
+  headerCenter: {
     flex: 1,
     alignItems: 'center',
+    marginHorizontal: 20,
   },
-  levelTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+  iqText: {
     color: '#333',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 5,
   },
-  stageName: {
+  progressContainer: {
+    width: '100%',
+    height: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 3,
+    marginBottom: 5,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 3,
+  },
+  timeText: {
+    color: '#333',
     fontSize: 14,
-    color: '#666',
-    marginTop: 2,
   },
   itemsContainer: {
     flexDirection: 'row',
@@ -731,44 +862,65 @@ const styles = StyleSheet.create({
     maxWidth: 350,
   },
   successTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#4CAF50',
     marginTop: 16,
     marginBottom: 12,
   },
-  successMessage: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 8,
+  finalIQ: {
+    color: '#4CAF50',
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
-  rewardText: {
-    fontSize: 14,
-    color: '#FF9800',
-    fontWeight: '600',
+  iqTitle: {
+    color: '#666',
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  newRecord: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: 'bold',
     marginBottom: 24,
   },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 15,
   },
-  modalButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-  },
-  primaryModalButton: {
+  againButton: {
     backgroundColor: '#4CAF50',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
-  modalButtonText: {
+  againButtonText: {
+    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
-    color: '#4CAF50',
+    fontWeight: 'bold',
   },
-  primaryModalButtonText: {
+  returnButton: {
+    backgroundColor: '#666',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  returnButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  nextButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  nextButtonText: {
     color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

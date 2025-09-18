@@ -123,16 +123,17 @@ export function computeBoardLayout({ availableWidth, availableHeight, rows, cols
  * @returns {Object} 行列数配置
  */
 export function getLevelGridConfig(level) {
-  if (level <= 10) return { rows: 5, cols: 8 };
-  if (level <= 20) return { rows: 6, cols: 9 };
-  if (level <= 30) return { rows: 6, cols: 10 };
-  if (level <= 40) return { rows: 7, cols: 11 };
-  if (level <= 50) return { rows: 8, cols: 12 };
-  if (level <= 60) return { rows: 8, cols: 13 };
-  if (level <= 80) return { rows: 9, cols: 14 };
-  if (level <= 120) return { rows: 9, cols: 15 };
-  // 121-200关及以上：顶格配置
-  return { rows: 10, cols: 16 };
+  // 高密度配置：优先增加列/行数
+  if (level <= 5) return { rows: 6, cols: 6, timeLimit: 60 };
+  if (level <= 10) return { rows: 7, cols: 7, timeLimit: 60 };
+  if (level <= 20) return { rows: 8, cols: 8, timeLimit: 75 };
+  if (level <= 30) return { rows: 9, cols: 9, timeLimit: 75 };
+  if (level <= 40) return { rows: 10, cols: 10, timeLimit: 90 };
+  if (level <= 60) return { rows: 11, cols: 11, timeLimit: 90 };
+  if (level <= 80) return { rows: 12, cols: 12, timeLimit: 105 };
+  if (level <= 120) return { rows: 13, cols: 13, timeLimit: 105 };
+  // 121-200关及以上：顶格高密度配置
+  return { rows: 14, cols: 16, timeLimit: 120 };
 }
 
 /**
@@ -141,5 +142,5 @@ export function getLevelGridConfig(level) {
  */
 export function getChallengeGridConfig() {
   // 挑战模式使用高密度配置
-  return { rows: 12, cols: 18 };
+  return { rows: 12, cols: 18, timeLimit: 60 };
 }

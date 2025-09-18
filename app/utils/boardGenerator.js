@@ -58,6 +58,34 @@ function calculateResponsiveLayout(boardWidth, boardHeight, isChallenge = false)
   
   // 确保方块大小合理
   let tileSize = Math.min(tileWidth, tileHeight);
+  
+  if (tileSize < RESPONSIVE_CONFIG.MIN_TILE_SIZE) {
+    tileSize = RESPONSIVE_CONFIG.MIN_TILE_SIZE;
+  }
+  
+  const totalBoardWidth = gridCols * tileSize + (gridCols - 1) * tileGap + boardPadding * 2;
+  const totalBoardHeight = gridRows * tileSize + (gridRows - 1) * tileGap + boardPadding * 2;
+  
+  const boardLeft = (screenWidth - totalBoardWidth) / 2;
+  const boardTop = RESPONSIVE_CONFIG.TOP_RESERVED + (effectiveHeight - totalBoardHeight) / 2;
+  
+  return {
+    tileSize,
+    tileGap,
+    boardPadding,
+    boardLeft,
+    boardTop,
+    boardWidth: totalBoardWidth,
+    boardHeight: totalBoardHeight,
+    gridCols,
+    gridRows,
+    getTilePosition: (row, col) => ({
+      x: col * (tileSize + tileGap),
+      y: row * (tileSize + tileGap),
+    }),
+  };
+}
+
 // 有效游戏区域配置
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
@@ -70,6 +98,8 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
+  // Implementation would go here
+}
 
 const GameBoard = ({ 
   tiles, 

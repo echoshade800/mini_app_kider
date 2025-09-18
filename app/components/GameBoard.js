@@ -18,44 +18,18 @@ import RescueModal from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// 标准化配置
-const BOARD_CONFIG = {
-  STANDARD_TILE_SIZE: 28,    // 标准方块尺寸
-  TILE_GAP: 2,              // 方块间距
-  BOARD_PADDING: 16,        // 棋盘内边距
-  TOP_RESERVED: 120,        // 顶部保留区域
-  BOTTOM_RESERVED: 120,     // 底部保留区域
+// 有效游戏区域配置
+const EFFECTIVE_AREA_CONFIG = {
+  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
+  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+  TILE_GAP: 4,          // 方块间距
+  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
+  GRID_ROWS: 20,        // 固定网格行数
+  GRID_COLS: 14,        // 固定网格列数
 };
 
-const GameBoard = ({ 
-  tiles, 
-  width, 
-  height, 
-  onTilesClear, 
-  disabled = false,
-  settings = {},
-  itemMode = null,
-  onTileClick = null,
-  selectedSwapTile = null,
-  swapAnimations = new Map(),
-  fractalAnimations = new Map(),
-  initTileScale = () => new Animated.Value(1),
-  getTileRotation = () => 0,
-  scaleTile = () => {},
-  isChallenge = false
-}) => {
-  const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [showRescueModal, setShowRescueModal] = useState(false);
-  const [reshuffleCount, setReshuffleCount] = useState(0);
-  const [boardLayout, setBoardLayout] = useState(null);
-
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const explosionScale = useRef(new Animated.Value(1)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
-
-  // 计算棋盘布局
+// 计算有效游戏区域和棋盘布局
+function calculateEffectiveAreaLayout() {
   const calculateBoardLayout = () => {
     const { STANDARD_TILE_SIZE, TILE_GAP, BOARD_PADDING, TOP_RESERVED } = BOARD_CONFIG;
     

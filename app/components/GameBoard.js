@@ -30,32 +30,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-      
-      setExplosionAnimation({ x: explosionX, y: explosionY });
-      
-      // Explosion animation - yellow "10" note
-      explosionScale.setValue(0.5);
-      explosionOpacity.setValue(1);
-      
-      Animated.parallel([
-        Animated.timing(explosionScale, {
-          toValue: 2.0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(explosionOpacity, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setExplosionAnimation(null);
-      });
-
-      // Selection box animation - bright green glow
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.8,
           duration: 200,
           useNativeDriver: false,
         }),

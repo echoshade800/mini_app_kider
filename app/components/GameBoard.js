@@ -24,45 +24,28 @@ const EFFECTIVE_AREA_CONFIG = {
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
-// 有效游戏区域配置
-const EFFECTIVE_AREA_CONFIG = {
-  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
-  TILE_GAP: 4,          // 方块间距
-  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
   GRID_ROWS: 20,        // 固定网格行数
   GRID_COLS: 14,        // 固定网格列数
 };
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
+    const { boardLeft, boardTop, boardWidth, boardHeight } = boardLayout;
+    
+    return pageX >= boardLeft && 
+           pageX <= boardLeft + boardWidth && 
+           pageY >= boardTop && 
+           pageY <= boardTop + boardHeight;
+}
 
-const GameBoard = ({ 
-  tiles, 
-  width, 
-  height, 
-  onTilesClear, 
-  disabled, 
-  itemMode, 
-  onTileClick,
-  selectedSwapTile,
-  swapAnimations,
-  fractalAnimations,
-  settings,
-  isChallenge,
-  reshuffleCount,
-  setReshuffleCount,
-  onRescueNeeded
-}) => {
+const GameBoard = ({ tiles, width, height, onTilesClear, disabled, itemMode, onTileClick, selectedSwapTile, swapAnimations, fractalAnimations, settings, boardLayout, onRescueNeeded, showRescueModal, setShowRescueModal, reshuffleCount, setReshuffleCount }) => {
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [boardLayout, setBoardLayout] = useState(null);
-  const [showRescueModal, setShowRescueModal] = useState(false);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const explosionScale = useRef(new Animated.Value(0)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0.5)).current;
+  const explosionOpacity = useRef(new Animated.Value(1)).current;
   const tileScales = useRef(new Map()).current;
 
   const initTileScale = (index) => {
@@ -76,7 +59,7 @@ const GameBoard = ({
     const tileScale = initTileScale(index);
     Animated.timing(tileScale, {
       toValue: scale,
-      duration: 100,
+      duration: 150,
       useNativeDriver: true,
     }).start();
   };
@@ -85,16 +68,6 @@ const GameBoard = ({
     const seed = row * 31 + col * 17;
     return ((seed % 7) - 3) * 0.8;
   };
-
-  const calculateBoardLayout = () => {
-    return calculateEffectiveAreaLayout();
-  };
-
-  // 初始化布局
-  React.useEffect(() => {
-    const layout = calculateBoardLayout();
-    setBoardLayout(layout);
-  }, [width, height, isChallenge]);
 
   const resetSelection = () => {
     setSelection(null);

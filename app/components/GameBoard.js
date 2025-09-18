@@ -620,7 +620,6 @@ const GameBoard = ({
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
     }
-    }
 
     const { x, y } = boardLayout.getTilePosition(row, col);
 

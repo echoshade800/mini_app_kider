@@ -114,18 +114,22 @@ export function computeGridRC(N, targetAspect = null) {
  * @returns {Object} 布局信息
  */
 export function computeTileSize(containerWidth, containerHeight, rows, cols, gap = TILE_GAP, padding = BOARD_PADDING, minTile = MIN_TILE_SIZE) {
-  // 计算可用空间（减去木框厚度）
-  const availableWidth = containerWidth - WOOD_FRAME_WIDTH * 2;
-  const availableHeight = containerHeight - WOOD_FRAME_WIDTH * 2;
+  // 计算可用空间（减去木框厚度和内边距）
+  const availableWidth = containerWidth - WOOD_FRAME_WIDTH * 2 - padding * 2;
+  const availableHeight = containerHeight - WOOD_FRAME_WIDTH * 2 - padding * 2;
   
   // 计算方块尺寸上限
-  const tileW = (availableWidth - 2 * padding - (cols - 1) * gap) / cols;
-  const tileH = (availableHeight - 2 * padding - (rows - 1) * gap) / rows;
+  const tileW = (availableWidth - (cols - 1) * gap) / cols;
+  const tileH = (availableHeight - (rows - 1) * gap) / rows;
   const tileSize = Math.floor(Math.min(tileW, tileH));
   
-  // 计算棋盘内容区尺寸（方块矩形 + 内边距）
-  const contentWidth = 2 * padding + cols * tileSize + (cols - 1) * gap;
-  const contentHeight = 2 * padding + rows * tileSize + (rows - 1) * gap;
+  // 计算数字方块矩形的实际尺寸
+  const tilesRectWidth = cols * tileSize + (cols - 1) * gap;
+  const tilesRectHeight = rows * tileSize + (rows - 1) * gap;
+  
+  // 计算棋盘内容区尺寸（数字方块矩形 + 内边距）
+  const contentWidth = tilesRectWidth + 2 * padding;
+  const contentHeight = tilesRectHeight + 2 * padding;
   
   // 棋盘总尺寸（内容区 + 木框）
   const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
@@ -133,6 +137,8 @@ export function computeTileSize(containerWidth, containerHeight, rows, cols, gap
   
   return {
     tileSize,
+    tilesRectWidth,
+    tilesRectHeight,
     boardWidth,
     boardHeight,
     contentWidth,
@@ -244,12 +250,13 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
   // 策略c: 使用最小尺寸，允许N向上取整
   const finalRows = Math.ceil(Math.sqrt(N));
   const finalCols = Math.ceil(N / finalRows);
-  const finalLayout = computeTileSize(gameArea.width, gameArea.height, finalRows, finalCols);
   
   // 强制使用最小尺寸
   const forcedTileSize = MIN_TILE_SIZE;
-  const forcedContentWidth = 2 * BOARD_PADDING + finalCols * forcedTileSize + (finalCols - 1) * TILE_GAP;
-  const forcedContentHeight = 2 * BOARD_PADDING + finalRows * forcedTileSize + (finalRows - 1) * TILE_GAP;
+  const forcedTilesRectWidth = finalCols * forcedTileSize + (finalCols - 1) * TILE_GAP;
+  const forcedTilesRectHeight = finalRows * forcedTileSize + (finalRows - 1) * TILE_GAP;
+  const forcedContentWidth = forcedTilesRectWidth + 2 * BOARD_PADDING;
+  const forcedContentHeight = forcedTilesRectHeight + 2 * BOARD_PADDING;
   const forcedBoardWidth = forcedContentWidth + WOOD_FRAME_WIDTH * 2;
   const forcedBoardHeight = forcedContentHeight + WOOD_FRAME_WIDTH * 2;
   
@@ -258,6 +265,8 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
   
   return {
     tileSize: forcedTileSize,
+    tilesRectWidth: forcedTilesRectWidth,
+    tilesRectHeight: forcedTilesRectHeight,
     boardWidth: forcedBoardWidth,
     boardHeight: forcedBoardHeight,
     contentWidth: forcedContentWidth,
@@ -276,18 +285,27 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
  * @param {number} rows - 行数
  * @param {number} cols - 列数
  * @param {number} tileSize - 方块尺寸
+ * @param {number} tilesRectWidth - 数字方块矩形宽度
+ * @param {number} tilesRectHeight - 数字方块矩形高度
+ * @param {number} contentWidth - 棋盘内容区宽度
+ * @param {number} contentHeight - 棋盘内容区高度
  * @param {number} gap - 间距
  * @param {number} padding - 内边距
  * @returns {Function} 位置计算函数
  */
-export function layoutTiles(rows, cols, tileSize, gap = TILE_GAP, padding = BOARD_PADDING) {
+export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING) {
   return function getTilePosition(row, col) {
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
       return null;
     }
     
-    const x = padding + col * (tileSize + gap);
-    const y = padding + row * (tileSize + gap);
+    // 计算数字方块矩形在内容区中的居中偏移
+    const offsetX = (contentWidth - tilesRectWidth) / 2;
+    const offsetY = (contentHeight - tilesRectHeight) / 2;
+    
+    // 计算方块位置（相对于内容区左上角）
+    const x = offsetX + col * (tileSize + gap);
+    const y = offsetY + row * (tileSize + gap);
     
     return {
       x,
@@ -307,7 +325,15 @@ export function layoutTiles(rows, cols, tileSize, gap = TILE_GAP, padding = BOAR
  */
 export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
   const layout = computeAdaptiveLayout(N, targetAspect, level);
-  const getTilePosition = layoutTiles(layout.rows, layout.cols, layout.tileSize);
+  const getTilePosition = layoutTiles(
+    layout.rows, 
+    layout.cols, 
+    layout.tileSize, 
+    layout.tilesRectWidth, 
+    layout.tilesRectHeight, 
+    layout.contentWidth, 
+    layout.contentHeight
+  );
   
   return {
     ...layout,

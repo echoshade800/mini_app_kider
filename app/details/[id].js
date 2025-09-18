@@ -30,15 +30,7 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-  const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
-  const availableWidth = screenWidth;
-  
-  return {
-    availableWidth,
-    availableHeight,
-    topOffset: EFFECTIVE_AREA_CONFIG.TOP_RESERVED,
-    bottomOffset: EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED,
-  };
+  // Implementation here
 }
 
 // 检查棋盘是否为空

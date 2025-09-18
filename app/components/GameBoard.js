@@ -33,110 +33,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-  // 检查是否需要救援
-  const checkForRescue = React.useCallback(() => {
-    if (!board || disabled) return;
-    
-    const { tiles, width, height } = board;
-    
-    // 检查是否有可消除的组合
-    if (!hasValidCombinations(tiles, width, height)) {
-      if (reshuffleCount < 3) {
-        // 自动重排
-        const newTiles = reshuffleBoard(tiles, width, height);
-        const newBoard = { ...board, tiles: newTiles };
-        
-        // 检查重排后是否有解
-        if (hasValidCombinations(newTiles, width, height)) {
-          setReshuffleCount(0);
-          if (onBoardRefresh) {
-            onBoardRefresh(newBoard);
-          }
-        } else {
-          setReshuffleCount(prev => prev + 1);
-          if (onBoardRefresh) {
-            onBoardRefresh(newBoard);
-          }
-          
-          // 如果重排3次后仍无解，显示救援界面
-          if (reshuffleCount + 1 >= 3) {
-            setTimeout(() => {
-              setShowRescueModal(true);
-            }, 500);
-          }
-        }
-      }
-    }
-  }, [board, disabled, reshuffleCount, onBoardRefresh]);
-
-  // 监听棋盘变化，检查是否需要救援
-  React.useEffect(() => {
-    if (board && !itemMode) {
-      const timer = setTimeout(() => {
-        checkForRescue();
-      }, 1000); // 延迟检查，避免频繁触发
-      
-      return () => clearTimeout(timer);
-    }
-  }, [board, itemMode, checkForRescue]);
-
-  if (!board) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading board...</Text>
-      </View>
-    );
-  }
-
-  const { width, height, tiles } = board;
-
-  // Initialize tile scale animation
-  const initTileScale = (index) => {
-    if (!tileScales[index]) {
-      tileScales[index] = new Animated.Value(1);
-    }
-    return tileScales[index];
-  };
-
-  // Scale tile animation
-  const scaleTile = (index, scale) => {
-    const tileScale = initTileScale(index);
-    if (tileScale) {
-      Animated.spring(tileScale, {
-        toValue: scale,
-        useNativeDriver: true,
-        tension: 400,
-        friction: 8,
-      }).start();
-    }
-  };
-
-  const isInsideGridArea = (pageX, pageY) => {
-    if (!fixedLayout || isInRestrictedArea(pageY)) return false;
-
-    const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = fixedLayout;
-
-    const innerLeft = boardLeft + boardPadding;
-    const innerTop = boardTop + boardPadding;
-
-    if (pageX < innerLeft || pageX > innerLeft + (width * (tileSize + tileGap) - tileGap) ||
-        pageY < innerTop || pageY > innerTop + (height * (tileSize + tileGap) - tileGap)) {
-      return false;
-    }
-
-    const relativeX = pageX - innerLeft;
-    const relativeY = pageY - innerTop;
-
-    const cellWidth = tileSize + tileGap;
-    const cellHeight = tileSize + tileGap;
-    
-    const col = Math.floor(relativeX / cellWidth);
-    const row = Math.floor(relativeY / cellHeight);
-    
-    if (row >= 0 && row < height && col >= 0 && col < width) {
-      return { row, col };
-    }
-    
     return null;
   };
 
@@ -277,6 +173,7 @@ function calculateEffectiveAreaLayout() {
 
       // Update hovered tiles with scaling effect
       const newSelection = { ...selection, endRow: gridPos.row, endCol: gridPos.col };
+      const newSelection = { ...selection, endRow, endCol };
       const newSelectedTiles = getSelectedTilesForSelection(newSelection);
       const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
       
@@ -847,41 +744,6 @@ function calculateEffectiveAreaLayout() {
                 ]}>
                   {selectionSum.sum}
                 </Text>
-              </View>
-            )}
-            
-            {/* Explosion effect */}
-            {explosionAnimation && (
-              <Animated.View
-                style={[
-                  styles.explosion,
-                  {
-                    left: explosionAnimation.x - 40,
-                    top: explosionAnimation.y - 30,
-                    transform: [{ scale: explosionScale }],
-                    opacity: explosionOpacity,
-                  }
-                ]}
-              >
-                <View style={[styles.explosionNote, { transform: [{ rotate: '5deg' }] }]}>
-                  <Text style={styles.explosionText}>10</Text>
-                </View>
-              </Animated.View>
-            )}
-          </View>
-        </View>
-      </View>
-      
-      {/* Rescue Modal */}
-      <RescueModal
-        visible={showRescueModal}
-        onContinue={handleRescueContinue}
-        onReturn={handleRescueReturn}
-      />
-    </View>
-  );
-}
-
 // 有效游戏区域配置
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
@@ -894,7 +756,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-}
 
 const styles = StyleSheet.create({
   fullScreenContainer: {

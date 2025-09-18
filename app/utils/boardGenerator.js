@@ -67,6 +67,24 @@ function getNumberDistribution(level) {
   }
 }
 
+// Get tile fill ratio based on level (how many tiles are filled)
+function getTileFillRatio(level) {
+  if (level <= 10) return 0.35;      // 1-10关: 35%填充
+  if (level <= 20) return 0.40;      // 11-20关: 40%填充
+  if (level <= 30) return 0.45;      // 21-30关: 45%填充
+  if (level <= 50) return 0.50;      // 31-50关: 50%填充
+  if (level <= 70) return 0.55;      // 51-70关: 55%填充
+  if (level <= 90) return 0.60;      // 71-90关: 60%填充
+  if (level <= 110) return 0.65;     // 91-110关: 65%填充
+  if (level <= 130) return 0.70;     // 111-130关: 70%填充
+  if (level <= 150) return 0.75;     // 131-150关: 75%填充
+  if (level <= 170) return 0.80;     // 151-170关: 80%填充
+  if (level <= 200) return 0.85;     // 171-200关: 85%填充
+  
+  // 200关以后保持最高填充率
+  return 0.85;
+}
+
 // Get target combinations that sum to 10 based on level difficulty
 function getTargetCombinations(level) {
   const combinations = {
@@ -173,18 +191,14 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const distribution = getNumberDistribution(level);
   const targetCombinations = getTargetCombinations(level);
   const minDistance = getMinDistance(level);
+  const fillRatio = getTileFillRatio(level);
   
-  // Calculate number of combinations to place based on level
-  let combinationCount;
-  if (level <= 30) {
-    combinationCount = Math.floor(size * 0.15); // 15% of board
-  } else if (level <= 80) {
-    combinationCount = Math.floor(size * 0.12); // 12% of board
-  } else if (level <= 150) {
-    combinationCount = Math.floor(size * 0.10); // 10% of board
-  } else {
-    combinationCount = Math.floor(size * 0.08); // 8% of board
-  }
+  // Calculate target fill count based on active area and fill ratio
+  const targetFillCount = Math.floor(activeSize * fillRatio);
+  
+  // Calculate number of target combinations (pairs/triples/quads that sum to 10)
+  const combinationRatio = level <= 50 ? 0.4 : level <= 100 ? 0.35 : 0.3;
+  const combinationCount = Math.floor(targetFillCount * combinationRatio / 2.5); // Average combination size
   
   const placedPositions = new Set();
   let combinationsPlaced = 0;
@@ -249,7 +263,6 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   // Fill remaining spots in activation rect with random numbers
   const totalPlacedTiles = Array.from(placedPositions).length;
-  const targetFillCount = Math.floor(activeSize * 0.6); // 60% of active area
   const remainingCount = Math.max(0, targetFillCount - totalPlacedTiles);
   
   const availablePositions = [];

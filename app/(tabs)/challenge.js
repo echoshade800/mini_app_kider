@@ -92,6 +92,8 @@ function reshuffleBoard(tiles, width, height) {
 }
 
 export default function ChallengeScreen() {
+  console.log('🎯 [DEBUG] ChallengeScreen component rendering...');
+  
   const { gameData, updateGameData } = useGameStore();
   const [gameState, setGameState] = useState('ready'); // ready, playing, finished
   const [currentIQ, setCurrentIQ] = useState(0);
@@ -125,6 +127,13 @@ export default function ChallengeScreen() {
   
   const timerRef = useRef();
 
+  console.log('🎯 [DEBUG] ChallengeScreen state:', {
+    gameState,
+    currentBoard: currentBoard ? 'exists' : 'null',
+    timeLeft,
+    currentIQ
+  });
+
   const noSolutionMessages = [
     "Brain Freeze!",
     "Out of Juice!",
@@ -133,6 +142,7 @@ export default function ChallengeScreen() {
   ];
 
   useEffect(() => {
+    console.log('🎯 [DEBUG] ChallengeScreen useEffect triggered, gameState:', gameState);
     if (gameState === 'playing') {
       startTimer();
       startProgressAnimation();
@@ -140,6 +150,7 @@ export default function ChallengeScreen() {
     
     // Auto-generate board when component mounts
     if (!currentBoard) {
+      console.log('🎯 [DEBUG] Generating initial board...');
       generateNewBoard();
     }
     
@@ -195,6 +206,7 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
+    console.log('🎯 [DEBUG] generateNewBoard called');
     // 生成挑战模式棋盘（高难度）
     const { rows, cols } = getChallengeGridConfig();
     const board = generateBoard(130, true, true); // 高难度关卡
@@ -210,6 +222,7 @@ export default function ChallengeScreen() {
     board.tiles = newTiles;
     setCurrentBoard(board);
     setReshuffleCount(0);
+    console.log('🎯 [DEBUG] New board generated:', { width: board.width, height: board.height, tilesCount: board.tiles.length });
   };
 
   const checkForRescue = () => {
@@ -363,7 +376,12 @@ export default function ChallengeScreen() {
     setShowResults(false);
     setGameState('ready');
     console.log('🎯 [DEBUG] Navigating back to home...');
-    router.replace('/');
+    try {
+      router.replace('/');
+      console.log('🎯 [DEBUG] Navigation to home executed');
+    } catch (error) {
+      console.error('🎯 [ERROR] Navigation to home failed:', error);
+    }
   };
 
   const handleAgain = () => {
@@ -398,6 +416,8 @@ export default function ChallengeScreen() {
   };
 
   return (
+    <>
+    {console.log('🎯 [DEBUG] ChallengeScreen rendering JSX...')}
     <SafeAreaView style={styles.container}>
       {/* HUD */}
       <View style={styles.hud} pointerEvents="box-none">
@@ -572,6 +592,7 @@ export default function ChallengeScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+    </>
   );
 }
 

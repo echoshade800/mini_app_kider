@@ -24,8 +24,15 @@ export default function Home() {
     try {
       console.log('🎮 [DEBUG] Current route info:', router);
       console.log('🎮 [DEBUG] Navigating to challenge mode...');
-      router.push('/(tabs)/challenge');
+      // 尝试不同的导航方式
+      console.log('🎮 [DEBUG] Trying router.push...');
+      router.push('/challenge');
       console.log('🎮 [DEBUG] Navigation command executed');
+      
+      // 延迟检查导航是否成功
+      setTimeout(() => {
+        console.log('🎮 [DEBUG] Checking navigation result after 1s...');
+      }, 1000);
     } catch (error) {
       console.error('🎮 [ERROR] Navigation failed:', error);
     }

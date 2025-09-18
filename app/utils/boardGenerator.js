@@ -44,6 +44,29 @@ function getActivationRect(level) {
   return { rows: 14, cols: 21 };
 }
 
+// Get number distribution based on level difficulty
+function getNumberDistribution(level) {
+  if (level <= 30) {
+    return {
+      smallNumbers: 0.6,  // 1-3的比例
+      mediumNumbers: 0.3, // 4-6的比例
+      largeNumbers: 0.1   // 7-9的比例
+    };
+  } else if (level <= 80) {
+    return {
+      smallNumbers: 0.5,
+      mediumNumbers: 0.4,
+      largeNumbers: 0.1
+    };
+  } else {
+    return {
+      smallNumbers: 0.4,
+      mediumNumbers: 0.4,
+      largeNumbers: 0.2
+    };
+  }
+}
+
 // Get target combinations that sum to 10 based on level difficulty
 function getTargetCombinations(level) {
   const combinations = {

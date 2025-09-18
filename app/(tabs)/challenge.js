@@ -21,7 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
-import { generateChallengeBoard } from '../utils/boardGenerator';
+import { generateBoard } from '../utils/boardGenerator';
+import { getChallengeGridConfig } from '../utils/boardLayout';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CHALLENGE_DURATION = 60; // 60 seconds
@@ -194,8 +195,19 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 生成满盘棋盘，传入屏幕尺寸以铺满屏幕
-    const board = generateChallengeBoard(screenWidth, screenHeight);
+    // 生成挑战模式棋盘（高难度）
+    const { rows, cols } = getChallengeGridConfig();
+    const board = generateBoard(130, true, true); // 高难度关卡
+    // 重写尺寸为挑战模式配置
+    board.width = cols;
+    board.height = rows;
+    // 重新生成对应尺寸的tiles数组
+    const newSize = rows * cols;
+    const newTiles = new Array(newSize);
+    for (let i = 0; i < newSize; i++) {
+      newTiles[i] = Math.floor(Math.random() * 9) + 1;
+    }
+    board.tiles = newTiles;
     setCurrentBoard(board);
     setReshuffleCount(0);
   };
@@ -385,10 +397,11 @@ export default function ChallengeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* HUD */}
-      <View style={[styles.hud, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000 }]}>
+      <View style={styles.hud} pointerEvents="box-none">
         <TouchableOpacity 
           style={styles.backButton}
           onPress={handleReturn}
+          pointerEvents="auto"
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
@@ -414,61 +427,47 @@ export default function ChallengeScreen() {
         <TouchableOpacity 
           style={styles.settingsButton}
           onPress={() => setShowSettings(true)}
+          pointerEvents="auto"
         >
           <Ionicons name="settings" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      {/* Game Board - Full Screen */}
-      {(gameState === 'ready' || gameState === 'playing') && (
-        <>
-          {gameState === 'ready' && (
-            <View style={[styles.readyOverlay, { zIndex: 2000 }]}>
-              <View style={styles.readyContent}>
-                <Text style={styles.readyTitle}>Challenge Mode</Text>
-                <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
-                <TouchableOpacity style={styles.startButton} onPress={startChallenge}>
-                  <Text style={styles.startButtonText}>START CHALLENGE</Text>
-                </TouchableOpacity>
-              </View>
+      {/* 棋盘区域 */}
+      <View style={styles.boardArea}>
+        {gameState === 'ready' && (
+          <View style={styles.readyOverlay}>
+            <View style={styles.readyContent}>
+              <Text style={styles.readyTitle}>Challenge Mode</Text>
+              <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
+              <TouchableOpacity style={styles.startButton} onPress={startChallenge}>
+                <Text style={styles.startButtonText}>START CHALLENGE</Text>
+              </TouchableOpacity>
             </View>
-          )}
-          
-          {currentBoard && (
-            <GameBoard 
-              board={currentBoard}
-              onTilesClear={handleTilesClear}
-              onTileClick={handleTileClick}
-              itemMode={itemMode}
-              selectedSwapTile={selectedSwapTile}
-              swapAnimations={swapAnimationsRef.current}
-              fractalAnimations={fractalAnimationsRef.current}
-              onBoardRefresh={handleBoardRefresh}
-              disabled={gameState !== 'playing'}
-              isChallenge={true}
-            />
-          )}
-        </>
-      )}
-
-      {gameState === 'finished' && currentBoard && (
-        <GameBoard 
-          board={currentBoard}
-          onTilesClear={handleTilesClear}
-          onTileClick={handleTileClick}
-          itemMode={itemMode}
-          selectedSwapTile={selectedSwapTile}
-          swapAnimations={swapAnimationsRef.current}
-          fractalAnimations={fractalAnimationsRef.current}
-          onBoardRefresh={handleBoardRefresh}
-          disabled={true}
-          isChallenge={true}
-        />
-      )}
+          </View>
+        )}
+        
+        {currentBoard && (
+          <GameBoard 
+            board={currentBoard}
+            onTilesClear={handleTilesClear}
+            onTileClick={handleTileClick}
+            itemMode={itemMode}
+            selectedSwapTile={selectedSwapTile}
+            swapAnimations={swapAnimationsRef.current}
+            fractalAnimations={fractalAnimationsRef.current}
+            onBoardRefresh={handleBoardRefresh}
+            disabled={gameState !== 'playing'}
+            isChallenge={true}
+            availableWidth={screenWidth - 40}
+            availableHeight={screenHeight - 200} // 扣除顶部HUD和底部道具栏
+          />
+        )}
+      </View>
 
       {/* 底部道具栏 - 固定在屏幕最底部 */}
       {gameState === 'playing' && (
-        <View style={[styles.itemsBar, { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000 }]}>
+        <View style={styles.itemsBar} pointerEvents="box-none">
           <TouchableOpacity 
             style={[
               styles.itemButton,
@@ -478,6 +477,7 @@ export default function ChallengeScreen() {
             onPress={itemMode === 'swapMaster' ? handleCancelItem : handleUseSwapMaster}
             disabled={(gameData?.swapMasterItems || 0) <= 0 && itemMode !== 'swapMaster'}
             activeOpacity={0.7}
+            pointerEvents="auto"
           >
             <Ionicons 
               name={itemMode === 'swapMaster' ? "close" : "shuffle"} 
@@ -500,6 +500,7 @@ export default function ChallengeScreen() {
             onPress={itemMode === 'fractalSplit' ? handleCancelItem : handleUseFractalSplit}
             disabled={(gameData?.fractalSplitItems || 0) <= 0 && itemMode !== 'fractalSplit'}
             activeOpacity={0.7}
+            pointerEvents="auto"
           >
             <Ionicons 
               name={itemMode === 'fractalSplit' ? "close" : "git-branch"} 
@@ -517,7 +518,7 @@ export default function ChallengeScreen() {
 
       {/* No Solution Overlay */}
       {showNoSolution && (
-        <View style={[styles.noSolutionOverlay, { zIndex: 3000 }]}>
+        <View style={styles.noSolutionOverlay}>
           <Text style={styles.noSolutionText}>{noSolutionMessage}</Text>
         </View>
       )}
@@ -576,14 +577,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a2e',
   },
-  fullScreenBoard: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
   hud: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -592,6 +585,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingTop: 50, // 为状态栏留出空间
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 1000,
   },
   backButton: {
     padding: 8,
@@ -626,11 +620,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
-  readyScreen: {
+  boardArea: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
+    position: 'relative',
   },
   readyOverlay: {
     position: 'absolute',
@@ -641,7 +633,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(26, 26, 46, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 100,
   },
   readyContent: {
     alignItems: 'center',
@@ -671,22 +663,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  gameArea: {
-    flex: 1,
-    backgroundColor: '#1E5A3C', // 绿色背景铺满
-    margin: 20, // 与屏幕边缘的距离
-    borderRadius: 16,
-    borderWidth: 8,
-    borderColor: '#8B5A2B', // 木框边框
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
-  },
   noSolutionOverlay: {
     position: 'absolute',
     top: 0,
@@ -696,6 +672,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 200,
   },
   noSolutionText: {
     color: '#ff6b6b',
@@ -805,6 +782,7 @@ const styles = StyleSheet.create({
     paddingBottom: 30, // 为底部安全区域留出空间
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     gap: 20,
+    zIndex: 1000,
   },
   itemButton: {
     width: 60,

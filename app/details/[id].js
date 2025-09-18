@@ -20,6 +20,7 @@ import { Dimensions, Animated } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
+import { getLevelGridConfig } from '../utils/boardLayout';
 import { STAGE_NAMES } from '../utils/stageNames';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -507,6 +508,8 @@ export default function LevelDetailScreen() {
         swapAnimations={swapAnimationsRef.current}
         fractalAnimations={fractalAnimationsRef.current}
         isChallenge={false}
+        availableWidth={screenWidth - 40}
+        availableHeight={screenHeight - 200}
       />
 
       {/* Floating Action Buttons */}

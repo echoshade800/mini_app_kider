@@ -21,113 +21,18 @@ import { RescueModal } from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// 固定棋盘背景配置
-const BOARD_CONFIG = {
-  TILE_GAP: 4,           // 方块间距
-  BOARD_PADDING: 16,     // 棋盘内边距（外圈留白）
-  TILE_SIZE: 28,         // 固定方块尺寸
-  GRID_ROWS: 20,         // 固定网格行数
-  GRID_COLS: 14,         // 固定网格列数
+// 有效游戏区域配置
+const EFFECTIVE_AREA_CONFIG = {
+  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
+  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+  TILE_GAP: 4,          // 方块间距
+  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
+  GRID_ROWS: 20,        // 固定网格行数
+  GRID_COLS: 14,        // 固定网格列数
 };
 
-// 计算固定棋盘布局
-function getFixedBoardLayout(availableWidth, availableHeight) {
-  const { TILE_SIZE, TILE_GAP, BOARD_PADDING, GRID_ROWS, GRID_COLS } = BOARD_CONFIG;
-  
-  // 计算棋盘总尺寸
-  const boardWidth = GRID_COLS * TILE_SIZE + (GRID_COLS - 1) * TILE_GAP + BOARD_PADDING * 2;
-  const boardHeight = GRID_ROWS * TILE_SIZE + (GRID_ROWS - 1) * TILE_GAP + BOARD_PADDING * 2;
-  
-  // 居中定位
-  const boardLeft = (availableWidth - boardWidth) / 2;
-  const boardTop = (availableHeight - boardHeight) / 2;
-  
-  return {
-    boardWidth,
-    boardHeight,
-    boardLeft,
-    boardTop,
-    tileSize: TILE_SIZE,
-    tileGap: TILE_GAP,
-    boardPadding: BOARD_PADDING,
-    gridRows: GRID_ROWS,
-    gridCols: GRID_COLS,
-    // 计算方块位置
-    getTilePosition: (row, col) => ({
-      x: BOARD_PADDING + col * (TILE_SIZE + TILE_GAP),
-      y: BOARD_PADDING + row * (TILE_SIZE + TILE_GAP),
-    }),
-  };
-}
-
-export function GameBoard({ 
-  board, 
-  onTilesClear, 
-  onBoardRefresh,
-  onTileClick, 
-  itemMode = null,
-  selectedSwapTile = null,
-  disabled = false,
-  swapAnimations,
-  fractalAnimations,
-  isChallenge = false,
-}) {
-  const { settings } = useGameStore();
-  const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [reshuffleCount, setReshuffleCount] = useState(0);
-  const [showRescueModal, setShowRescueModal] = useState(false);
-  const [fixedLayout, setFixedLayout] = useState(null);
-  
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const explosionScale = useRef(new Animated.Value(0)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
-  const tileScales = useRef({}).current;
-
-  // Generate stable random rotation for each tile
-  const getTileRotation = (row, col) => {
-    const seed = row * 1000 + col;
-    const random = (seed * 9301 + 49297) % 233280;
-    return ((random / 233280) - 0.5) * 2.4; // -1.2° to +1.2°
-  };
-
-  React.useEffect(() => {
-    return () => {
-      Object.values(tileScales).forEach(anim => {
-        if (anim && anim.stopAnimation) {
-          anim.stopAnimation();
-        }
-      });
-    };
-  }, []);
-
-  // 检查是否需要救援
-  const checkForRescue = React.useCallback(() => {
-    if (!board || disabled) return;
-    
-    const { tiles, width, height } = board;
-    
-    // 检查是否有可消除的组合
-    if (!hasValidCombinations(tiles, width, height)) {
-      if (reshuffleCount < 3) {
-        // 自动重排
-        const newTiles = reshuffleBoard(tiles, width, height);
-        const newBoard = { ...board, tiles: newTiles };
-        
-        // 检查重排后是否有解
-        if (hasValidCombinations(newTiles, width, height)) {
-          setReshuffleCount(0);
-          if (onBoardRefresh) {
-            onBoardRefresh(newBoard);
-          }
-        } else {
-          setReshuffleCount(prev => prev + 1);
-          if (onBoardRefresh) {
-            onBoardRefresh(newBoard);
-          }
-          
-          // 如果重排3次后仍无解，显示救援界面
+// 计算有效游戏区域和棋盘布局
+function calculateEffectiveAreaLayout() {
           if (reshuffleCount + 1 >= 3) {
             setTimeout(() => {
               setShowRescueModal(true);
@@ -198,16 +103,15 @@ export function GameBoard({
 
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
-
-    if (relativeX < 0 || relativeX >= width * cellWidth - tileGap ||
-        relativeY < 0 || relativeY >= height * cellHeight - tileGap) {
-      return false;
-    }
-
+    
     const col = Math.floor(relativeX / cellWidth);
     const row = Math.floor(relativeY / cellHeight);
-
-    return row >= 0 && row < height && col >= 0 && col < width;
+    
+    if (row >= 0 && row < height && col >= 0 && col < width) {
+      return { row, col };
+    }
+    
+    return null;
   };
 
   const isInRestrictedArea = (pageY) => {
@@ -346,7 +250,7 @@ export function GameBoard({
       }));
 
       // Update hovered tiles with scaling effect
-      const newSelection = { ...selection, endRow, endCol };
+      const newSelection = { ...selection, endRow: gridPos.row, endCol: gridPos.col };
       const newSelectedTiles = getSelectedTilesForSelection(newSelection);
       const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
       
@@ -917,44 +821,18 @@ export function GameBoard({
                 ]}>
                   {selectionSum.sum}
                 </Text>
-              </View>
-            )}
+// 有效游戏区域配置
+const EFFECTIVE_AREA_CONFIG = {
+  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
+  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+  TILE_GAP: 4,          // 方块间距
+  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
+  GRID_ROWS: 20,        // 固定网格行数
+  GRID_COLS: 14,        // 固定网格列数
+};
 
-            {/* Explosion effect - Yellow "10" sticky note */}
-            {explosionAnimation && (
-              <Animated.View
-                style={[
-                  styles.explosion,
-                  {
-                    left: explosionAnimation.x - 40,
-                    top: explosionAnimation.y - 30,
-                    transform: [
-                      { scale: explosionScale },
-                      { rotate: '5deg' }
-                    ],
-                    opacity: explosionOpacity,
-                  }
-                ]}
-              >
-                <View style={styles.explosionNote}>
-                  <Text style={styles.explosionText}>10</Text>
-                </View>
-              </Animated.View>
-            )}
-          </View>
-        </View>
-      </View>
-      
-      {/* Rescue Modal */}
-      <RescueModal
-        visible={showRescueModal}
-        onContinue={handleRescueContinue}
-        onReturn={handleRescueReturn}
-        hasItems={true} // 这里可以根据实际道具数量判断
-      />
-    </View>
-  );
-}
+// 计算有效游戏区域和棋盘布局
+function calculateEffectiveAreaLayout() {
 
 const styles = StyleSheet.create({
   fullScreenContainer: {

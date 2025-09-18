@@ -10,7 +10,6 @@ function seededRandom(seed) {
   for (let i = 0; i < seed.length; i++) {
     state = ((state << 5) - state + seed.charCodeAt(i)) & 0xffffffff;
   }
-    maxFillableCount: gridCols * gridRows, // 最大可填充数量
   
   return function() {
     state = ((state * 1103515245) + 12345) & 0x7fffffff;

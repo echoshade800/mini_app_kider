@@ -30,40 +30,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-  const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
-  const availableWidth = screenWidth;
-  
-  return {
-    availableWidth,
-    availableHeight,
-    topOffset: EFFECTIVE_AREA_CONFIG.TOP_RESERVED,
-    bottomOffset: EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED,
-  };
-}
-
-// 检查棋盘是否为空
-function isBoardEmpty(tiles) {
-  return tiles.every(tile => tile === 0);
-}
-
-const GameBoard = ({ 
-  tiles, 
-  width, 
-  height, 
-  onTilesClear, 
-  disabled = false, 
-  itemMode = null, 
-  onTileClick = null,
-  selectedSwapTile = null,
-  swapAnimations = null,
-  fractalAnimations = null,
-  onBoardRefresh = null,
-  isChallenge = false,
-  settings = {}
-}) => {
-  const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [fixedLayout, setFixedLayout] = useState(null);
   const [showRescueModal, setShowRescueModal] = useState(false);
   const [reshuffleCount, setReshuffleCount] = useState(0);

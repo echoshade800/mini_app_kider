@@ -33,58 +33,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-          const value = tiles[index];
-          if (value > 0) {
-            selectedTiles.push({ row, col, value, index });
-          }
-        }
-      }
-    }
-    
-    return selectedTiles;
-  };
-
-  const getSelectedTiles = () => {
-    return getSelectedTilesForSelection(selection);
-  };
-
-  const resetSelection = () => {
-    setSelection(null);
-    selectionOpacity.setValue(0);
-    hoveredTiles.forEach(index => {
-      scaleTile(index, 1);
-    });
-    setHoveredTiles(new Set());
-  };
-
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: (evt) => {
-      if (itemMode) return false;
-      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
-      const { pageX, pageY } = evt.nativeEvent;
-      return !disabled && isInsideGridArea(pageX, pageY);
-    },
-    onMoveShouldSetPanResponder: (evt) => {
-      if (itemMode) return false;
-      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
-      const { pageX, pageY } = evt.nativeEvent;
-      return !disabled && isInsideGridArea(pageX, pageY);
-    },
-
-    onPanResponderGrant: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
-      
-      if (!isInsideGridArea(pageX, pageY)) return;
-      
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = fixedLayout;
-
-      const innerLeft = boardLeft + boardPadding;
-      const innerTop = boardTop + boardPadding;
-
-      const relativeX = pageX - innerLeft;
-      const relativeY = pageY - innerTop;
-
-      const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
 
       const startCol = Math.floor(relativeX / cellWidth);

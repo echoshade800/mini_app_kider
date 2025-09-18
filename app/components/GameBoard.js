@@ -33,58 +33,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-    return null;
-  };
-
-  const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = 120; // 减少顶部限制区域
-    const bottomRestrictedHeight = 120; // 减少底部限制区域
-    
-    return pageY < topRestrictedHeight || 
-           pageY > screenHeight - bottomRestrictedHeight;
-  };
-
-  const getSelectedTilesForSelection = (sel) => {
-    if (!sel) return [];
-    
-    const { startRow, startCol, endRow, endCol } = sel;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
-    const selectedTiles = [];
-    
-    for (let row = minRow; row <= maxRow; row++) {
-      for (let col = minCol; col <= maxCol; col++) {
-        if (row >= 0 && row < height && col >= 0 && col < width) {
-          const index = row * width + col;
-          const value = tiles[index];
-          if (value > 0) {
-            selectedTiles.push({ row, col, value, index });
-          }
-        }
-      }
-    }
-    
-    return selectedTiles;
-  };
-
-  const getSelectedTiles = () => {
-    return getSelectedTilesForSelection(selection);
-  };
-
-  const resetSelection = () => {
-    setSelection(null);
-    selectionOpacity.setValue(0);
-    hoveredTiles.forEach(index => {
-      scaleTile(index, 1);
-    });
-    setHoveredTiles(new Set());
-  };
-
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
       if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
       const { pageX, pageY } = evt.nativeEvent;

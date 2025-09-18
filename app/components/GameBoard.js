@@ -80,6 +80,17 @@ function calculateEffectiveAreaLayout() {
     tileGap,
     gridCols,
     gridRows,
+    getTilePosition: (row, col) => {
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+      return {
+        x: col * cellWidth,
+        y: row * cellHeight,
+      };
+    },
+  };
+}
+
 const GameBoard = ({ 
   tiles, 
   width, 

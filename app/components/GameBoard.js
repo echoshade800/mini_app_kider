@@ -118,23 +118,28 @@ export function GameBoard({
     if (!layout || isInRestrictedArea(pageY)) return false;
     
     // 检查是否在棋盘有效区域内
-    const boardLeft = layout.offsetX + layout.padding;
-    const boardTop = SAFE_TOP + layout.offsetY + layout.padding;
-    const boardRight = boardLeft + layout.cols * (layout.tileSize + layout.gap) - layout.gap;
-    const boardBottom = boardTop + layout.rows * (layout.tileSize + layout.gap) - layout.gap;
+    const boardLeft = layout.offsetX;
+    const boardTop = SAFE_TOP + layout.offsetY;
+    const gridLeft = boardLeft + layout.padding;
+    const gridTop = boardTop + layout.padding;
+    const gridRight = gridLeft + layout.cols * (layout.tileSize + layout.gap) - layout.gap;
+    const gridBottom = gridTop + layout.rows * (layout.tileSize + layout.gap) - layout.gap;
     
-    return pageX >= boardLeft && pageX <= boardRight && 
-           pageY >= boardTop && pageY <= boardBottom;
+    return pageX >= gridLeft && pageX <= gridRight && 
+           pageY >= gridTop && pageY <= gridBottom;
   };
 
   const getSlotFromScreenCoord = (pageX, pageY) => {
     if (!layout) return null;
     
-    const boardLeft = layout.offsetX + layout.padding;
-    const boardTop = SAFE_TOP + layout.offsetY + layout.padding;
+    // 计算相对于网格容器的坐标
+    const boardLeft = layout.offsetX;
+    const boardTop = SAFE_TOP + layout.offsetY;
+    const gridLeft = boardLeft + layout.padding;
+    const gridTop = boardTop + layout.padding;
     
-    const relativeX = pageX - boardLeft;
-    const relativeY = pageY - boardTop;
+    const relativeX = pageX - gridLeft;
+    const relativeY = pageY - gridTop;
     
     const cellWidth = layout.tileSize + layout.gap;
     const cellHeight = layout.tileSize + layout.gap;
@@ -341,8 +346,9 @@ export function GameBoard({
       const cellWidth = layout.tileSize + layout.gap;
       const cellHeight = layout.tileSize + layout.gap;
 
-      const explosionX = layout.offsetX + layout.padding + centerCol * cellWidth + layout.tileSize / 2;
-      const explosionY = SAFE_TOP + layout.offsetY + layout.padding + centerRow * cellHeight + layout.tileSize / 2;
+      // 爆炸位置相对于网格容器
+      const explosionX = centerCol * cellWidth + layout.tileSize / 2;
+      const explosionY = centerRow * cellHeight + layout.tileSize / 2;
       
       setExplosionAnimation({ x: explosionX, y: explosionY });
       
@@ -715,20 +721,25 @@ export function GameBoard({
     };
   };
 
+  // 计算网格容器样式 - 在棋盘容器内部
+  const getGridContainerStyle = () => {
+    if (!layout) return {};
+    
+    return {
+      position: 'absolute',
+      left: layout.padding,
+      top: layout.padding,
+      width: layout.cols * (layout.tileSize + layout.gap) - layout.gap,
+      height: layout.rows * (layout.tileSize + layout.gap) - layout.gap,
+    };
+  };
+
   return (
     <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
       <View style={styles.container}>
         {layout && (
           <View style={[styles.chalkboard, getBoardContainerStyle()]}>
-            <View
-              style={{
-                position: 'absolute',
-                left: layout.padding,
-                top: layout.padding,
-                width: layout.cols * (layout.tileSize + layout.gap) - layout.gap,
-                height: layout.rows * (layout.tileSize + layout.gap) - layout.gap,
-              }}
-            >
+            <View style={getGridContainerStyle()}>
               {/* 网格线 */}
               {renderGridLines()}
               
@@ -758,8 +769,8 @@ export function GameBoard({
                   style={[
                     styles.explosion,
                     {
-                      left: explosionAnimation.x - layout.offsetX - layout.padding - 40,
-                      top: explosionAnimation.y - SAFE_TOP - layout.offsetY - layout.padding - 30,
+                      left: explosionAnimation.x - 40,
+                      top: explosionAnimation.y - 30,
                       transform: [
                         { scale: explosionScale },
                         { rotate: '5deg' }

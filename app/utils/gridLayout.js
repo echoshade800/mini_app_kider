@@ -37,7 +37,7 @@ export function computeBoardLayout(usableWidth, usableHeight, tileCount) {
   const offsetY = Math.max(0, (usableHeight - boardHeight) / 2);
   
   // 6. 生成槽位坐标
-  const slots = generateSlots(rows, cols, offsetX + padding, offsetY + padding, gap);
+  const slots = generateSlots(rows, cols, padding, padding, gap);
   
   return {
     rows,

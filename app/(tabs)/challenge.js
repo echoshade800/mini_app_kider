@@ -116,6 +116,7 @@ export default function ChallengeScreen() {
     // Reset reshuffle count on successful clear
     setReshuffleCount(0);
 
+    // Update board by removing cleared tiles
     if (board) {
       const newTiles = [...board.tiles];
       clearedPositions.forEach(pos => {
@@ -132,14 +133,7 @@ export default function ChallengeScreen() {
           generateNewBoard();
         }, 500);
       } else {
-        // In challenge mode, refill cleared positions with new random numbers
-        clearedPositions.forEach(pos => {
-          const index = pos.row * board.width + pos.col;
-          // Generate random number 1-9 for refill
-          newTiles[index] = Math.floor(Math.random() * 9) + 1;
-        });
-        
-        // Update board with refilled tiles
+        // Update current board
         setBoard(prev => ({
           ...prev,
           tiles: newTiles
@@ -265,11 +259,6 @@ export default function ChallengeScreen() {
             height={board.height}
             onTilesClear={handleTilesClear}
             disabled={false}
-            itemMode={null}
-            onTileClick={null}
-            selectedSwapTile={null}
-            swapAnimations={new Map()}
-            fractalAnimations={new Map()}
             settings={settings}
             isChallenge={true}
             reshuffleCount={reshuffleCount}

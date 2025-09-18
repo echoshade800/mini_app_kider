@@ -30,32 +30,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const isInsideGridArea = (pageX, pageY) => {
-    if (!fixedLayout) return false;
-    
-    const { boardLeft, boardTop, boardWidth, boardHeight } = fixedLayout;
-    
-    return pageX >= boardLeft && 
-           pageX <= boardLeft + boardWidth && 
-           pageY >= boardTop && 
-           pageY <= boardTop + boardHeight;
-  };
-
-  const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-    const bottomRestrictedHeight = screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
-    
-    return pageY < topRestrictedHeight || pageY > bottomRestrictedHeight;
-  };
-
-  const getSelectedTiles = () => {
-    if (!selection) return [];
-    return getSelectedTilesForSelection(selection);
   };
 
   const getSelectedTilesForSelection = (sel) => {

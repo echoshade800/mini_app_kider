@@ -30,11 +30,235 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-    bottomReserved,
-    availableHeight,
-    availableWidth: screenWidth,
+  const availableWidth = screenWidth;
+  const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+  
+  return {
+    availableWidth,
+    availableHeight
   };
 }
+
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  onTilesClear, 
+  settings, 
+  isChallenge, 
+  onBoardRefresh,
+  itemMode,
+  selectedSwapTile,
+  onTilePress,
+  swapAnimations,
+  fractalAnimations,
+  explosionAnimation,
+  explosionScale,
+  explosionOpacity
+}) => {
+  const [selection, setSelection] = useState(null);
+  const [fixedLayout, setFixedLayout] = useState(null);
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef(new Map()).current;
+
+  const initTileScale = (index) => {
+    if (!tileScales.has(index)) {
+      tileScales.set(index, new Animated.Value(1));
+    }
+    return tileScales.get(index);
+  };
+
+  const getTileRotation = (row, col) => {
+    const seed = row * 13 + col * 7;
+    return ((seed % 7) - 3) * 0.8;
+  };
+
+  const getFixedBoardLayout = (availableWidth, availableHeight) => {
+    const { GRID_ROWS, GRID_COLS, TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
+    
+    const maxTileWidth = (availableWidth - BOARD_PADDING * 2 - TILE_GAP * (GRID_COLS - 1)) / GRID_COLS;
+    const maxTileHeight = (availableHeight - BOARD_PADDING * 2 - TILE_GAP * (GRID_ROWS - 1)) / GRID_ROWS;
+    
+    const tileSize = Math.floor(Math.min(maxTileWidth, maxTileHeight));
+    
+    const gridWidth = GRID_COLS * tileSize + (GRID_COLS - 1) * TILE_GAP;
+    const gridHeight = GRID_ROWS * tileSize + (GRID_ROWS - 1) * TILE_GAP;
+    
+    const boardWidth = gridWidth + BOARD_PADDING * 2;
+    const boardHeight = gridHeight + BOARD_PADDING * 2;
+    
+    const boardLeft = (availableWidth - boardWidth) / 2;
+    const boardTop = EFFECTIVE_AREA_CONFIG.TOP_RESERVED + (availableHeight - boardHeight) / 2;
+    
+    return {
+      tileSize,
+      tileGap: TILE_GAP,
+      boardPadding: BOARD_PADDING,
+      gridWidth,
+      gridHeight,
+      boardWidth,
+      boardHeight,
+      boardLeft,
+      boardTop,
+      gridRows: GRID_ROWS,
+      gridCols: GRID_COLS,
+      getTilePosition: (row, col) => ({
+        x: col * (tileSize + TILE_GAP),
+        y: row * (tileSize + TILE_GAP)
+      })
+    };
+  };
+
+  const isBoardEmpty = (boardTiles) => {
+    return boardTiles.every(tile => tile === 0);
+  };
+
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => !itemMode,
+    onMoveShouldSetPanResponder: () => !itemMode,
+    
+    onPanResponderGrant: (evt) => {
+      if (itemMode) return;
+      
+      const { locationX, locationY } = evt.nativeEvent;
+      const startPos = getTileFromPosition(locationX, locationY);
+      
+      if (startPos) {
+        setSelection({
+          startRow: startPos.row,
+          startCol: startPos.col,
+          endRow: startPos.row,
+          endCol: startPos.col,
+        });
+        
+        Animated.timing(selectionOpacity, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: false,
+        }).start();
+      }
+    },
+    
+    onPanResponderMove: (evt) => {
+      if (itemMode || !selection) return;
+      
+      const { locationX, locationY } = evt.nativeEvent;
+      const currentPos = getTileFromPosition(locationX, locationY);
+      
+      if (currentPos) {
+        setSelection(prev => ({
+          ...prev,
+          endRow: currentPos.row,
+          endCol: currentPos.col,
+        }));
+      }
+    },
+    
+    onPanResponderRelease: () => {
+      if (itemMode) return;
+      handleSelectionEnd();
+    },
+  });
+
+  const getTileFromPosition = (x, y) => {
+    if (!fixedLayout) return null;
+    
+    const relativeX = x - fixedLayout.boardPadding;
+    const relativeY = y - fixedLayout.boardPadding;
+    
+    if (relativeX < 0 || relativeY < 0 || 
+        relativeX >= fixedLayout.gridWidth || 
+        relativeY >= fixedLayout.gridHeight) {
+      return null;
+    }
+    
+    const { tileSize, tileGap } = fixedLayout;
+    const cellWidth = tileSize + tileGap;
+    const cellHeight = tileSize + tileGap;
+    
+    const col = Math.floor(relativeX / cellWidth);
+    const row = Math.floor(relativeY / cellHeight);
+    
+    if (row >= 0 && row < height && col >= 0 && col < width) {
+      const index = row * width + col;
+      if (tiles[index] !== 0) {
+        return { row, col };
+      }
+    }
+    
+    return null;
+  };
+
+  const getSelectedTiles = () => {
+    if (!selection) return [];
+    
+    const { startRow, startCol, endRow, endCol } = selection;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = [];
+    
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value !== 0) {
+            selectedTiles.push({ row, col, value, index });
+          }
+        }
+      }
+    }
+    
+    return selectedTiles;
+  };
+
+  const handleSelectionEnd = () => {
+    if (!selection) return;
+    
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    
+    if (sum === 10 && selectedTiles.length > 0) {
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      
+      const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+      
+      Animated.parallel([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+        onTilesClear(tilePositions);
+      });
+
+    } else if (selectedTiles.length > 0) {
+      // Failure - blue feedback with short vibration
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.selectionAsync();
+      }
+      
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.4,
+          duration: 150,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
           toValue: 0,
           duration: 300,
           useNativeDriver: false,

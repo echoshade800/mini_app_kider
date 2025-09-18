@@ -30,32 +30,9 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-  // Implementation here
-}
-
-// 检查棋盘是否为空
-function isBoardEmpty(tiles) {
-  return tiles.every(tile => tile === 0);
-}
-
-const GameBoard = ({ 
-  tiles, 
-  width, 
-  height, 
-  onTilesClear, 
-  disabled = false, 
-  itemMode = null, 
-  onTileClick = null,
-  selectedSwapTile = null,
-  swapAnimations = null,
-  fractalAnimations = null,
-  onBoardRefresh = null,
-  isChallenge = false,
-  settings = {}
-}) => {
-  const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
+    
+    const boardWidth = gridWidth + BOARD_PADDING * 2;
+    const boardHeight = gridHeight + BOARD_PADDING * 2;
   const [fixedLayout, setFixedLayout] = useState(null);
   const [showRescueModal, setShowRescueModal] = useState(false);
   const [reshuffleCount, setReshuffleCount] = useState(0);
@@ -99,6 +76,7 @@ const GameBoard = ({
     const boardWidth = GRID_COLS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
     const boardHeight = GRID_ROWS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
     
+    // 居中放置棋盘
     const boardLeft = (screenWidth - boardWidth) / 2;
     const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
     
@@ -112,6 +90,8 @@ const GameBoard = ({
       boardTop,
       gridRows: GRID_ROWS,
       gridCols: GRID_COLS,
+      gridWidth,
+      gridHeight,
       getTilePosition: (row, col) => ({
         x: col * (tileSize + TILE_GAP),
         y: row * (tileSize + TILE_GAP),
@@ -765,11 +745,11 @@ const GameBoard = ({
   // 初始化固定布局
   React.useEffect(() => {
     const availableWidth = screenWidth;
-    const availableHeight = isChallenge ? screenHeight - 240 : screenHeight - 200; // 为HUD和道具栏留空间
+    const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
     
     const layout = getFixedBoardLayout(availableWidth, availableHeight);
     setFixedLayout(layout);
-  }, [isChallenge]);
+  }, []);
 
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();
@@ -803,8 +783,8 @@ const GameBoard = ({
               position: 'absolute',
               left: fixedLayout.boardPadding,
               top: fixedLayout.boardPadding,
-              width: fixedLayout.gridCols * (fixedLayout.tileSize + fixedLayout.tileGap) - fixedLayout.tileGap,
-              height: fixedLayout.gridRows * (fixedLayout.tileSize + fixedLayout.tileGap) - fixedLayout.tileGap,
+              width: fixedLayout.gridWidth,
+              height: fixedLayout.gridHeight,
             }}
           >
             {/* Grid lines */}

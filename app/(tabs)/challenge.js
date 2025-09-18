@@ -259,10 +259,8 @@ export default function ChallengeScreen() {
     // 检查棋盘是否完全清空
     const hasRemainingTiles = newTiles.some(tile => tile > 0);
     if (!hasRemainingTiles) {
-      // Board cleared, generate new full board
-      setTimeout(() => {
-        generateNewBoard();
-      }, 1000);
+      // 棋盘全清，延迟生成新棋盘避免闪烁
+      setTimeout(generateNewBoard, 800);
     } else {
       // 延迟检查是否有有效组合
       setTimeout(() => {

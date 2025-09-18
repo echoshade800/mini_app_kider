@@ -212,7 +212,10 @@ export function GameBoard({
   };
 
   const isInsideGridArea = (pageX, pageY) => {
-    if (!boardLayout || isInRestrictedArea(pageY)) return false;
+    if (!boardLayout) return false;
+    
+    // 挑战模式下不检查限制区域，允许在整个棋盘区域画框
+    if (!isChallenge && isInRestrictedArea(pageY)) return false;
 
     const { boardLeft, boardTop, layout } = boardLayout;
     const { pad, innerWidth, innerHeight } = layout;
@@ -243,8 +246,11 @@ export function GameBoard({
   };
 
   const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = 120; // 减少顶部限制区域
-    const bottomRestrictedHeight = 120; // 减少底部限制区域
+    // 挑战模式下不限制区域
+    if (isChallenge) return false;
+    
+    const topRestrictedHeight = 86; // 顶部HUD实际高度
+    const bottomRestrictedHeight = 110; // 底部道具栏实际高度
     
     return pageY < topRestrictedHeight || 
            pageY > screenHeight - bottomRestrictedHeight;
@@ -292,13 +298,13 @@ export function GameBoard({
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
-      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
+      if (!isChallenge && isInRestrictedArea(evt.nativeEvent.pageY)) return false;
       const { pageX, pageY } = evt.nativeEvent;
       return !disabled && isInsideGridArea(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
-      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
+      if (!isChallenge && isInRestrictedArea(evt.nativeEvent.pageY)) return false;
       const { pageX, pageY } = evt.nativeEvent;
       return !disabled && isInsideGridArea(pageX, pageY);
     },
@@ -422,9 +428,13 @@ export function GameBoard({
     
     onPanResponderTerminationRequest: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
-      const buttonAreaBottom = screenHeight - 80; // 底部道具栏区域
-      const buttonAreaTop = screenHeight - 160;
-      const topRestrictedHeight = 120; // 顶部HUD区域
+      
+      // 挑战模式下允许在任何地方画框，不终止手势
+      if (isChallenge) return false;
+      
+      const buttonAreaBottom = screenHeight - 110; // 底部道具栏区域
+      const buttonAreaTop = screenHeight - 110;
+      const topRestrictedHeight = 86; // 顶部HUD区域
       
       if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
           pageY < topRestrictedHeight) {
@@ -714,7 +724,7 @@ export function GameBoard({
           if (!tempAnim) return null;
           
           const { x, y } = layout.getXY(row, col);
-          const rotation = getTileRotation(row, col);
+          const rotation = isChallenge ? 0 : getTileRotation(row, col);
           
           const transforms = [
             { scale: tempAnim.scale },
@@ -786,7 +796,7 @@ export function GameBoard({
     const { x, y } = layout.getXY(row, col);
 
     const tileScale = initTileScale(index);
-    const rotation = getTileRotation(row, col);
+    const rotation = isChallenge ? 0 : getTileRotation(row, col);
     
     // Get swap and fractal animations
     const swapAnim = swapAnimations ? swapAnimations.get(index) : null;

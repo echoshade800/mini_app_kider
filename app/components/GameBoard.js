@@ -23,47 +23,96 @@ const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
-  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
+  BOARD_PADDING: 8,     // 棋盘内边距（木框留白）
+  MIN_TILE_SIZE: 28,    // 方块最小尺寸限制
   GRID_ROWS: 20,        // 固定网格行数
   GRID_COLS: 14,        // 固定网格列数
 };
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
+  // 计算有效游戏区域
   const effectiveHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
   const effectiveWidth = screenWidth;
   
   const boardPadding = EFFECTIVE_AREA_CONFIG.BOARD_PADDING;
   const tileGap = EFFECTIVE_AREA_CONFIG.TILE_GAP;
+  const minTileSize = EFFECTIVE_AREA_CONFIG.MIN_TILE_SIZE;
   
+  // 计算可用空间
   const availableWidth = effectiveWidth - boardPadding * 2;
   const availableHeight = effectiveHeight - boardPadding * 2;
   
   const gridCols = EFFECTIVE_AREA_CONFIG.GRID_COLS;
   const gridRows = EFFECTIVE_AREA_CONFIG.GRID_ROWS;
   
+  // 计算理想方块尺寸
   const tileWidth = (availableWidth - (gridCols - 1) * tileGap) / gridCols;
   const tileHeight = (availableHeight - (gridRows - 1) * tileGap) / gridRows;
   
-  const tileSize = Math.min(tileWidth, tileHeight);
+  // 选择较小的尺寸，但不能小于最小限制
+  let tileSize = Math.min(tileWidth, tileHeight);
   
-  const boardWidth = gridCols * tileSize + (gridCols - 1) * tileGap + boardPadding * 2;
-  const boardHeight = gridRows * tileSize + (gridRows - 1) * tileGap + boardPadding * 2;
+  // 应用最小尺寸限制
+  if (tileSize < minTileSize) {
+    console.warn(`计算的方块尺寸 ${tileSize.toFixed(1)}px 小于最小限制 ${minTileSize}px，使用最小尺寸`);
+    tileSize = minTileSize;
+  }
   
-  const boardLeft = (screenWidth - boardWidth) / 2;
-  const boardTop = EFFECTIVE_AREA_CONFIG.TOP_RESERVED + (effectiveHeight - boardHeight) / 2;
+  // 根据实际方块尺寸重新计算棋盘尺寸
+  const actualBoardWidth = gridCols * tileSize + (gridCols - 1) * tileGap + boardPadding * 2;
+  const actualBoardHeight = gridRows * tileSize + (gridRows - 1) * tileGap + boardPadding * 2;
+  
+  // 检查是否超出屏幕边界
+  const maxBoardWidth = effectiveWidth;
+  const maxBoardHeight = effectiveHeight;
+  
+  let finalBoardWidth = actualBoardWidth;
+  let finalBoardHeight = actualBoardHeight;
+  let finalTileSize = tileSize;
+  
+  // 如果超出边界，需要缩放
+  if (actualBoardWidth > maxBoardWidth || actualBoardHeight > maxBoardHeight) {
+    const widthScale = maxBoardWidth / actualBoardWidth;
+    const heightScale = maxBoardHeight / actualBoardHeight;
+    const scale = Math.min(widthScale, heightScale);
+    
+    finalTileSize = Math.max(tileSize * scale, minTileSize);
+    finalBoardWidth = gridCols * finalTileSize + (gridCols - 1) * tileGap + boardPadding * 2;
+    finalBoardHeight = gridRows * finalTileSize + (gridRows - 1) * tileGap + boardPadding * 2;
+    
+    console.log(`棋盘缩放: ${scale.toFixed(3)}x, 最终方块尺寸: ${finalTileSize.toFixed(1)}px`);
+  }
+  
+  // 计算棋盘在屏幕中的居中位置
+  const boardLeft = (screenWidth - finalBoardWidth) / 2;
+  const boardTop = EFFECTIVE_AREA_CONFIG.TOP_RESERVED + (effectiveHeight - finalBoardHeight) / 2;
+  
+  // 输出调试信息
+  console.log('自适应布局计算结果:', {
+    screenSize: `${screenWidth}x${screenHeight}`,
+    effectiveArea: `${effectiveWidth}x${effectiveHeight}`,
+    tileSize: `${finalTileSize.toFixed(1)}px`,
+    boardSize: `${finalBoardWidth.toFixed(1)}x${finalBoardHeight.toFixed(1)}`,
+    boardPosition: `(${boardLeft.toFixed(1)}, ${boardTop.toFixed(1)})`,
+    gridSize: `${gridCols}x${gridRows}`,
+  });
   
   return {
     boardLeft,
     boardTop,
-    boardWidth,
-    boardHeight,
+    boardWidth: finalBoardWidth,
+    boardHeight: finalBoardHeight,
     boardPadding,
-    tileSize,
+    tileSize: finalTileSize,
     tileGap,
+    // 提供网格信息
+    gridCols,
+    gridRows,
+    // 计算方块位置的辅助函数
     getTilePosition: (row, col) => ({
-      x: col * (tileSize + tileGap),
-      y: row * (tileSize + tileGap)
+      x: col * (finalTileSize + tileGap),
+      y: row * (finalTileSize + tileGap)
     })
   };
 }
@@ -125,7 +174,12 @@ const GameBoard = ({
   React.useEffect(() => {
     const layout = calculateBoardLayout();
     setBoardLayout(layout);
-  }, [width, height, isChallenge]);
+    
+    // 输出适配信息
+    if (layout.tileSize === EFFECTIVE_AREA_CONFIG.MIN_TILE_SIZE) {
+      console.log('🔧 使用最小方块尺寸限制');
+    }
+  }, [width, height, isChallenge, screenWidth, screenHeight]);
 
   const resetSelection = () => {
     setSelection(null);
@@ -651,6 +705,9 @@ const GameBoard = ({
 
     const handleTileTouch = itemMode ? () => handleTilePress(row, col, value) : undefined;
     
+    // 根据方块尺寸自适应字体大小
+    const fontSize = Math.max(12, Math.min(boardLayout.tileSize * 0.4, 24));
+    
     return (
       <View
         key={`${row}-${col}`}
@@ -679,9 +736,7 @@ const GameBoard = ({
         >
           <Text style={[
             styles.tileText,
-            { 
-              fontSize: Math.max(12, boardLayout.tileSize * 0.5),
-            }
+            { fontSize }
           ]}>
             {displayValue}
           </Text>
@@ -696,7 +751,7 @@ const GameBoard = ({
   if (!boardLayout) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading board...</Text>
+        <Text style={styles.loadingText}>正在适配屏幕...</Text>
       </View>
     );
   }
@@ -808,13 +863,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingContainer: {
-    height: 200,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#f0f8ff',
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: '#333',
+    textAlign: 'center',
   },
   chalkboard: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard

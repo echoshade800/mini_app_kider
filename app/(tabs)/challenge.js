@@ -22,14 +22,13 @@ import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateChallengeBoard } from '../utils/boardGenerator';
-import { SAFE_TOP, SAFE_BOTTOM } from '../utils/gridLayout';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CHALLENGE_DURATION = 60; // 60 seconds
 
-// 检查是否有有效组合
-function hasValidCombinations(tiles, cols) {
-  const size = tiles.length;
+// Check if any rectangle sums to 10
+function hasValidCombinations(tiles, width, height) {
+  const size = width * height;
   
   for (let pos1 = 0; pos1 < size; pos1++) {
     if (tiles[pos1] === 0) continue;
@@ -37,10 +36,10 @@ function hasValidCombinations(tiles, cols) {
     for (let pos2 = pos1; pos2 < size; pos2++) {
       if (tiles[pos2] === 0) continue;
       
-      const row1 = Math.floor(pos1 / cols);
-      const col1 = pos1 % cols;
-      const row2 = Math.floor(pos2 / cols);
-      const col2 = pos2 % cols;
+      const row1 = Math.floor(pos1 / width);
+      const col1 = pos1 % width;
+      const row2 = Math.floor(pos2 / width);
+      const col2 = pos2 % width;
       
       const minRow = Math.min(row1, row2);
       const maxRow = Math.max(row1, row2);
@@ -50,7 +49,7 @@ function hasValidCombinations(tiles, cols) {
       let sum = 0;
       for (let row = minRow; row <= maxRow; row++) {
         for (let col = minCol; col <= maxCol; col++) {
-          const index = row * cols + col;
+          const index = row * width + col;
           sum += tiles[index];
         }
       }
@@ -64,8 +63,8 @@ function hasValidCombinations(tiles, cols) {
   return false;
 }
 
-// 重新排列方块
-function reshuffleBoard(tiles) {
+// Reshuffle remaining tiles
+function reshuffleBoard(tiles, width, height) {
   const newTiles = [...tiles];
   const nonZeroValues = [];
   const nonZeroPositions = [];
@@ -77,11 +76,13 @@ function reshuffleBoard(tiles) {
     }
   }
   
+  // Shuffle values
   for (let i = nonZeroValues.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [nonZeroValues[i], nonZeroValues[j]] = [nonZeroValues[j], nonZeroValues[i]];
   }
   
+  // Place shuffled values back
   for (let i = 0; i < nonZeroPositions.length; i++) {
     newTiles[nonZeroPositions[i]] = nonZeroValues[i];
   }
@@ -193,6 +194,7 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
+    // 生成满盘棋盘，传入屏幕尺寸以铺满屏幕
     const board = generateChallengeBoard(screenWidth, screenHeight);
     setCurrentBoard(board);
     setReshuffleCount(0);
@@ -200,16 +202,16 @@ export default function ChallengeScreen() {
 
   const checkForRescue = () => {
     if (!currentBoard || gameState !== 'playing') return;
+    
     const { tiles, width, height } = currentBoard;
     
-    // 简化处理：估算列数
-    const estimatedCols = Math.ceil(Math.sqrt(tiles.length));
-    if (!hasValidCombinations(tiles, estimatedCols)) {
+    if (!hasValidCombinations(tiles, width, height)) {
       if (reshuffleCount < 3) {
-        const newTiles = reshuffleBoard(tiles);
+        // Auto reshuffle
+        const newTiles = reshuffleBoard(tiles, width, height);
         const newBoard = { ...currentBoard, tiles: newTiles };
         
-        if (hasValidCombinations(newTiles, estimatedCols)) {
+        if (hasValidCombinations(newTiles, width, height)) {
           setCurrentBoard(newBoard);
           setReshuffleCount(0);
         } else {
@@ -217,13 +219,14 @@ export default function ChallengeScreen() {
           setReshuffleCount(prev => prev + 1);
           
           if (reshuffleCount + 1 >= 3) {
+            // Show no solution message
             const message = noSolutionMessages[Math.floor(Math.random() * noSolutionMessages.length)];
             setNoSolutionMessage(message);
             setShowNoSolution(true);
             
             setTimeout(() => {
               setShowNoSolution(false);
-              generateNewBoard();
+              generateNewBoard(); // Generate new full board
             }, 2000);
           }
         }
@@ -234,30 +237,34 @@ export default function ChallengeScreen() {
   const handleTilesClear = (clearedPositions) => {
     if (gameState !== 'playing') return;
     
+    // 每次消除获得3分IQ积分
     setCurrentIQ(prev => prev + 3);
     
+    // 触感反馈
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
       // 触感不可用，静默继续
     }
     
+    // 更新棋盘，清除方块
     const newTiles = [...currentBoard.tiles];
     clearedPositions.forEach(pos => {
-      // 简化处理：估算列数
-      const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
-      const index = pos.row * estimatedCols + pos.col;
+      const index = pos.row * currentBoard.width + pos.col;
       newTiles[index] = 0;
     });
     
     setCurrentBoard(prev => ({ ...prev, tiles: newTiles }));
     
+    // 检查棋盘是否完全清空
     const hasRemainingTiles = newTiles.some(tile => tile > 0);
     if (!hasRemainingTiles) {
+      // Board cleared, generate new full board
       setTimeout(() => {
         generateNewBoard();
       }, 1000);
     } else {
+      // 延迟检查是否有有效组合
       setTimeout(() => {
         checkForRescue();
       }, 500);
@@ -285,9 +292,7 @@ export default function ChallengeScreen() {
   const handleTileClick = (row, col, value) => {
     if (!itemMode || value === 0) return;
     
-    // 简化处理：估算列数
-    const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
-    const index = row * estimatedCols + col;
+    const index = row * currentBoard.width + col;
     const clickedTile = { row, col, value, index };
     
     if (itemMode === 'swapMaster') {
@@ -296,6 +301,7 @@ export default function ChallengeScreen() {
       } else if (selectedSwapTile.index === index) {
         setSelectedSwapTile(null);
       } else {
+        // 执行交换逻辑（简化版）
         const newTiles = [...currentBoard.tiles];
         const temp = newTiles[selectedSwapTile.index];
         newTiles[selectedSwapTile.index] = newTiles[clickedTile.index];
@@ -308,6 +314,7 @@ export default function ChallengeScreen() {
       }
     } else if (itemMode === 'fractalSplit') {
       if (value >= 2) {
+        // 简化的分裂逻辑
         const newTiles = [...currentBoard.tiles];
         const emptyPositions = [];
         for (let i = 0; i < newTiles.length; i++) {
@@ -366,10 +373,13 @@ export default function ChallengeScreen() {
 
   const handleBoardRefresh = (action) => {
     if (action === 'return') {
+      // 救援选择返回主页
       handleReturn();
     } else if (typeof action === 'object') {
+      // 重排后的棋盘
       setCurrentBoard(action);
     } else if (action === 'refresh') {
+      // 棋盘全清，生成新棋盘
       generateNewBoard();
     }
   };
@@ -411,7 +421,7 @@ export default function ChallengeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 游戏棋盘 - 全屏 */}
+      {/* Game Board - Full Screen */}
       {(gameState === 'ready' || gameState === 'playing') && (
         <>
           {gameState === 'ready' && (
@@ -458,9 +468,9 @@ export default function ChallengeScreen() {
         />
       )}
 
-      {/* 底部道具栏 */}
+      {/* 底部道具栏 - 固定在屏幕最底部 */}
       {gameState === 'playing' && (
-        <View style={[styles.itemsBar, { position: 'absolute', bottom: SAFE_BOTTOM - 80, left: 0, right: 0, zIndex: 1000 }]}>
+        <View style={[styles.itemsBar, { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000 }]}>
           <TouchableOpacity 
             style={[
               styles.itemButton,
@@ -507,14 +517,14 @@ export default function ChallengeScreen() {
         </View>
       )}
 
-      {/* 无解覆盖层 */}
+      {/* No Solution Overlay */}
       {showNoSolution && (
         <View style={[styles.noSolutionOverlay, { zIndex: 3000 }]}>
           <Text style={styles.noSolutionText}>{noSolutionMessage}</Text>
         </View>
       )}
 
-      {/* 结果弹窗 */}
+      {/* Results Modal */}
       <Modal visible={showResults} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.resultsModal}>
@@ -538,7 +548,7 @@ export default function ChallengeScreen() {
         </View>
       </Modal>
 
-      {/* 设置弹窗 */}
+      {/* Settings Modal */}
       <Modal visible={showSettings} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.settingsModal}>
@@ -582,7 +592,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    paddingTop: SAFE_TOP - 20,
+    paddingTop: 50, // 为状态栏留出空间
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   backButton: {
@@ -633,6 +643,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(26, 26, 46, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1000,
   },
   readyContent: {
     alignItems: 'center',
@@ -664,8 +675,8 @@ const styles = StyleSheet.create({
   },
   gameArea: {
     flex: 1,
-    backgroundColor: '#1E5A3C',
-    margin: 20,
+    backgroundColor: '#1E5A3C', // 绿色背景铺满
+    margin: 20, // 与屏幕边缘的距离
     borderRadius: 16,
     borderWidth: 8,
     borderColor: '#8B5A2B', // 木框边框
@@ -793,6 +804,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 20,
+    paddingBottom: 30, // 为底部安全区域留出空间
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     gap: 20,
   },

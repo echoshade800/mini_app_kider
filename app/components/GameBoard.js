@@ -11,16 +11,6 @@ import {
   PanResponder, 
   Dimensions, 
   StyleSheet,
-  Animated,
-  PixelRatio
-} from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { useGameStore } from '../store/gameStore';
-import { hasValidCombinations, reshuffleBoard, isBoardEmpty } from '../utils/gameLogic';
-import { RescueModal } from './RescueModal';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
 // 有效游戏区域配置
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
@@ -33,22 +23,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-  const availableWidth = screenWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-  const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
-  
-  const tileWidth = (availableWidth - (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_COLS;
-  const tileHeight = (availableHeight - (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_ROWS;
-  
-  const tileSize = Math.min(tileWidth, tileHeight);
-  
-  return {
-    tileSize,
-    boardWidth: EFFECTIVE_AREA_CONFIG.GRID_COLS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP,
-    boardHeight: EFFECTIVE_AREA_CONFIG.GRID_ROWS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP,
-    boardLeft: (screenWidth - (EFFECTIVE_AREA_CONFIG.GRID_COLS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP)) / 2,
-    boardTop: EFFECTIVE_AREA_CONFIG.TOP_RESERVED,
-  };
-}
 
 const GameBoard = ({ 
   tiles, 

@@ -1,715 +1,876 @@
 /**
- * Challenge Mode Screen - 60-second timed puzzle challenge
- * Purpose: Fast-paced gameplay with IQ scoring and board refreshing
- * Features: Timer, score tracking, automatic board generation, item usage
+ * GameBoard Component - Green chalkboard with sticky note style tiles
+ * Purpose: Render game tiles with rectangle drawing on a classroom chalkboard theme
+ * Features: Green chalkboard background, sticky note tiles with slight rotation, explosion effects
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   Text, 
-  TouchableOpacity, 
+  PanResponder, 
+  Dimensions, 
   StyleSheet,
-  Dimensions,
-  Alert
+  Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useGameStore } from '../store/gameStore';
-import { generateBoard } from '../utils/boardGenerator';
-import { hasValidCombinations } from '../utils/gameLogic';
-import GameBoard from '../components/GameBoard';
+import RescueModal from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-export default function ChallengeScreen() {
-  const { gameData, updateGameData, settings } = useGameStore();
+// 有效游戏区域配置
+const EFFECTIVE_AREA_CONFIG = {
+  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
+  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+  TILE_GAP: 4,          // 方块间距
+  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
+  GRID_ROWS: 20,        // 固定网格行数
+  GRID_COLS: 14,        // 固定网格列数
+};
+
+// 计算有效游戏区域和棋盘布局
+// 有效游戏区域配置
+const EFFECTIVE_AREA_CONFIG = {
+  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
+  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+  TILE_GAP: 4,          // 方块间距
+  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
+  GRID_ROWS: 20,        // 固定网格行数
+  GRID_COLS: 14,        // 固定网格列数
+};
+
+// 计算有效游戏区域和棋盘布局
+function calculateEffectiveAreaLayout() {
+
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  onTilesClear, 
+  disabled, 
+  itemMode, 
+  onTileClick,
+  selectedSwapTile,
+  swapAnimations,
+  fractalAnimations,
+  settings,
+  isChallenge,
+  reshuffleCount,
+  setReshuffleCount,
+  onRescueNeeded
+}) => {
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [boardLayout, setBoardLayout] = useState(null);
+  const [showRescueModal, setShowRescueModal] = useState(false);
   
-  // Game state
-  const [board, setBoard] = useState(null);
-  const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [isGameActive, setIsGameActive] = useState(false);
-  const [isGameOver, setIsGameOver] = useState(false);
-  const [bestScore, setBestScore] = useState(gameData?.maxScore || 0);
-  
-  // Item states
-  const [swapMasterItems, setSwapMasterItems] = useState(gameData?.swapMasterItems || 0);
-  const [splitItems, setSplitItems] = useState(gameData?.splitItems || 0);
-  const [itemMode, setItemMode] = useState(null);
-  const [selectedSwapTile, setSelectedSwapTile] = useState(null);
-  
-  // Animation states
-  const [swapAnimations, setSwapAnimations] = useState(new Map());
-  const [fractalAnimations, setFractalAnimations] = useState(new Map());
-  
-  const timerRef = useRef(null);
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef(new Map()).current;
 
-  // Reset game state when screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      console.log('Challenge screen focused - resetting game');
-      
-      // Clear any existing timer
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      
-      // Reset all game state
-      setBoard(null);
-      setScore(0);
-      setTimeLeft(60);
-      setIsGameActive(false);
-      setIsGameOver(false);
-      setItemMode(null);
-      setSelectedSwapTile(null);
-      setSwapAnimations(new Map());
-      setFractalAnimations(new Map());
-      
-      // Load fresh data
-      const currentGameData = gameData || {};
-      setBestScore(currentGameData.maxScore || 0);
-      setSwapMasterItems(currentGameData.swapMasterItems || 0);
-      setSplitItems(currentGameData.splitItems || 0);
-      
-      return () => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-      };
-    }, [gameData])
-  );
-
-  // Generate initial board
-  useEffect(() => {
-    if (!board && !isGameOver) {
-      console.log('Generating initial challenge board');
-      const newBoard = generateBoard(1, true, true);
-      setBoard(newBoard);
+  const initTileScale = (index) => {
+    if (!tileScales.has(index)) {
+      tileScales.set(index, new Animated.Value(1));
     }
-  }, [board, isGameOver]);
-
-  // Timer logic
-  useEffect(() => {
-    if (isGameActive && timeLeft > 0 && !isGameOver) {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            setIsGameActive(false);
-            setIsGameOver(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [isGameActive, timeLeft, isGameOver]);
-
-  // Handle game over
-  useEffect(() => {
-    if (isGameOver && score > 0) {
-      handleGameEnd();
-    }
-  }, [isGameOver]);
-
-  const startGame = () => {
-    console.log('Starting challenge game');
-    if (!board) {
-      const newBoard = generateBoard(1, true, true);
-      setBoard(newBoard);
-    }
-    setIsGameActive(true);
-    setIsGameOver(false);
+    return tileScales.get(index);
   };
 
-  const handleGameEnd = async () => {
-    console.log('Game ended with score:', score);
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.timing(tileScale, {
+      toValue: scale,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const getTileRotation = (row, col) => {
+    const seed = row * 31 + col * 17;
+    return ((seed % 7) - 3) * 0.8;
+  };
+
+  const calculateBoardLayout = () => {
+    return calculateEffectiveAreaLayout();
+  };
+
+  // 初始化布局
+  React.useEffect(() => {
+    const layout = calculateBoardLayout();
+    setBoardLayout(layout);
+  }, [width, height, isChallenge]);
+
+  const resetSelection = () => {
+    setSelection(null);
+    hoveredTiles.forEach(index => {
+      scaleTile(index, 1);
+    });
+    setHoveredTiles(new Set());
     
-    if (score > bestScore) {
-      setBestScore(score);
-      await updateGameData({ maxScore: score });
+    Animated.timing(selectionOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const isInsideGridArea = (pageX, pageY) => {
+    if (!boardLayout) return false;
+    
+    const { boardLeft, boardTop, boardWidth, boardHeight } = boardLayout;
+    
+    return pageX >= boardLeft && 
+           pageX <= boardLeft + boardWidth && 
+           pageY >= boardTop && 
+           pageY <= boardTop + boardHeight;
+  };
+
+  const isInRestrictedArea = (pageY) => {
+    const topRestrictedHeight = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    const bottomRestrictedHeight = screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+    
+    return pageY < topRestrictedHeight || pageY > bottomRestrictedHeight;
+  };
+
+  const getSelectedTiles = () => {
+    if (!selection) return [];
+    return getSelectedTilesForSelection(selection);
+  };
+
+  const getSelectedTilesForSelection = (sel) => {
+    if (!sel) return [];
+    
+    const { startRow, startCol, endRow, endCol } = sel;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = [];
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value > 0) {
+            selectedTiles.push({ row, col, value, index });
+          }
+        }
+      }
+    }
+    return selectedTiles;
+  };
+
+  const handleSelectionComplete = async () => {
+    if (!selection) return;
+
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+
+    if (sum === 10 && selectedTiles.length > 0) {
+      // 重置重排计数
+      setReshuffleCount(0);
       
+      // Success - create explosion effect with yellow "10" note
       if (settings?.hapticsEnabled !== false) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-    }
-  };
-
-  const handleTilesClear = (clearedPositions) => {
-    if (!isGameActive) return;
-    
-    console.log('Tiles cleared:', clearedPositions.length);
-    
-    // Update score (+3 IQ per clear)
-    const newScore = score + 3;
-    setScore(newScore);
-    
-    // Update board - clear the tiles
-    const newTiles = [...board.tiles];
-    clearedPositions.forEach(pos => {
-      const index = pos.row * board.width + pos.col;
-      newTiles[index] = 0;
-    });
-    
-    const updatedBoard = { ...board, tiles: newTiles };
-    setBoard(updatedBoard);
-    
-    // Check if board needs refresh after animation
-    setTimeout(() => {
-      console.log('Checking if board needs refresh...');
-      const hasValidMoves = hasValidCombinations(updatedBoard.tiles, updatedBoard.width, updatedBoard.height);
-      console.log('Has valid combinations:', hasValidMoves);
       
-      if (!hasValidMoves) {
-        console.log('No valid combinations found, generating new board');
-        const newBoard = generateBoard(1, true, true);
-        setBoard(newBoard);
+      // Calculate explosion center position
+      const { startRow, startCol, endRow, endCol } = selection;
+      const centerRow = (startRow + endRow) / 2;
+      const centerCol = (startCol + endCol) / 2;
+
+      if (!boardLayout) return;
+
+      const { tileSize, tileGap } = boardLayout;
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+
+      const explosionX = centerCol * cellWidth + tileSize / 2;
+      const explosionY = centerRow * cellHeight + tileSize / 2;
+      
+      setExplosionAnimation({ x: explosionX, y: explosionY });
+      
+      // Explosion animation - yellow "10" note
+      explosionScale.setValue(0.5);
+      explosionOpacity.setValue(1);
+      
+      Animated.parallel([
+        Animated.timing(explosionScale, {
+          toValue: 2.0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(explosionOpacity, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setExplosionAnimation(null);
+      });
+
+      // Selection box animation - bright green glow
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+        onTilesClear(tilePositions);
+      });
+
+    } else if (selectedTiles.length > 0) {
+      // Failure - blue feedback with short vibration
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.selectionAsync();
       }
-    }, 800);
-  };
-
-  const handleItemUse = (itemType) => {
-    if (itemType === 'swapMaster' && swapMasterItems > 0) {
-      setItemMode(itemMode === 'swapMaster' ? null : 'swapMaster');
-      setSelectedSwapTile(null);
-    } else if (itemType === 'fractalSplit' && splitItems > 0) {
-      setItemMode(itemMode === 'fractalSplit' ? null : 'fractalSplit');
-      setSelectedSwapTile(null);
+      
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.4,
+          duration: 150,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+      });
+    } else {
+      setSelection(null);
     }
   };
 
-  const handleTileClick = (row, col, value) => {
-    if (!itemMode || !isGameActive) return;
-    
-    const index = row * board.width + col;
-    
-    if (itemMode === 'swapMaster') {
-      if (!selectedSwapTile) {
-        setSelectedSwapTile({ row, col, value, index });
-      } else if (selectedSwapTile.index !== index) {
-        // Perform swap
-        performSwap(selectedSwapTile, { row, col, value, index });
-      } else {
-        setSelectedSwapTile(null);
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: (evt) => {
+      if (itemMode) return false;
+      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
+      const { pageX, pageY } = evt.nativeEvent;
+      return !disabled && isInsideGridArea(pageX, pageY);
+    },
+    onMoveShouldSetPanResponder: (evt) => {
+      if (itemMode) return false;
+      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
+      const { pageX, pageY } = evt.nativeEvent;
+      return !disabled && isInsideGridArea(pageX, pageY);
+    },
+
+    onPanResponderGrant: (evt) => {
+      const { pageX, pageY } = evt.nativeEvent;
+      
+      if (!isInsideGridArea(pageX, pageY)) return;
+      
+      const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = boardLayout;
+
+      const innerLeft = boardLeft + boardPadding;
+      const innerTop = boardTop + boardPadding;
+
+      const relativeX = pageX - innerLeft;
+      const relativeY = pageY - innerTop;
+
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+
+      const startCol = Math.floor(relativeX / cellWidth);
+      const startRow = Math.floor(relativeY / cellHeight);
+      
+      setSelection({
+        startRow,
+        startCol,
+        endRow: startRow,
+        endCol: startCol,
+      });
+      
+      Animated.timing(selectionOpacity, {
+        toValue: 0.6,
+        duration: 80,
+        useNativeDriver: false,
+      }).start();
+    },
+
+    onPanResponderMove: (evt) => {
+      if (!selection) return;
+      
+      const { pageX, pageY } = evt.nativeEvent;
+      
+      const { boardLeft, boardTop, boardWidth, boardHeight, boardPadding, tileSize, tileGap } = boardLayout;
+
+      const innerLeft = boardLeft + boardPadding;
+      const innerTop = boardTop + boardPadding;
+      const innerWidth = boardWidth - boardPadding * 2;
+      const innerHeight = boardHeight - boardPadding * 2;
+
+      if (pageX < innerLeft || pageX > innerLeft + innerWidth ||
+          pageY < innerTop || pageY > innerTop + innerHeight) {
+        return;
       }
-    } else if (itemMode === 'fractalSplit') {
-      performFractalSplit(row, col, value, index);
+      
+      const relativeX = pageX - innerLeft;
+      const relativeY = pageY - innerTop;
+
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+
+      if (relativeX < 0 || relativeX >= width * cellWidth - tileGap ||
+          relativeY < 0 || relativeY >= height * cellHeight - tileGap) {
+        return;
+      }
+      
+      const endCol = Math.floor(relativeX / cellWidth);
+      const endRow = Math.floor(relativeY / cellHeight);
+      
+      if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
+        return;
+      }
+      
+      setSelection(prev => ({
+        ...prev,
+        endRow,
+        endCol,
+      }));
+
+      // Update hovered tiles with scaling effect
+      const newSelection = { ...selection, endRow, endCol };
+      const newSelectedTiles = getSelectedTilesForSelection(newSelection);
+      const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
+      
+      // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
+      const sum = newSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+      const targetScale = sum === 10 ? 1.1 : 1.05;
+      
+      newSelectedTiles.forEach(tile => {
+        if (!hoveredTiles.has(tile.index)) {
+          scaleTile(tile.index, targetScale);
+        }
+      });
+      
+      hoveredTiles.forEach(index => {
+        if (!newHoveredSet.has(index)) {
+          scaleTile(index, 1);
+        }
+      });
+      
+      setHoveredTiles(newHoveredSet);
+    },
+
+    onPanResponderRelease: () => {
+      if (selection && !disabled) {
+        handleSelectionComplete();
+      }
+      
+      hoveredTiles.forEach(index => {
+        scaleTile(index, 1);
+      });
+      setHoveredTiles(new Set());
+      
+      Animated.timing(selectionOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => {
+        setSelection(null);
+      });
+    },
+    
+    onPanResponderTerminationRequest: (evt) => {
+      const { pageX, pageY } = evt.nativeEvent;
+      const buttonAreaBottom = screenHeight - 80;
+      const buttonAreaTop = screenHeight - 160;
+      const topRestrictedHeight = 120;
+      
+      if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
+          pageY < topRestrictedHeight) {
+        return true;
+      }
+      
+      return true;
+    },
+    
+    onPanResponderReject: () => {
+      resetSelection();
+    },
+  });
+
+  // Handle tile click in item mode
+  const handleTilePress = (row, col, value) => {
+    if (!itemMode || disabled || value === 0) return;
+    
+    if (onTileClick) {
+      onTileClick(row, col, value);
+    }
+    
+    if (settings?.hapticsEnabled !== false) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
-  const performSwap = (tile1, tile2) => {
-    const newTiles = [...board.tiles];
-    newTiles[tile1.index] = tile2.value;
-    newTiles[tile2.index] = tile1.value;
-    
-    setBoard({ ...board, tiles: newTiles });
-    setSwapMasterItems(prev => prev - 1);
-    setItemMode(null);
-    setSelectedSwapTile(null);
-    
-    updateGameData({ swapMasterItems: swapMasterItems - 1 });
+  // 处理救援选择
+  const handleRescueContinue = () => {
+    setShowRescueModal(false);
+    setReshuffleCount(0);
   };
 
-  const performFractalSplit = (row, col, value, index) => {
-    if (value <= 1) return;
+  const handleRescueReturn = () => {
+    setShowRescueModal(false);
+    setReshuffleCount(0);
+  };
+
+  const getSelectionStyle = () => {
+    if (!selection) return null;
     
-    const newTiles = [...board.tiles];
-    const splitValue = Math.floor(value / 2);
-    const remainder = value - splitValue;
+    const { startRow, startCol, endRow, endCol } = selection;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
     
-    newTiles[index] = splitValue;
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const isSuccess = sum === 10;
     
-    // Find empty spot for remainder
-    const emptyIndex = newTiles.findIndex(tile => tile === 0);
-    if (emptyIndex !== -1) {
-      newTiles[emptyIndex] = remainder;
+    if (!boardLayout) return null;
+
+    const { tileSize, tileGap } = boardLayout;
+    const cellWidth = tileSize + tileGap;
+    const cellHeight = tileSize + tileGap;
+
+    const left = minCol * cellWidth;
+    const top = minRow * cellHeight;
+    const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileGap;
+    const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileGap;
+    
+    return {
+      position: 'absolute',
+      left,
+      top,
+      width: selectionWidth,
+      height: selectionHeight,
+      backgroundColor: isSuccess ? 'rgba(24, 197, 110, 0.3)' : 'rgba(33, 150, 243, 0.2)',
+      opacity: selectionOpacity,
+      borderRadius: 8,
+      borderWidth: 3,
+      borderColor: isSuccess ? '#18C56E' : '#2F80ED',
+      shadowColor: isSuccess ? '#18C56E' : '#2F80ED',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: isSuccess ? 0.6 : 0.3,
+      shadowRadius: isSuccess ? 8 : 4,
+      elevation: isSuccess ? 8 : 4,
+    };
+  };
+
+  const getSelectionSum = () => {
+    if (!selection) return null;
+    
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    
+    if (selectedTiles.length === 0) return null;
+    
+    const { startRow, startCol, endRow, endCol } = selection;
+    const maxRow = Math.max(startRow, endRow);
+    const maxCol = Math.max(startCol, endCol);
+    
+    if (!boardLayout) return null;
+
+    const { tileSize, tileGap } = boardLayout;
+    const cellWidth = tileSize + tileGap;
+    const cellHeight = tileSize + tileGap;
+
+    const left = maxCol * cellWidth + tileSize;
+    const top = maxRow * cellHeight + tileSize;
+    
+    return {
+      sum,
+      isSuccess: sum === 10,
+      style: {
+        position: 'absolute',
+        left: left - 30,
+        top: top - 30,
+        width: 60,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: sum === 10 ? '#FFEB3B' : '#2196F3',
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: sum === 10 ? '#F57F17' : '#1976D2',
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 6,
+        transform: [{ rotate: '-2deg' }],
+      }
+    };
+  };
+
+  const renderGridBackground = () => {
+    if (!boardLayout) return null;
+
+    const { tileSize, tileGap } = boardLayout;
+    const lines = [];
+    const cellWidth = tileSize + tileGap;
+    const cellHeight = tileSize + tileGap;
+
+    // 垂直网格线
+    for (let i = 0; i <= width; i++) {
+      lines.push(
+        <View
+          key={`v-${i}`}
+          style={[
+            styles.gridLine,
+            {
+              left: i * cellWidth - (i === 0 ? 0 : tileGap / 2),
+              top: 0,
+              width: i === 0 || i === width ? 2 : 1,
+              height: height * cellHeight - tileGap,
+            }
+          ]}
+        />
+      );
+    }
+
+    // 水平网格线
+    for (let i = 0; i <= height; i++) {
+      lines.push(
+        <View
+          key={`h-${i}`}
+          style={[
+            styles.gridLine,
+            {
+              left: 0,
+              top: i * cellHeight - (i === 0 ? 0 : tileGap / 2),
+              width: width * cellWidth - tileGap,
+              height: i === 0 || i === height ? 2 : 1,
+            }
+          ]}
+        />
+      );
+    }
+
+    return lines;
+  };
+
+  const renderTile = (value, row, col) => {
+    if (!boardLayout) return null;
+
+    const index = row * width + col;
+    
+    // 所有格子都显示数字方块，值为0时显示随机数字
+    const displayValue = value === 0 ? Math.floor(Math.random() * 9) + 1 : value;
+
+    if (row < 0 || row >= height || col < 0 || col >= width) {
+      return null;
+    }
+
+    const { x, y } = boardLayout.getTilePosition(row, col);
+
+    const tileScale = initTileScale(index);
+    const rotation = getTileRotation(row, col);
+    
+    // Get swap and fractal animations
+    const swapAnim = swapAnimations ? swapAnimations.get(index) : null;
+    const fractalAnim = fractalAnimations ? fractalAnimations.get(index) : null;
+    
+    const transforms = [
+      { scale: tileScale },
+      { rotate: `${rotation}deg` }
+    ];
+    
+    if (swapAnim && swapAnim.translateX && swapAnim.translateY) {
+      transforms.push({
+        translateX: swapAnim.translateX,
+      });
+      transforms.push({
+        translateY: swapAnim.translateY,
+      });
     }
     
-    setBoard({ ...board, tiles: newTiles });
-    setSplitItems(prev => prev - 1);
-    setItemMode(null);
+    if (fractalAnim && fractalAnim.scale) {
+      transforms.push({
+        scale: fractalAnim.scale,
+      });
+    }
     
-    updateGameData({ splitItems: splitItems - 1 });
-  };
+    const isSelected = selectedSwapTile && selectedSwapTile.index === index;
+    
+    let tileStyle = styles.tileInner;
+    
+    if (isSelected && itemMode) {
+      if (itemMode === 'swapMaster') {
+        tileStyle = [styles.tileInner, styles.tileSwapSelected];
+      } else if (itemMode === 'fractalSplit') {
+        tileStyle = [styles.tileInner, styles.tileFractalSelected];
+      }
+    }
 
-  const handleRestart = () => {
-    const newBoard = generateBoard(1, true, true);
-    setBoard(newBoard);
-    setScore(0);
-    setTimeLeft(60);
-    setIsGameActive(false);
-    setIsGameOver(false);
-    setItemMode(null);
-    setSelectedSwapTile(null);
-  };
+    let opacity = 1;
+    if (fractalAnim && fractalAnim.opacity) {
+      opacity = fractalAnim.opacity;
+    }
 
-  const handleBackToHome = () => {
-    router.replace('/');
-  };
-
-  const getIQTitle = (iq) => {
-    if (iq >= 145) return 'Cosmic Genius';
-    if (iq >= 130) return 'Puzzle Master';
-    if (iq >= 115) return 'Rising Star';
-    if (iq >= 100) return 'Everyday Scholar';
-    if (iq >= 85) return 'Hardworking Student';
-    if (iq >= 70) return 'Slow but Steady';
-    if (iq >= 65) return 'Little Explorer';
-    if (iq >= 55) return 'Learning Hatchling';
-    if (iq >= 40) return 'Tiny Adventurer';
-    return 'Newborn Dreamer';
-  };
-
-  if (!board) {
+    const handleTileTouch = itemMode ? () => handleTilePress(row, col, value) : undefined;
+    
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading Challenge...</Text>
-        </View>
-      </SafeAreaView>
+      <View
+        key={`${row}-${col}`}
+        style={{
+          position: 'absolute',
+          left: x,
+          top: y,
+          width: boardLayout.tileSize,
+          height: boardLayout.tileSize,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        onTouchStart={handleTileTouch}
+        pointerEvents="box-none"
+      >
+        <Animated.View
+          style={[
+            tileStyle,
+            {
+              width: '100%',
+              height: '100%',
+              transform: transforms,
+              opacity: opacity,
+            }
+          ]}
+        >
+          <Text style={[
+            styles.tileText,
+            { 
+              fontSize: Math.max(12, boardLayout.tileSize * 0.5),
+            }
+          ]}>
+            {displayValue}
+          </Text>
+        </Animated.View>
+      </View>
+    );
+  };
+
+  const selectionStyle = getSelectionStyle();
+  const selectionSum = getSelectionSum();
+
+  if (!boardLayout) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading board...</Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header HUD */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBackToHome}
+    <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
+      <View style={styles.container}>
+        <View 
+          style={[
+            styles.chalkboard,
+            {
+              position: 'absolute',
+              left: boardLayout.boardLeft,
+              top: boardLayout.boardTop,
+              width: boardLayout.boardWidth,
+              height: boardLayout.boardHeight,
+            }
+          ]}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        
-        <View style={styles.gameInfo}>
-          <Text style={styles.timerText}>
-            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-          </Text>
-          <Text style={styles.scoreText}>IQ: {score}</Text>
-          <Text style={styles.bestText}>Best: {bestScore}</Text>
-        </View>
-        
-        <View style={styles.headerRight}>
-          <Text style={styles.titleText}>
-            {getIQTitle(score)}
-          </Text>
-        </View>
-      </View>
-
-      {/* Game Board */}
-      <GameBoard
-        tiles={board.tiles}
-        width={board.width}
-        height={board.height}
-        onTilesClear={handleTilesClear}
-        disabled={!isGameActive}
-        itemMode={itemMode}
-        onTileClick={handleTileClick}
-        selectedSwapTile={selectedSwapTile}
-        swapAnimations={swapAnimations}
-        fractalAnimations={fractalAnimations}
-        isChallenge={true}
-        settings={settings}
-      />
-
-      {/* Game Over Overlay */}
-      {isGameOver && (
-        <View style={styles.gameOverOverlay}>
-          <View style={styles.gameOverModal}>
-            <Text style={styles.gameOverTitle}>Time's Up!</Text>
-            <Text style={styles.finalScoreText}>Final IQ: {score}</Text>
-            <Text style={styles.titleText}>{getIQTitle(score)}</Text>
+          {/* 网格背景 */}
+          <View
+            style={{
+              position: 'absolute',
+              left: boardLayout.boardPadding,
+              top: boardLayout.boardPadding,
+              width: width * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
+              height: height * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
+            }}
+          >
+            {renderGridBackground()}
+          </View>
+          
+          {/* 数字方块 */}
+          <View
+            style={{
+              position: 'absolute',
+              left: boardLayout.boardPadding,
+              top: boardLayout.boardPadding,
+            }}
+          >
+            {/* 渲染所有方块 */}
+            {tiles.map((value, index) => {
+              const row = Math.floor(index / width);
+              const col = index % width;
+              return renderTile(value, row, col);
+            })}
             
-            {score > bestScore && (
-              <Text style={styles.newRecordText}>🎉 New Best Score!</Text>
+            {/* Selection overlay */}
+            {selectionStyle && (
+              <Animated.View style={selectionStyle} />
             )}
             
-            <View style={styles.gameOverButtons}>
-              <TouchableOpacity 
-                style={styles.playAgainButton}
-                onPress={handleRestart}
-              >
-                <Text style={styles.playAgainButtonText}>Play Again</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.homeButton}
-                onPress={handleBackToHome}
-              >
-                <Text style={styles.homeButtonText}>Home</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Start Game Overlay */}
-      {!isGameActive && !isGameOver && (
-        <View style={styles.startOverlay}>
-          <View style={styles.startModal}>
-            <Text style={styles.challengeTitle}>Challenge Mode</Text>
-            <Text style={styles.challengeDescription}>
-              Clear as many rectangles as possible in 60 seconds!
-            </Text>
-            <Text style={styles.challengeRules}>
-              • Each clear = +3 IQ points{'\n'}
-              • New boards appear when stuck{'\n'}
-              • Use items to help yourself
-            </Text>
+            {/* Selection sum display */}
+            {selectionSum && (
+              <View style={selectionSum.style}>
+                <Text style={[
+                  styles.sumText,
+                  { color: selectionSum.isSuccess ? '#333' : 'white' }
+                ]}>
+                  {selectionSum.sum}
+                </Text>
+              </View>
+            )}
             
-            <TouchableOpacity 
-              style={styles.startButton}
-              onPress={startGame}
-            >
-              <Text style={styles.startButtonText}>Start Challenge</Text>
-            </TouchableOpacity>
+            {/* Explosion effect */}
+            {explosionAnimation && (
+              <Animated.View
+                style={[
+                  styles.explosion,
+                  {
+                    left: explosionAnimation.x - 40,
+                    top: explosionAnimation.y - 30,
+                    transform: [{ scale: explosionScale }],
+                    opacity: explosionOpacity,
+                  }
+                ]}
+              >
+                <View style={styles.explosionNote}>
+                  <Text style={styles.explosionText}>10</Text>
+                </View>
+              </Animated.View>
+            )}
           </View>
         </View>
-      )}
-
-      {/* Bottom Item Bar */}
-      <View style={styles.itemBar}>
-        <TouchableOpacity
-          style={[
-            styles.itemButton,
-            itemMode === 'swapMaster' && styles.itemButtonActive,
-            swapMasterItems === 0 && styles.itemButtonDisabled
-          ]}
-          onPress={() => handleItemUse('swapMaster')}
-          disabled={swapMasterItems === 0}
-        >
-          <Ionicons 
-            name="swap-horizontal" 
-            size={20} 
-            color={swapMasterItems === 0 ? '#ccc' : (itemMode === 'swapMaster' ? '#fff' : '#2196F3')} 
-          />
-          <Text style={[
-            styles.itemButtonText,
-            itemMode === 'swapMaster' && styles.itemButtonTextActive,
-            swapMasterItems === 0 && styles.itemButtonTextDisabled
-          ]}>
-            Swap
-          </Text>
-          <View style={[
-            styles.itemCount,
-            swapMasterItems === 0 && styles.itemCountDisabled
-          ]}>
-            <Text style={[
-              styles.itemCountText,
-              swapMasterItems === 0 && styles.itemCountTextDisabled
-            ]}>
-              {swapMasterItems}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.itemButton,
-            itemMode === 'fractalSplit' && styles.itemButtonActive,
-            splitItems === 0 && styles.itemButtonDisabled
-          ]}
-          onPress={() => handleItemUse('fractalSplit')}
-          disabled={splitItems === 0}
-        >
-          <Ionicons 
-            name="cut" 
-            size={20} 
-            color={splitItems === 0 ? '#ccc' : (itemMode === 'fractalSplit' ? '#fff' : '#9C27B0')} 
-          />
-          <Text style={[
-            styles.itemButtonText,
-            itemMode === 'fractalSplit' && styles.itemButtonTextActive,
-            splitItems === 0 && styles.itemButtonTextDisabled
-          ]}>
-            Split
-          </Text>
-          <View style={[
-            styles.itemCount,
-            splitItems === 0 && styles.itemCountDisabled
-          ]}>
-            <Text style={[
-              styles.itemCountText,
-              splitItems === 0 && styles.itemCountTextDisabled
-            ]}>
-              {splitItems}
-            </Text>
-          </View>
-        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+      
+      {/* Rescue Modal */}
+      <RescueModal
+        visible={showRescueModal}
+        onContinue={handleRescueContinue}
+        onReturn={handleRescueReturn}
+      />
+    </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
+  fullScreenContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingContainer: {
-    flex: 1,
+    height: 200,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: 18,
-    color: '#666',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    height: 80,
-  },
-  backButton: {
-    padding: 8,
-    width: 60,
-  },
-  gameInfo: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  timerText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#E74C3C',
-  },
-  scoreText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#4CAF50',
-  },
-  bestText: {
-    fontSize: 12,
     color: '#666',
   },
-  headerRight: {
-    width: 100,
-    alignItems: 'flex-end',
-  },
-  titleText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#9C27B0',
-    textAlign: 'right',
-  },
-  itemBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+  chalkboard: {
+    backgroundColor: '#1E5A3C', // Deep green chalkboard
+    borderRadius: 16,
+    borderWidth: 8,
+    borderColor: '#8B5A2B', // Wooden frame
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 8,
-    height: 80,
-  },
-  itemButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    minWidth: 80,
-    position: 'relative',
-  },
-  itemButtonActive: {
-    backgroundColor: '#4CAF50',
-  },
-  itemButtonDisabled: {
-    backgroundColor: '#f0f0f0',
-    opacity: 0.6,
-  },
-  itemButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 4,
-  },
-  itemButtonTextActive: {
-    color: 'white',
-  },
-  itemButtonTextDisabled: {
-    color: '#ccc',
-  },
-  itemCount: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#FF9800',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemCountDisabled: {
-    backgroundColor: '#ddd',
-  },
-  itemCountText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  itemCountTextDisabled: {
-    color: '#999',
-  },
-  startOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  startModal: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 30,
-    alignItems: 'center',
-    marginHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
     shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  challengeTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#E74C3C',
-    marginBottom: 12,
-  },
-  challengeDescription: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  challengeRules: {
-    fontSize: 14,
-    color: '#333',
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  startButton: {
-    backgroundColor: '#E74C3C',
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 10,
   },
-  startButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  gameOverOverlay: {
+  gridLine: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // 更清晰的网格线
+  },
+  tileInner: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1000,
-  },
-  gameOverModal: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 30,
-    alignItems: 'center',
-    marginHorizontal: 20,
+    backgroundColor: '#FFF9E6', // Cream white sticky note
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: '#333',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
+    shadowOffset: {
+      width: 0.5,
+      height: 0.5,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
-  gameOverTitle: {
+  tileSwapSelected: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#2196F3',
+  },
+  tileFractalSelected: {
+    backgroundColor: '#F3E5F5',
+    borderColor: '#9C27B0',
+  },
+  tileText: {
+    fontWeight: 'bold',
+    color: '#111',
+    textAlign: 'center',
+  },
+  sumText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  explosion: {
+    position: 'absolute',
+    width: 80,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  explosionNote: {
+    width: 80,
+    height: 60,
+    backgroundColor: '#FFEB3B', // Yellow sticky note
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#F57F17',
+    shadowColor: '#000',
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  explosionText: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#E74C3C',
-    marginBottom: 16,
-  },
-  finalScoreText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginBottom: 8,
-  },
-  newRecordText: {
-    fontSize: 16,
-    color: '#FF9800',
-    fontWeight: '600',
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  gameOverButtons: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 20,
-  },
-  playAgainButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  playAgainButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  homeButton: {
-    backgroundColor: '#666',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  homeButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#333',
   },
 });
+
+export default GameBoard;

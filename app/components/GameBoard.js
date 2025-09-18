@@ -28,6 +28,79 @@ const EFFECTIVE_AREA_CONFIG = {
   GRID_COLS: 14,        // 固定网格列数
 };
 
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  disabled, 
+  onTilesClear, 
+  itemMode, 
+  onTileClick, 
+  selectedSwapTile, 
+  settings, 
+  swapAnimations, 
+  fractalAnimations, 
+  initTileScale, 
+  scaleTile, 
+  getTileRotation, 
+  onBoardRefresh, 
+  isChallenge 
+}) => {
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [fixedLayout, setFixedLayout] = useState(null);
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+
+  const getFixedBoardLayout = (availableWidth, availableHeight) => {
+    const calculateEffectiveAreaLayout = () => {
+      const boardMargin = 16;
+      const innerWidth = availableWidth - boardMargin * 2 - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+      const innerHeight = availableHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+      
+      let tileSize;
+      
+      if (width && height) {
+        const adjustedTileWidth = (innerWidth - (width - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / width;
+        const adjustedTileHeight = (innerHeight - (height - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / height;
+        tileSize = Math.min(adjustedTileWidth, adjustedTileHeight);
+        
+        const boardWidth = width * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+        const boardHeight = height * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+        
+        // 使用计算出的边距而不是居中
+        const boardLeft = boardMargin;
+        const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+        
+        return {
+          tileSize,
+          tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
+          boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
+          boardMargin,
+          boardWidth,
+          boardHeight,
+          boardLeft,
+          boardTop,
+          gridRows: height,
+          gridCols: width,
+          getTilePosition: (row, col) => ({
+            x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+            y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+          }),
+        };
+      }
+      
+      return calculateEffectiveAreaLayout();
+    };
+
+    return calculateEffectiveAreaLayout();
+  };
+
   const resetSelection = () => {
     setSelection(null);
     hoveredTiles.forEach(index => {

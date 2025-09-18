@@ -596,8 +596,26 @@ const GameBoard = ({
 
     const index = row * width + col;
     
-    // 所有格子都显示数字方块，值为0时显示随机数字
-    const displayValue = value === 0 ? Math.floor(Math.random() * 9) + 1 : value;
+    // 根据模式决定是否显示空白位置
+    // 挑战模式：空白位置不显示任何内容
+    // 关卡模式：空白位置显示随机数字（仅视觉效果）
+    if (value === 0) {
+      if (isChallenge) {
+        // 挑战模式：空白位置完全不渲染
+        return null;
+      } else {
+        // 关卡模式：显示随机数字（仅视觉，不可交互）
+        const displayValue = Math.floor(Math.random() * 9) + 1;
+        return renderTileContent(displayValue, row, col, index, true);
+      }
+    }
+    
+    // 有值的位置正常渲染
+    return renderTileContent(value, row, col, index, false);
+  };
+
+  const renderTileContent = (displayValue, row, col, index, isVisualOnly = false) => {
+    if (!boardLayout) return null;
 
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
@@ -634,13 +652,13 @@ const GameBoard = ({
     
     const isSelected = selectedSwapTile && selectedSwapTile.index === index;
     
-    let tileStyle = styles.tileInner;
+    let tileStyle = isVisualOnly ? styles.tileVisualOnly : styles.tileInner;
     
     if (isSelected && itemMode) {
       if (itemMode === 'swapMaster') {
-        tileStyle = [styles.tileInner, styles.tileSwapSelected];
+        tileStyle = [tileStyle, styles.tileSwapSelected];
       } else if (itemMode === 'fractalSplit') {
-        tileStyle = [styles.tileInner, styles.tileFractalSelected];
+        tileStyle = [tileStyle, styles.tileFractalSelected];
       }
     }
 
@@ -649,7 +667,8 @@ const GameBoard = ({
       opacity = fractalAnim.opacity;
     }
 
-    const handleTileTouch = itemMode ? () => handleTilePress(row, col, value) : undefined;
+    // 视觉方块不可交互
+    const handleTileTouch = (itemMode && !isVisualOnly) ? () => handleTilePress(row, col, displayValue) : undefined;
     
     return (
       <View
@@ -681,6 +700,7 @@ const GameBoard = ({
             styles.tileText,
             { 
               fontSize: Math.max(12, boardLayout.tileSize * 0.5),
+              color: isVisualOnly ? '#ccc' : '#111',
             }
           ]}>
             {displayValue}
@@ -855,6 +875,25 @@ const styles = StyleSheet.create({
   tileSwapSelected: {
     backgroundColor: '#E3F2FD',
     borderColor: '#2196F3',
+  },
+  tileVisualOnly: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5', // 浅灰色背景
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: '#E0E0E0', // 浅灰色边框
+    opacity: 0.5, // 半透明效果
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0.5,
+      height: 0.5,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
   },
   tileFractalSelected: {
     backgroundColor: '#F3E5F5',

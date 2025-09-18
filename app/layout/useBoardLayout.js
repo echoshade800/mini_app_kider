@@ -156,6 +156,7 @@ export function computeBoardLayout(usableW, usableH, tileCount) {
 }
 
 export function useBoardLayout(usableW, usableH, tileCount) {
+  return useMemo(() => {
     // 确保有合理的默认值
     const safeUsableW = Math.max(usableW || 350, 350);
     const safeUsableH = Math.max(usableH || 400, 400);

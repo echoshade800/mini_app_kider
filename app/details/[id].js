@@ -485,19 +485,21 @@ export default function LevelDetailScreen() {
       </View>
 
       {/* Game Board */}
-      <UnifiedGameBoard 
-        board={currentBoard}
-        onTilesClear={handleTilesClear}
-        onTileClick={handleSwapTileClick}
-        itemMode={itemMode}
-        selectedSwapTile={selectedSwapTile}
-        swapAnimations={swapAnimationsRef.current}
-        fractalAnimations={fractalAnimationsRef.current}
-        disabled={false}
-      />
+      <View style={styles.gameArea}>
+        <UnifiedGameBoard 
+          board={currentBoard}
+          onTilesClear={handleTilesClear}
+          onTileClick={handleSwapTileClick}
+          itemMode={itemMode}
+          selectedSwapTile={selectedSwapTile}
+          swapAnimations={swapAnimationsRef.current}
+          fractalAnimations={fractalAnimationsRef.current}
+          disabled={false}
+        />
+      </View>
 
       {/* 浮动道具按钮 */}
-      <View style={[styles.floatingButtons, { position: 'absolute', bottom: 60, left: 0, right: 0, zIndex: 1000 }]}>
+      <View style={styles.floatingButtons}>
         <TouchableOpacity 
           style={[
             styles.floatingButton,
@@ -598,6 +600,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#666',
   },
+  gameArea: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -643,6 +648,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   floatingButtons: {
+    position: 'absolute',
+    bottom: 60,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

@@ -45,7 +45,7 @@ export function UnifiedGameBoard({
     const { width, height } = event.nativeEvent.layout;
     
     // 只有当尺寸变化超过阈值时才更新
-    const threshold = 10;
+    const threshold = 20;
     const widthChanged = Math.abs(width - containerSize.width) > threshold;
     const heightChanged = Math.abs(height - containerSize.height) > threshold;
     
@@ -56,9 +56,9 @@ export function UnifiedGameBoard({
       // 防止频繁更新
       setTimeout(() => {
         layoutUpdateRef.current = false;
-      }, 100);
+      }, 200);
     }
-  }, []);
+  }, [containerSize.width, containerSize.height]);
 
   // 获取方块旋转角度（稳定的随机值）
   const getTileRotation = (row, col) => {
@@ -200,8 +200,15 @@ export function UnifiedGameBoard({
 
   // 手势响应器
   const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => !itemMode && !disabled,
-    onMoveShouldSetPanResponder: () => !itemMode && !disabled,
+    onStartShouldSetPanResponder: (evt, gestureState) => {
+      if (itemMode || disabled) return false;
+      return true;
+    },
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      if (itemMode || disabled) return false;
+      // 只有当移动距离超过阈值时才开始手势
+      return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
+    },
 
     onPanResponderGrant: (evt) => {
       const { locationX, locationY } = evt.nativeEvent;
@@ -431,8 +438,13 @@ export function UnifiedGameBoard({
             top: layout.offsetY,
           }
         ]}
-        {...panResponder.panHandlers}
       >
+        {/* 手势处理层 */}
+        <View 
+          style={StyleSheet.absoluteFillObject}
+          {...panResponder.panHandlers}
+        />
+        
         {/* 渲染所有方块 */}
         {layout.slots.map((slot) => renderTile(slot))}
         

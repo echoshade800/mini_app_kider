@@ -254,8 +254,8 @@ export default function ChallengeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* HUD */}
-      <View style={[styles.hud, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000 }]}>
+      {/* HUD - 固定在顶部 */}
+      <View style={styles.hud}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={handleReturn}
@@ -289,7 +289,8 @@ export default function ChallengeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Game Board - Full Screen */}
+      {/* Game Board - 占用剩余空间 */}
+      <View style={styles.gameArea}>
       {(gameState === 'ready' || gameState === 'playing') && (
         <>
           {gameState === 'ready' && (
@@ -330,6 +331,7 @@ export default function ChallengeScreen() {
           disabled={true}
         />
       )}
+      </View>
 
       {/* 底部道具栏 - 固定在屏幕最底部 */}
       {gameState === 'playing' && (
@@ -434,13 +436,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a1a2e',
   },
-  fullScreenBoard: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
+  gameArea: {
+    flex: 1,
   },
   hud: {
     flexDirection: 'row',
@@ -448,7 +445,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    paddingTop: 50, // 为状态栏留出空间
+    paddingTop: 20,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   backButton: {
@@ -499,7 +496,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(26, 26, 46, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 2000,
+    zIndex: 100,
   },
   readyContent: {
     alignItems: 'center',
@@ -630,13 +627,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 1000,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 20,
-    paddingBottom: 30, // 为底部安全区域留出空间
+    paddingBottom: 40,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     gap: 20,
   },

@@ -11,6 +11,13 @@ import {
   PanResponder, 
   Dimensions, 
   StyleSheet,
+  Animated,
+} from 'react-native';
+import * as Haptics from 'expo-haptics';
+import RescueModal from './RescueModal';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
 // 有效游戏区域配置
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
@@ -23,6 +30,13 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
+  // Implementation here
+}
+
+// 检查棋盘是否为空
+function isBoardEmpty(tiles) {
+  return tiles.every(tile => tile === 0);
+}
 
 const GameBoard = ({ 
   tiles, 

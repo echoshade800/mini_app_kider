@@ -23,7 +23,7 @@ const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
-  BOARD_PADDING: 8,     // 棋盘内边距（木框留白）
+  BOARD_PADDING: 12,    // 棋盘内边距（木框留白，确保方块在绿色区域内）
   MIN_TILE_SIZE: 28,    // 方块最小尺寸限制
   GRID_ROWS: 20,        // 固定网格行数
   GRID_COLS: 14,        // 固定网格列数
@@ -602,10 +602,14 @@ const GameBoard = ({
   const renderGridBackground = () => {
     if (!boardLayout) return null;
 
-    const { tileSize, tileGap } = boardLayout;
+    const { tileSize, tileGap, boardPadding } = boardLayout;
     const lines = [];
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
+
+    // 确保网格线在棋盘内部，距离外框有足够距离
+    const gridWidth = width * cellWidth - tileGap;
+    const gridHeight = height * cellHeight - tileGap;
 
     // 垂直网格线
     for (let i = 0; i <= width; i++) {
@@ -618,7 +622,7 @@ const GameBoard = ({
               left: i * cellWidth - (i === 0 ? 0 : tileGap / 2),
               top: 0,
               width: i === 0 || i === width ? 2 : 1,
-              height: height * cellHeight - tileGap,
+              height: gridHeight,
             }
           ]}
         />
@@ -635,7 +639,7 @@ const GameBoard = ({
             {
               left: 0,
               top: i * cellHeight - (i === 0 ? 0 : tileGap / 2),
-              width: width * cellWidth - tileGap,
+              width: gridWidth,
               height: i === 0 || i === height ? 2 : 1,
             }
           ]}
@@ -791,6 +795,8 @@ const GameBoard = ({
               position: 'absolute',
               left: boardLayout.boardPadding,
               top: boardLayout.boardPadding,
+              width: width * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
+              height: height * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
             }}
           >
             {/* 渲染所有方块 */}
@@ -877,7 +883,7 @@ const styles = StyleSheet.create({
   chalkboard: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
     borderRadius: 16,
-    borderWidth: 8,
+    borderWidth: 10,
     borderColor: '#8B5A2B', // Wooden frame
     shadowColor: '#000',
     shadowOffset: {
@@ -887,10 +893,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 10,
+    // 确保内部有足够空间容纳方块和间距
+    minWidth: 200,
+    minHeight: 200,
   },
   gridLine: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)', // 更清晰的网格线
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // 淡化网格线，不抢夺方块焦点
   },
   tileInner: {
     width: '100%',

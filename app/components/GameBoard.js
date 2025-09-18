@@ -140,6 +140,13 @@ const GameBoard = ({
     return calculateEffectiveAreaLayout();
   };
 
+  // 导出布局计算函数供其他模块使用
+  React.useEffect(() => {
+    if (typeof global !== 'undefined') {
+      global.calculateEffectiveAreaLayout = calculateEffectiveAreaLayout;
+    }
+  }, []);
+
   // 初始化布局
   React.useEffect(() => {
     const layout = calculateBoardLayout();

@@ -18,19 +18,15 @@ function seededRandom(seed) {
   };
 }
 
-// 棋盘格限制常量 - 基于GameBoard组件的网格系统
-const BOARD_GRID_LIMITS = {
-  // 假设棋盘格为14列×21行 = 294格（这是GameBoard中的最大网格）
-  MAX_COLS: 14,
-  MAX_ROWS: 21,
-  get MAX_FILLABLE_COUNT() {
-    return this.MAX_COLS * this.MAX_ROWS;
-  }
-};
+// 获取自适应棋盘格的最大容量
+function getMaxBoardCapacity() {
+  const layout = calculateEffectiveAreaLayout();
+  return layout.gridCols * layout.gridRows;
+}
 
-// 重新设计的难度系统 - 基于棋盘格限制
+// 重新设计的难度系统 - 基于自适应棋盘格限制
 function getTileFillCount(level) {
-  const maxCount = BOARD_GRID_LIMITS.MAX_FILLABLE_COUNT; // 294格
+  const maxCount = getMaxBoardCapacity(); // 动态计算最大容量
   
   // 1-200关的数字方块数量递进表
   if (level >= 1 && level <= 5) {
@@ -98,11 +94,12 @@ function calculateRectangularActivationArea(level, totalCols, totalRows) {
 
 // 根据目标填充数量计算最佳矩形尺寸（在棋盘格限制内）
 function calculateOptimalRect(targetCount) {
-  const maxCols = BOARD_GRID_LIMITS.MAX_COLS;
-  const maxRows = BOARD_GRID_LIMITS.MAX_ROWS;
+  const layout = calculateEffectiveAreaLayout();
+  const maxCols = layout.gridCols;
+  const maxRows = layout.gridRows;
   
   // 如果目标数量超过最大容量，返回最大尺寸
-  if (targetCount >= BOARD_GRID_LIMITS.MAX_FILLABLE_COUNT) {
+  if (targetCount >= maxCols * maxRows) {
     return { rows: maxRows, cols: maxCols };
   }
   

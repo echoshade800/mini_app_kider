@@ -1,7 +1,7 @@
 /**
- * Challenge Mode Screen - 60-second timed gameplay with continuous board refresh
- * Purpose: Fast-paced elimination with IQ scoring and automatic board generation
- * Features: Timer, score tracking, continuous board refresh, final settlement
+ * Challenge Mode Screen - 60-second timed puzzle challenge
+ * Purpose: Fast-paced gameplay with IQ scoring and board refreshing
+ * Features: Timer, score tracking, automatic board generation, item usage
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -11,8 +11,7 @@ import {
   TouchableOpacity, 
   StyleSheet,
   Dimensions,
-  Alert,
-  Modal
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
@@ -20,193 +19,268 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
 import { generateBoard } from '../utils/boardGenerator';
+import { hasValidCombinations } from '../utils/gameLogic';
 import GameBoard from '../components/GameBoard';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-const CHALLENGE_DURATION = 60; // 60 seconds
-const POINTS_PER_CLEAR = 3; // +3 IQ per successful clear
-
-const IQ_TITLES = {
-  0: 'Newborn Dreamer',
-  40: 'Tiny Adventurer', 
-  55: 'Learning Hatchling',
-  65: 'Little Explorer',
-  70: 'Slow but Steady',
-  85: 'Hardworking Student',
-  100: 'Everyday Scholar',
-  115: 'Rising Star',
-  130: 'Puzzle Master',
-  145: 'Cosmic Genius',
-};
-
-function getIQTitle(iq) {
-  const thresholds = Object.keys(IQ_TITLES)
-    .map(Number)
-    .sort((a, b) => b - a);
-  
-  for (let threshold of thresholds) {
-    if (iq >= threshold) {
-      return IQ_TITLES[threshold];
-    }
-  }
-  
-  return IQ_TITLES[0];
-}
 
 export default function ChallengeScreen() {
   const { gameData, updateGameData, settings } = useGameStore();
   
   // Game state
   const [board, setBoard] = useState(null);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [gameEnded, setGameEnded] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(CHALLENGE_DURATION);
-  const [currentIQ, setCurrentIQ] = useState(0);
-  const [clearsCount, setClearsCount] = useState(0);
-  const [showSettlement, setShowSettlement] = useState(false);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [isGameActive, setIsGameActive] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [bestScore, setBestScore] = useState(gameData?.maxScore || 0);
   
-  // Refs
+  // Item states
+  const [swapMasterItems, setSwapMasterItems] = useState(gameData?.swapMasterItems || 0);
+  const [splitItems, setSplitItems] = useState(gameData?.splitItems || 0);
+  const [itemMode, setItemMode] = useState(null);
+  const [selectedSwapTile, setSelectedSwapTile] = useState(null);
+  
+  // Animation states
+  const [swapAnimations, setSwapAnimations] = useState(new Map());
+  const [fractalAnimations, setFractalAnimations] = useState(new Map());
+  
   const timerRef = useRef(null);
-  const gameStartedRef = useRef(false);
 
   // Reset game state when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       console.log('Challenge screen focused - resetting game');
       
-      // Reset all game state
-      setBoard(null);
-      setGameStarted(false);
-      setGameEnded(false);
-      setTimeLeft(CHALLENGE_DURATION);
-      setCurrentIQ(0);
-      setClearsCount(0);
-      setShowSettlement(false);
-      gameStartedRef.current = false;
-      
-      // Clear timer
+      // Clear any existing timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
       
-      // Generate initial board
-      generateNewBoard();
-    }, [])
+      // Reset all game state
+      setBoard(null);
+      setScore(0);
+      setTimeLeft(60);
+      setIsGameActive(false);
+      setIsGameOver(false);
+      setItemMode(null);
+      setSelectedSwapTile(null);
+      setSwapAnimations(new Map());
+      setFractalAnimations(new Map());
+      
+      // Load fresh data
+      const currentGameData = gameData || {};
+      setBestScore(currentGameData.maxScore || 0);
+      setSwapMasterItems(currentGameData.swapMasterItems || 0);
+      setSplitItems(currentGameData.splitItems || 0);
+      
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      };
+    }, [gameData])
   );
 
-  const generateNewBoard = () => {
-    console.log('Generating new challenge board');
-    const newBoard = generateBoard(130 + Math.floor(Math.random() * 20), false, true);
-    setBoard(newBoard);
-  };
+  // Generate initial board
+  useEffect(() => {
+    if (!board && !isGameOver) {
+      console.log('Generating initial challenge board');
+      const newBoard = generateBoard(1, true, true);
+      setBoard(newBoard);
+    }
+  }, [board, isGameOver]);
+
+  // Timer logic
+  useEffect(() => {
+    if (isGameActive && timeLeft > 0 && !isGameOver) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setIsGameActive(false);
+            setIsGameOver(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [isGameActive, timeLeft, isGameOver]);
+
+  // Handle game over
+  useEffect(() => {
+    if (isGameOver && score > 0) {
+      handleGameEnd();
+    }
+  }, [isGameOver]);
 
   const startGame = () => {
-    if (gameStartedRef.current) return;
-    
     console.log('Starting challenge game');
-    setGameStarted(true);
-    gameStartedRef.current = true;
-    
-    // Start countdown timer
-    timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          // Time's up!
-          endGame();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    if (!board) {
+      const newBoard = generateBoard(1, true, true);
+      setBoard(newBoard);
+    }
+    setIsGameActive(true);
+    setIsGameOver(false);
   };
 
-  const endGame = async () => {
-    console.log('Ending challenge game');
-    setGameEnded(true);
-    gameStartedRef.current = false;
+  const handleGameEnd = async () => {
+    console.log('Game ended with score:', score);
     
-    // Clear timer
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+    if (score > bestScore) {
+      setBestScore(score);
+      await updateGameData({ maxScore: score });
+      
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
     }
-    
-    // Update best score if needed
-    const bestIQ = Math.max(gameData?.maxScore || 0, currentIQ);
-    if (currentIQ > (gameData?.maxScore || 0)) {
-      await updateGameData({ maxScore: currentIQ });
-    }
-    
-    // Show settlement modal
-    setTimeout(() => {
-      setShowSettlement(true);
-    }, 500);
   };
 
   const handleTilesClear = (clearedPositions) => {
-    if (!gameStarted || gameEnded) return;
+    if (!isGameActive) return;
     
-    console.log('Challenge tiles cleared:', clearedPositions.length);
+    console.log('Tiles cleared:', clearedPositions.length);
     
-    // Add points
-    const newIQ = currentIQ + POINTS_PER_CLEAR;
-    setCurrentIQ(newIQ);
-    setClearsCount(prev => prev + 1);
+    // Update score (+3 IQ per clear)
+    const newScore = score + 3;
+    setScore(newScore);
     
-    // Haptic feedback
-    if (settings?.hapticsEnabled !== false) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-    
-    // Check if board is completely cleared
+    // Update board - clear the tiles
     const newTiles = [...board.tiles];
     clearedPositions.forEach(pos => {
       const index = pos.row * board.width + pos.col;
       newTiles[index] = 0;
     });
     
-    const remainingTiles = newTiles.filter(tile => tile > 0);
-    if (remainingTiles.length === 0) {
-      // Board completely cleared - generate new board immediately
-      console.log('Board cleared! Generating new board...');
-      setTimeout(() => {
-        if (gameStarted && !gameEnded) {
-          generateNewBoard();
-        }
-      }, 800); // Small delay for visual feedback
-    } else {
-      // Update current board
-      setBoard({ ...board, tiles: newTiles });
+    const updatedBoard = { ...board, tiles: newTiles };
+    setBoard(updatedBoard);
+    
+    // Check if board needs refresh after animation
+    setTimeout(() => {
+      console.log('Checking if board needs refresh...');
+      const hasValidMoves = hasValidCombinations(updatedBoard.tiles, updatedBoard.width, updatedBoard.height);
+      console.log('Has valid combinations:', hasValidMoves);
+      
+      if (!hasValidMoves) {
+        console.log('No valid combinations found, generating new board');
+        const newBoard = generateBoard(1, true, true);
+        setBoard(newBoard);
+      }
+    }, 800);
+  };
+
+  const handleItemUse = (itemType) => {
+    if (itemType === 'swapMaster' && swapMasterItems > 0) {
+      setItemMode(itemMode === 'swapMaster' ? null : 'swapMaster');
+      setSelectedSwapTile(null);
+    } else if (itemType === 'fractalSplit' && splitItems > 0) {
+      setItemMode(itemMode === 'fractalSplit' ? null : 'fractalSplit');
+      setSelectedSwapTile(null);
     }
+  };
+
+  const handleTileClick = (row, col, value) => {
+    if (!itemMode || !isGameActive) return;
+    
+    const index = row * board.width + col;
+    
+    if (itemMode === 'swapMaster') {
+      if (!selectedSwapTile) {
+        setSelectedSwapTile({ row, col, value, index });
+      } else if (selectedSwapTile.index !== index) {
+        // Perform swap
+        performSwap(selectedSwapTile, { row, col, value, index });
+      } else {
+        setSelectedSwapTile(null);
+      }
+    } else if (itemMode === 'fractalSplit') {
+      performFractalSplit(row, col, value, index);
+    }
+  };
+
+  const performSwap = (tile1, tile2) => {
+    const newTiles = [...board.tiles];
+    newTiles[tile1.index] = tile2.value;
+    newTiles[tile2.index] = tile1.value;
+    
+    setBoard({ ...board, tiles: newTiles });
+    setSwapMasterItems(prev => prev - 1);
+    setItemMode(null);
+    setSelectedSwapTile(null);
+    
+    updateGameData({ swapMasterItems: swapMasterItems - 1 });
+  };
+
+  const performFractalSplit = (row, col, value, index) => {
+    if (value <= 1) return;
+    
+    const newTiles = [...board.tiles];
+    const splitValue = Math.floor(value / 2);
+    const remainder = value - splitValue;
+    
+    newTiles[index] = splitValue;
+    
+    // Find empty spot for remainder
+    const emptyIndex = newTiles.findIndex(tile => tile === 0);
+    if (emptyIndex !== -1) {
+      newTiles[emptyIndex] = remainder;
+    }
+    
+    setBoard({ ...board, tiles: newTiles });
+    setSplitItems(prev => prev - 1);
+    setItemMode(null);
+    
+    updateGameData({ splitItems: splitItems - 1 });
+  };
+
+  const handleRestart = () => {
+    const newBoard = generateBoard(1, true, true);
+    setBoard(newBoard);
+    setScore(0);
+    setTimeLeft(60);
+    setIsGameActive(false);
+    setIsGameOver(false);
+    setItemMode(null);
+    setSelectedSwapTile(null);
   };
 
   const handleBackToHome = () => {
-    // Clear timer
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
     router.replace('/');
   };
 
-  const handlePlayAgain = () => {
-    setShowSettlement(false);
-    // Reset will happen automatically due to useFocusEffect
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const getIQTitle = (iq) => {
+    if (iq >= 145) return 'Cosmic Genius';
+    if (iq >= 130) return 'Puzzle Master';
+    if (iq >= 115) return 'Rising Star';
+    if (iq >= 100) return 'Everyday Scholar';
+    if (iq >= 85) return 'Hardworking Student';
+    if (iq >= 70) return 'Slow but Steady';
+    if (iq >= 65) return 'Little Explorer';
+    if (iq >= 55) return 'Learning Hatchling';
+    if (iq >= 40) return 'Tiny Adventurer';
+    return 'Newborn Dreamer';
   };
 
   if (!board) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Preparing Challenge...</Text>
+          <Text style={styles.loadingText}>Loading Challenge...</Text>
         </View>
       </SafeAreaView>
     );
@@ -214,7 +288,7 @@ export default function ChallengeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* Header HUD */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -224,21 +298,18 @@ export default function ChallengeScreen() {
         </TouchableOpacity>
         
         <View style={styles.gameInfo}>
-          <Text style={styles.modeTitle}>Challenge Mode</Text>
-          <View style={styles.statsRow}>
-            <Text style={styles.timer}>
-              ⏱️ {formatTime(timeLeft)}
-            </Text>
-            <Text style={styles.score}>
-              🧠 IQ: {currentIQ}
-            </Text>
-            <Text style={styles.clears}>
-              🎯 Clears: {clearsCount}
-            </Text>
-          </View>
+          <Text style={styles.timerText}>
+            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+          </Text>
+          <Text style={styles.scoreText}>IQ: {score}</Text>
+          <Text style={styles.bestText}>Best: {bestScore}</Text>
         </View>
         
-        <View style={styles.headerRight} />
+        <View style={styles.headerRight}>
+          <Text style={styles.titleText}>
+            {getIQTitle(score)}
+          </Text>
+        </View>
       </View>
 
       {/* Game Board */}
@@ -247,25 +318,61 @@ export default function ChallengeScreen() {
         width={board.width}
         height={board.height}
         onTilesClear={handleTilesClear}
-        disabled={!gameStarted || gameEnded}
-        settings={settings}
+        disabled={!isGameActive}
+        itemMode={itemMode}
+        onTileClick={handleTileClick}
+        selectedSwapTile={selectedSwapTile}
+        swapAnimations={swapAnimations}
+        fractalAnimations={fractalAnimations}
         isChallenge={true}
+        settings={settings}
       />
 
+      {/* Game Over Overlay */}
+      {isGameOver && (
+        <View style={styles.gameOverOverlay}>
+          <View style={styles.gameOverModal}>
+            <Text style={styles.gameOverTitle}>Time's Up!</Text>
+            <Text style={styles.finalScoreText}>Final IQ: {score}</Text>
+            <Text style={styles.titleText}>{getIQTitle(score)}</Text>
+            
+            {score > bestScore && (
+              <Text style={styles.newRecordText}>🎉 New Best Score!</Text>
+            )}
+            
+            <View style={styles.gameOverButtons}>
+              <TouchableOpacity 
+                style={styles.playAgainButton}
+                onPress={handleRestart}
+              >
+                <Text style={styles.playAgainButtonText}>Play Again</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.homeButton}
+                onPress={handleBackToHome}
+              >
+                <Text style={styles.homeButtonText}>Home</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Start Game Overlay */}
-      {!gameStarted && !gameEnded && (
+      {!isGameActive && !isGameOver && (
         <View style={styles.startOverlay}>
-          <View style={styles.startCard}>
-            <Ionicons name="timer" size={60} color="#FF9800" />
-            <Text style={styles.startTitle}>Challenge Mode</Text>
-            <Text style={styles.startDescription}>
-              You have 60 seconds to clear as many rectangles as possible!
+          <View style={styles.startModal}>
+            <Text style={styles.challengeTitle}>Challenge Mode</Text>
+            <Text style={styles.challengeDescription}>
+              Clear as many rectangles as possible in 60 seconds!
             </Text>
-            <Text style={styles.startRules}>
+            <Text style={styles.challengeRules}>
               • Each clear = +3 IQ points{'\n'}
-              • Boards refresh automatically when cleared{'\n'}
-              • Aim for the highest IQ score!
+              • New boards appear when stuck{'\n'}
+              • Use items to help yourself
             </Text>
+            
             <TouchableOpacity 
               style={styles.startButton}
               onPress={startGame}
@@ -276,46 +383,76 @@ export default function ChallengeScreen() {
         </View>
       )}
 
-      {/* Settlement Modal */}
-      <Modal 
-        visible={showSettlement} 
-        transparent 
-        animationType="fade"
-        onRequestClose={() => {}}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.settlementModal}>
-            <Ionicons name="trophy" size={60} color="#FFD700" />
-            <Text style={styles.settlementTitle}>Challenge Complete!</Text>
-            
-            <View style={styles.finalStats}>
-              <Text style={styles.finalIQ}>Final IQ: {currentIQ}</Text>
-              <Text style={styles.finalTitle}>{getIQTitle(currentIQ)}</Text>
-              <Text style={styles.finalClears}>Total Clears: {clearsCount}</Text>
-              
-              {currentIQ > (gameData?.maxScore || 0) && (
-                <Text style={styles.newRecord}>🎉 New Personal Best!</Text>
-              )}
-            </View>
-            
-            <View style={styles.settlementButtons}>
-              <TouchableOpacity 
-                style={styles.playAgainButton}
-                onPress={handlePlayAgain}
-              >
-                <Text style={styles.playAgainButtonText}>Play Again</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.homeButton}
-                onPress={handleBackToHome}
-              >
-                <Text style={styles.homeButtonText}>Back to Home</Text>
-              </TouchableOpacity>
-            </View>
+      {/* Bottom Item Bar */}
+      <View style={styles.itemBar}>
+        <TouchableOpacity
+          style={[
+            styles.itemButton,
+            itemMode === 'swapMaster' && styles.itemButtonActive,
+            swapMasterItems === 0 && styles.itemButtonDisabled
+          ]}
+          onPress={() => handleItemUse('swapMaster')}
+          disabled={swapMasterItems === 0}
+        >
+          <Ionicons 
+            name="swap-horizontal" 
+            size={20} 
+            color={swapMasterItems === 0 ? '#ccc' : (itemMode === 'swapMaster' ? '#fff' : '#2196F3')} 
+          />
+          <Text style={[
+            styles.itemButtonText,
+            itemMode === 'swapMaster' && styles.itemButtonTextActive,
+            swapMasterItems === 0 && styles.itemButtonTextDisabled
+          ]}>
+            Swap
+          </Text>
+          <View style={[
+            styles.itemCount,
+            swapMasterItems === 0 && styles.itemCountDisabled
+          ]}>
+            <Text style={[
+              styles.itemCountText,
+              swapMasterItems === 0 && styles.itemCountTextDisabled
+            ]}>
+              {swapMasterItems}
+            </Text>
           </View>
-        </View>
-      </Modal>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.itemButton,
+            itemMode === 'fractalSplit' && styles.itemButtonActive,
+            splitItems === 0 && styles.itemButtonDisabled
+          ]}
+          onPress={() => handleItemUse('fractalSplit')}
+          disabled={splitItems === 0}
+        >
+          <Ionicons 
+            name="cut" 
+            size={20} 
+            color={splitItems === 0 ? '#ccc' : (itemMode === 'fractalSplit' ? '#fff' : '#9C27B0')} 
+          />
+          <Text style={[
+            styles.itemButtonText,
+            itemMode === 'fractalSplit' && styles.itemButtonTextActive,
+            splitItems === 0 && styles.itemButtonTextDisabled
+          ]}>
+            Split
+          </Text>
+          <View style={[
+            styles.itemCount,
+            splitItems === 0 && styles.itemCountDisabled
+          ]}>
+            <Text style={[
+              styles.itemCountText,
+              splitItems === 0 && styles.itemCountTextDisabled
+            ]}>
+              {splitItems}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -353,34 +490,100 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  modeTitle: {
-    fontSize: 16,
+  timerText: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#FF9800',
-    marginBottom: 4,
+    color: '#E74C3C',
   },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  timer: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E91E63',
-  },
-  score: {
-    fontSize: 14,
+  scoreText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#4CAF50',
   },
-  clears: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2196F3',
+  bestText: {
+    fontSize: 12,
+    color: '#666',
   },
   headerRight: {
-    width: 60,
+    width: 100,
+    alignItems: 'flex-end',
+  },
+  titleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9C27B0',
+    textAlign: 'right',
+  },
+  itemBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
+    height: 80,
+  },
+  itemButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#f5f5f5',
+    minWidth: 80,
+    position: 'relative',
+  },
+  itemButtonActive: {
+    backgroundColor: '#4CAF50',
+  },
+  itemButtonDisabled: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.6,
+  },
+  itemButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 4,
+  },
+  itemButtonTextActive: {
+    color: 'white',
+  },
+  itemButtonTextDisabled: {
+    color: '#ccc',
+  },
+  itemCount: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FF9800',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemCountDisabled: {
+    backgroundColor: '#ddd',
+  },
+  itemCountText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  itemCountTextDisabled: {
+    color: '#999',
   },
   startOverlay: {
     position: 'absolute',
@@ -393,7 +596,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1000,
   },
-  startCard: {
+  startModal: {
     backgroundColor: 'white',
     borderRadius: 20,
     padding: 30,
@@ -405,31 +608,29 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
   },
-  startTitle: {
-    fontSize: 24,
+  challengeTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginTop: 16,
+    color: '#E74C3C',
     marginBottom: 12,
   },
-  startDescription: {
+  challengeDescription: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
     marginBottom: 16,
-    lineHeight: 22,
   },
-  startRules: {
+  challengeRules: {
     fontSize: 14,
-    color: '#666',
+    color: '#333',
     textAlign: 'center',
-    marginBottom: 24,
     lineHeight: 20,
+    marginBottom: 24,
   },
   startButton: {
-    backgroundColor: '#FF9800',
+    backgroundColor: '#E74C3C',
     paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingHorizontal: 40,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -442,62 +643,52 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  modalOverlay: {
-    flex: 1,
+  gameOverOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    zIndex: 1000,
   },
-  settlementModal: {
+  gameOverModal: {
     backgroundColor: 'white',
     borderRadius: 20,
     padding: 30,
     alignItems: 'center',
-    minWidth: 300,
+    marginHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 12,
   },
-  settlementTitle: {
-    fontSize: 24,
+  gameOverTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 20,
+    color: '#E74C3C',
+    marginBottom: 16,
   },
-  finalStats: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  finalIQ: {
-    fontSize: 32,
+  finalScoreText: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#4CAF50',
     marginBottom: 8,
   },
-  finalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  newRecordText: {
+    fontSize: 16,
     color: '#FF9800',
-    marginBottom: 12,
-  },
-  finalClears: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 8,
-  },
-  newRecord: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#E91E63',
+    fontWeight: '600',
     marginTop: 8,
+    marginBottom: 16,
   },
-  settlementButtons: {
+  gameOverButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
+    marginTop: 20,
   },
   playAgainButton: {
     backgroundColor: '#4CAF50',

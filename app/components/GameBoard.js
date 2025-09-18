@@ -26,6 +26,65 @@ const EFFECTIVE_AREA_CONFIG = {
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
   GRID_ROWS: 20,        // 固定网格行数
   GRID_COLS: 14,        // 固定网格列数
+};
+
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  disabled, 
+  onTilesClear, 
+  itemMode, 
+  onTileClick, 
+  selectedSwapTile, 
+  settings, 
+  swapAnimations, 
+  fractalAnimations, 
+  onBoardRefresh, 
+  isChallenge 
+}) => {
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [fixedLayout, setFixedLayout] = useState(null);
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef(new Map()).current;
+
+  const initTileScale = (index) => {
+    if (!tileScales.has(index)) {
+      tileScales.set(index, new Animated.Value(1));
+    }
+    return tileScales.get(index);
+  };
+
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.timing(tileScale, {
+      toValue: scale,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const getTileRotation = (row, col) => {
+    const seed = row * 31 + col * 17;
+    return ((seed % 7) - 3) * 0.8;
+  };
+
+  const getFixedBoardLayout = (availableWidth, availableHeight) => {
+    const calculateEffectiveAreaLayout = () => {
+      let tileSize;
+      
+      const boardMargin = 20;
+      const innerWidth = availableWidth - boardMargin * 2 - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+      const innerHeight = availableHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+      
+      if (width && height) {
         const adjustedTileWidth = (innerWidth - (width - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / width;
         const adjustedTileHeight = (innerHeight - (height - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / height;
         tileSize = Math.min(adjustedTileWidth, adjustedTileHeight);
@@ -56,6 +115,9 @@ const EFFECTIVE_AREA_CONFIG = {
       }
       
       return calculateEffectiveAreaLayout();
+    };
+
+    return calculateEffectiveAreaLayout();
   };
 
   const resetSelection = () => {

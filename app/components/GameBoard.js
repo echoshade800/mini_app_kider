@@ -18,11 +18,6 @@ import RescueModal from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// 检查棋盘是否为空
-const isBoardEmpty = (tiles) => {
-  return tiles.every(tile => tile === 0);
-};
-
 // 有效游戏区域配置
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
@@ -43,7 +38,7 @@ function calculateEffectiveAreaLayout() {
     topReserved,
     bottomReserved,
     availableHeight,
-    availableWidth: screenWidth
+    availableWidth: screenWidth,
   };
 }
 
@@ -96,20 +91,34 @@ const GameBoard = ({
   };
 
   const getFixedBoardLayout = (availableWidth, availableHeight) => {
-    const { GRID_ROWS, GRID_COLS, TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
+    const { TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
+    
+    // 使用实际的棋盘尺寸而不是固定的网格
+    const actualWidth = width;
+    const actualHeight = height;
     
     const innerWidth = availableWidth - BOARD_PADDING * 2;
     const innerHeight = availableHeight - BOARD_PADDING * 2;
     
-    const tileWidth = (innerWidth - (GRID_COLS - 1) * TILE_GAP) / GRID_COLS;
-    const tileHeight = (innerHeight - (GRID_ROWS - 1) * TILE_GAP) / GRID_ROWS;
-    const tileSize = Math.min(tileWidth, tileHeight);
+    // 计算方块大小，确保数字方块区域紧凑
+    const tileWidth = (innerWidth * 0.8 - (actualWidth - 1) * TILE_GAP) / actualWidth;
+    const tileHeight = (innerHeight * 0.8 - (actualHeight - 1) * TILE_GAP) / actualHeight;
+    const tileSize = Math.min(tileWidth, tileHeight, 35); // 限制最大尺寸
     
-    const boardWidth = GRID_COLS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
-    const boardHeight = GRID_ROWS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    // 计算数字方块区域的实际大小
+    const gameAreaWidth = actualWidth * (tileSize + TILE_GAP) - TILE_GAP;
+    const gameAreaHeight = actualHeight * (tileSize + TILE_GAP) - TILE_GAP;
+    
+    // 计算整个棋盘（包含边框）的大小
+    const boardWidth = gameAreaWidth + BOARD_PADDING * 2;
+    const boardHeight = gameAreaHeight + BOARD_PADDING * 2;
     
     const boardLeft = (screenWidth - boardWidth) / 2;
     const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    
+    // 数字方块区域在棋盘中居中
+    const gameAreaLeft = (boardWidth - gameAreaWidth) / 2;
+    const gameAreaTop = (boardHeight - gameAreaHeight) / 2;
     
     return {
       tileSize,
@@ -119,56 +128,43 @@ const GameBoard = ({
       boardHeight,
       boardLeft,
       boardTop,
-      gridRows: GRID_ROWS,
-      gridCols: GRID_COLS,
+      gameAreaWidth,
+      gameAreaHeight,
+      gameAreaLeft,
+      gameAreaTop,
+      gridRows: actualHeight,
+      gridCols: actualWidth,
       getTilePosition: (row, col) => ({
-        x: col * (tileSize + TILE_GAP),
-        y: row * (tileSize + TILE_GAP),
+        x: gameAreaLeft + col * (tileSize + TILE_GAP),
+        y: gameAreaTop + row * (tileSize + TILE_GAP),
       }),
     };
   };
 
-  const resetSelection = () => {
-    setSelection(null);
-    hoveredTiles.forEach(index => {
-      scaleTile(index, 1);
-    });
-    setHoveredTiles(new Set());
-    
-    Animated.timing(selectionOpacity, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
+  const isBoardEmpty = (boardTiles) => {
+    return boardTiles.every(tile => tile === 0);
   };
 
-  const isInsideGridArea = (pageX, pageY) => {
-    if (!fixedLayout) return false;
+  const handleTilePress = (row, col, value) => {
+    if (disabled || !itemMode) return;
     
-    const { boardLeft, boardTop, boardWidth, boardHeight } = fixedLayout;
+    const index = row * width + col;
     
-    return pageX >= boardLeft && 
-           pageX <= boardLeft + boardWidth && 
-           pageY >= boardTop && 
-           pageY <= boardTop + boardHeight;
-  };
-
-  const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-    const bottomRestrictedHeight = screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
-    
-    return pageY < topRestrictedHeight || pageY > bottomRestrictedHeight;
+    if (itemMode === 'swapMaster') {
+      if (onTileClick) {
+        onTileClick(row, col, value, index);
+      }
+    } else if (itemMode === 'fractalSplit') {
+      if (onTileClick) {
+        onTileClick(row, col, value, index);
+      }
+    }
   };
 
   const getSelectedTiles = () => {
     if (!selection) return [];
-    return getSelectedTilesForSelection(selection);
-  };
-
-  const getSelectedTilesForSelection = (sel) => {
-    if (!sel) return [];
     
-    const { startRow, startCol, endRow, endCol } = sel;
+    const { startRow, startCol, endRow, endCol } = selection;
     const minRow = Math.min(startRow, endRow);
     const maxRow = Math.max(startRow, endRow);
     const minCol = Math.min(startCol, endCol);
@@ -189,261 +185,157 @@ const GameBoard = ({
     return selectedTiles;
   };
 
-  const handleSelectionComplete = async () => {
-    if (!selection) return;
-
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
-
-    if (sum === 10 && selectedTiles.length > 0) {
-      // 重置重排计数
-      setReshuffleCount(0);
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => !disabled && !itemMode,
+    onMoveShouldSetPanResponder: () => !disabled && !itemMode,
+    
+    onPanResponderGrant: (evt) => {
+      if (disabled || itemMode) return;
       
-      // Success - create explosion effect with yellow "10" note
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-      
-      // Calculate explosion center position
-      const { startRow, startCol, endRow, endCol } = selection;
-      const centerRow = (startRow + endRow) / 2;
-      const centerCol = (startCol + endCol) / 2;
-
       if (!fixedLayout) return;
-
-      const { tileSize, tileGap } = fixedLayout;
+      
+      const { locationX, locationY } = evt.nativeEvent;
+      const { gameAreaLeft, gameAreaTop, tileSize, tileGap } = fixedLayout;
+      
+      const adjustedX = locationX - gameAreaLeft;
+      const adjustedY = locationY - gameAreaTop;
+      
+      if (adjustedX < 0 || adjustedY < 0) return;
+      
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
-
-      const explosionX = centerCol * cellWidth + tileSize / 2;
-      const explosionY = centerRow * cellHeight + tileSize / 2;
       
-      setExplosionAnimation({ x: explosionX, y: explosionY });
+      const col = Math.floor(adjustedX / cellWidth);
+      const row = Math.floor(adjustedY / cellHeight);
       
-      // Explosion animation - yellow "10" note
-      explosionScale.setValue(0.5);
-      explosionOpacity.setValue(1);
-      
-      Animated.parallel([
-        Animated.timing(explosionScale, {
-          toValue: 2.0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(explosionOpacity, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setExplosionAnimation(null);
-      });
-
-      // Selection box animation - bright green glow
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.8,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-        onTilesClear(tilePositions);
-      });
-
-    } else if (selectedTiles.length > 0) {
-      // Failure - blue feedback with short vibration
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.selectionAsync();
+      if (row >= 0 && row < height && col >= 0 && col < width) {
+        const index = row * width + col;
+        if (tiles[index] > 0) {
+          setSelection({
+            startRow: row,
+            startCol: col,
+            endRow: row,
+            endCol: col,
+          });
+          
+          Animated.timing(selectionOpacity, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: false,
+          }).start();
+        }
       }
+    },
+    
+    onPanResponderMove: (evt) => {
+      if (disabled || itemMode || !selection || !fixedLayout) return;
       
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.4,
-          duration: 150,
-          useNativeDriver: false,
-        }),
+      const { locationX, locationY } = evt.nativeEvent;
+      const { gameAreaLeft, gameAreaTop, tileSize, tileGap } = fixedLayout;
+      
+      const adjustedX = locationX - gameAreaLeft;
+      const adjustedY = locationY - gameAreaTop;
+      
+      if (adjustedX < 0 || adjustedY < 0) return;
+      
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+      
+      const col = Math.floor(adjustedX / cellWidth);
+      const row = Math.floor(adjustedY / cellHeight);
+      
+      if (row >= 0 && row < height && col >= 0 && col < width) {
+        setSelection(prev => ({
+          ...prev,
+          endRow: row,
+          endCol: col,
+        }));
+      }
+    },
+    
+    onPanResponderRelease: () => {
+      if (disabled || itemMode) return;
+      
+      const selectedTiles = getSelectedTiles();
+      const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+      
+      if (sum === 10 && selectedTiles.length > 0) {
+        // Success - trigger explosion and clear tiles
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        
+        // Calculate explosion position
+        const { startRow, startCol, endRow, endCol } = selection;
+        const centerRow = (startRow + endRow) / 2;
+        const centerCol = (startCol + endCol) / 2;
+        
+        if (fixedLayout) {
+          const { x, y } = fixedLayout.getTilePosition(centerRow, centerCol);
+          const explosionX = x + fixedLayout.tileSize / 2;
+          const explosionY = y + fixedLayout.tileSize / 2;
+          
+          setExplosionAnimation({ x: explosionX, y: explosionY });
+          
+          // Animate explosion
+          Animated.parallel([
+            Animated.timing(explosionScale, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: false,
+            }),
+            Animated.timing(explosionOpacity, {
+              toValue: 1,
+              duration: 150,
+              useNativeDriver: false,
+            }),
+          ]).start(() => {
+            Animated.parallel([
+              Animated.timing(explosionScale, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: false,
+              }),
+              Animated.timing(explosionOpacity, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: false,
+              }),
+            ]).start(() => {
+              setExplosionAnimation(null);
+            });
+          });
+        }
+        
+        // Clear tiles
+        if (onTilesClear) {
+          onTilesClear(selectedTiles);
+        }
+        
+        // Animate selection fade out
         Animated.timing(selectionOpacity, {
           toValue: 0,
           duration: 300,
           useNativeDriver: false,
-        }),
-      ]).start(() => {
+        }).start(() => {
+          setSelection(null);
+        });
+      } else if (selectedTiles.length > 0) {
+        // Failed selection - shake and fade out
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        
+        Animated.parallel([
+          Animated.timing(selectionOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+          }),
+        ]).start(() => {
+          setSelection(null);
+        });
+      } else {
         setSelection(null);
-      });
-    } else {
-      setSelection(null);
-    }
-  };
-
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: (evt) => {
-      if (itemMode) return false;
-      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
-      const { pageX, pageY } = evt.nativeEvent;
-      return !disabled && isInsideGridArea(pageX, pageY);
-    },
-    onMoveShouldSetPanResponder: (evt) => {
-      if (itemMode) return false;
-      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
-      const { pageX, pageY } = evt.nativeEvent;
-      return !disabled && isInsideGridArea(pageX, pageY);
-    },
-
-    onPanResponderGrant: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
-      
-      if (!isInsideGridArea(pageX, pageY)) return;
-      
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = fixedLayout;
-
-      const innerLeft = boardLeft + boardPadding;
-      const innerTop = boardTop + boardPadding;
-
-      const relativeX = pageX - innerLeft;
-      const relativeY = pageY - innerTop;
-
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
-
-      const startCol = Math.floor(relativeX / cellWidth);
-      const startRow = Math.floor(relativeY / cellHeight);
-      
-      setSelection({
-        startRow,
-        startCol,
-        endRow: startRow,
-        endCol: startCol,
-      });
-      
-      Animated.timing(selectionOpacity, {
-        toValue: 0.6,
-        duration: 80,
-        useNativeDriver: false,
-      }).start();
-    },
-
-    onPanResponderMove: (evt) => {
-      if (!selection) return;
-      
-      const { pageX, pageY } = evt.nativeEvent;
-      
-      const { boardLeft, boardTop, boardWidth, boardHeight, boardPadding, tileSize, tileGap } = fixedLayout;
-
-      const innerLeft = boardLeft + boardPadding;
-      const innerTop = boardTop + boardPadding;
-      const innerWidth = boardWidth - boardPadding * 2;
-      const innerHeight = boardHeight - boardPadding * 2;
-
-      if (pageX < innerLeft || pageX > innerLeft + innerWidth ||
-          pageY < innerTop || pageY > innerTop + innerHeight) {
-        return;
       }
-      
-      const relativeX = pageX - innerLeft;
-      const relativeY = pageY - innerTop;
-
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
-
-      if (relativeX < 0 || relativeX >= width * cellWidth - tileGap ||
-          relativeY < 0 || relativeY >= height * cellHeight - tileGap) {
-        return;
-      }
-      
-      const endCol = Math.floor(relativeX / cellWidth);
-      const endRow = Math.floor(relativeY / cellHeight);
-      
-      if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
-        return;
-      }
-      
-      setSelection(prev => ({
-        ...prev,
-        endRow,
-        endCol,
-      }));
-
-      // Update hovered tiles with scaling effect
-      const newSelection = { ...selection, endRow, endCol };
-      const newSelectedTiles = getSelectedTilesForSelection(newSelection);
-      const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
-      
-      // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
-      const sum = newSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-      const targetScale = sum === 10 ? 1.1 : 1.05;
-      
-      newSelectedTiles.forEach(tile => {
-        if (!hoveredTiles.has(tile.index)) {
-          scaleTile(tile.index, targetScale);
-        }
-      });
-      
-      hoveredTiles.forEach(index => {
-        if (!newHoveredSet.has(index)) {
-          scaleTile(index, 1);
-        }
-      });
-      
-      setHoveredTiles(newHoveredSet);
-    },
-
-    onPanResponderRelease: () => {
-      if (selection && !disabled) {
-        handleSelectionComplete();
-      }
-      
-      hoveredTiles.forEach(index => {
-        scaleTile(index, 1);
-      });
-      setHoveredTiles(new Set());
-      
-      Animated.timing(selectionOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: false,
-      }).start(() => {
-        setSelection(null);
-      });
-    },
-    
-    onPanResponderTerminationRequest: (evt) => {
-      const { pageX, pageY } = evt.nativeEvent;
-      const buttonAreaBottom = screenHeight - 80; // 底部道具栏区域
-      const buttonAreaTop = screenHeight - 160;
-      const topRestrictedHeight = 120; // 顶部HUD区域
-      
-      if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
-          pageY < topRestrictedHeight) {
-        return true;
-      }
-      
-      return true;
-    },
-    
-    onPanResponderReject: () => {
-      resetSelection();
     },
   });
-
-  // Handle tile click in item mode
-  const handleTilePress = (row, col, value) => {
-    if (!itemMode || disabled || value === 0) return;
-    
-    if (onTileClick) {
-      onTileClick(row, col, value);
-    }
-    
-    if (settings?.hapticsEnabled !== false) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  };
 
   // 处理救援选择
   const handleRescueContinue = () => {
@@ -553,7 +445,7 @@ const GameBoard = ({
   const renderFixedGridBackground = () => {
     if (!fixedLayout) return null;
 
-    const { gridRows, gridCols, tileSize, tileGap } = fixedLayout;
+    const { gridRows, gridCols, tileSize, tileGap, gameAreaLeft, gameAreaTop } = fixedLayout;
     const lines = [];
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
@@ -566,8 +458,8 @@ const GameBoard = ({
           style={[
             styles.gridLine,
             {
-              left: i * cellWidth - tileGap / 2,
-              top: 0,
+              left: gameAreaLeft + i * cellWidth - tileGap / 2,
+              top: gameAreaTop,
               width: 1,
               height: gridRows * cellHeight - tileGap,
             }
@@ -584,8 +476,8 @@ const GameBoard = ({
           style={[
             styles.gridLine,
             {
-              left: 0,
-              top: i * cellHeight - tileGap / 2,
+              left: gameAreaLeft,
+              top: gameAreaTop + i * cellHeight - tileGap / 2,
               width: gridCols * cellWidth - tileGap,
               height: 1,
             }
@@ -754,6 +646,8 @@ const GameBoard = ({
               height: '100%',
               transform: transforms,
               opacity: opacity,
+              alignItems: 'center',
+              justifyContent: 'center',
             }
           ]}
         >
@@ -761,7 +655,8 @@ const GameBoard = ({
             styles.tileText,
             { 
               fontSize: Math.max(14, fixedLayout.tileSize * 0.45),
-              lineHeight: fixedLayout.tileSize,
+              textAlign: 'center',
+              textAlignVertical: 'center',
             }
           ]}>
             {value}
@@ -774,11 +669,11 @@ const GameBoard = ({
   // 初始化固定布局
   React.useEffect(() => {
     const availableWidth = screenWidth;
-    const availableHeight = isChallenge ? screenHeight - 240 : screenHeight - 200; // 为HUD和道具栏留空间
+    const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
     
     const layout = getFixedBoardLayout(availableWidth, availableHeight);
     setFixedLayout(layout);
-  }, [isChallenge]);
+  }, []);
 
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();
@@ -807,70 +702,52 @@ const GameBoard = ({
           ]}
         >
           {/* 固定网格背景 */}
-          <View
-            style={{
-              position: 'absolute',
-              left: fixedLayout.boardPadding,
-              top: fixedLayout.boardPadding,
-              width: fixedLayout.gridCols * (fixedLayout.tileSize + fixedLayout.tileGap) - fixedLayout.tileGap,
-              height: fixedLayout.gridRows * (fixedLayout.tileSize + fixedLayout.tileGap) - fixedLayout.tileGap,
-            }}
-          >
-            {/* Grid lines */}
-            {renderFixedGridBackground()}
-          </View>
+          {/* Grid lines */}
+          {renderFixedGridBackground()}
           
           {/* 动态数字方块 */}
-          <View
-            style={{
-              position: 'absolute',
-              left: fixedLayout.boardPadding,
-              top: fixedLayout.boardPadding,
-            }}
-          >
-            {/* Render tiles based on board data */}
-            {tiles.map((value, index) => {
-              const row = Math.floor(index / width);
-              const col = index % width;
-              return renderTile(value, row, col);
-            })}
-            
-            {/* Selection overlay */}
-            {selectionStyle && (
-              <Animated.View style={selectionStyle} />
-            )}
-            
-            {/* Selection sum display */}
-            {selectionSum && (
-              <View style={selectionSum.style}>
-                <Text style={[
-                  styles.sumText,
-                  { color: selectionSum.isSuccess ? '#333' : 'white' }
-                ]}>
-                  {selectionSum.sum}
-                </Text>
+          {/* Render tiles based on board data */}
+          {tiles.map((value, index) => {
+            const row = Math.floor(index / width);
+            const col = index % width;
+            return renderTile(value, row, col);
+          })}
+          
+          {/* Selection overlay */}
+          {selectionStyle && (
+            <Animated.View style={selectionStyle} />
+          )}
+          
+          {/* Selection sum display */}
+          {selectionSum && (
+            <View style={selectionSum.style}>
+              <Text style={[
+                styles.sumText,
+                { color: selectionSum.isSuccess ? '#333' : 'white' }
+              ]}>
+                {selectionSum.sum}
+              </Text>
+            </View>
+          )}
+          
+          {/* Explosion effect */}
+          {explosionAnimation && (
+            <Animated.View
+              style={[
+                styles.explosion,
+                {
+                  left: explosionAnimation.x - 40,
+                  top: explosionAnimation.y - 30,
+                  transform: [{ scale: explosionScale }],
+                  opacity: explosionOpacity,
+                }
+              ]}
+            >
+              <View style={styles.explosionNote}>
+                <Text style={styles.explosionText}>10</Text>
               </View>
-            )}
-            
-            {/* Explosion effect */}
-            {explosionAnimation && (
-              <Animated.View
-                style={[
-                  styles.explosion,
-                  {
-                    left: explosionAnimation.x - 40,
-                    top: explosionAnimation.y - 30,
-                    transform: [{ scale: explosionScale }],
-                    opacity: explosionOpacity,
-                  }
-                ]}
-              >
-                <View style={styles.explosionNote}>
-                  <Text style={styles.explosionText}>10</Text>
-                </View>
-              </Animated.View>
-            )}
-          </View>
+            </Animated.View>
+          )}
         </View>
       </View>
       
@@ -955,8 +832,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111',
     textAlign: 'center',
-    textAlignVertical: 'center',
     includeFontPadding: false,
+    lineHeight: undefined, // 让系统自动计算行高
   },
   sumText: {
     fontSize: 16,
@@ -971,24 +848,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   explosionNote: {
-    width: 80,
-    height: 60,
-    backgroundColor: '#FFEB3B', // Yellow sticky note
+    backgroundColor: '#FFEB3B',
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#F57F17',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    transform: [{ rotate: '-5deg' }],
     shadowColor: '#000',
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
   },
   explosionText: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    textAlign: 'center',
   },
 });
 

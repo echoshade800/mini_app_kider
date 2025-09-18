@@ -265,6 +265,11 @@ export default function ChallengeScreen() {
             height={board.height}
             onTilesClear={handleTilesClear}
             disabled={false}
+            itemMode={null}
+            onTileClick={null}
+            selectedSwapTile={null}
+            swapAnimations={new Map()}
+            fractalAnimations={new Map()}
             settings={settings}
             isChallenge={true}
             reshuffleCount={reshuffleCount}

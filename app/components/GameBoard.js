@@ -30,32 +30,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-    
-    const boardWidth = gridWidth + BOARD_PADDING * 2;
-    const boardHeight = gridHeight + BOARD_PADDING * 2;
-  const [fixedLayout, setFixedLayout] = useState(null);
-  const [showRescueModal, setShowRescueModal] = useState(false);
-  const [reshuffleCount, setReshuffleCount] = useState(0);
-
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const explosionScale = useRef(new Animated.Value(0)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
-  const tileScales = useRef(new Map()).current;
-
-  const initTileScale = (index) => {
-    if (!tileScales.has(index)) {
-      tileScales.set(index, new Animated.Value(1));
-    }
-    return tileScales.get(index);
-  };
-
-  const scaleTile = (index, scale) => {
-    const tileScale = initTileScale(index);
-    Animated.timing(tileScale, {
-      toValue: scale,
-      duration: 150,
-      useNativeDriver: true,
-    }).start();
   };
 
   const getTileRotation = (row, col) => {

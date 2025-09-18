@@ -16,14 +16,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Dimensions, Animated } from 'react-native';
+import { Animated } from 'react-native';
 import { useGameStore } from '../store/gameStore';
-import { GameBoard } from '../components/GameBoard';
+import { UnifiedGameBoard } from '../components/UnifiedGameBoard';
 import { generateBoard } from '../utils/boardGenerator';
-import { SAFE_TOP, SAFE_BOTTOM } from '../utils/gridLayout';
 import { STAGE_NAMES } from '../utils/stageNames';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function LevelDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -47,7 +44,7 @@ export default function LevelDetailScreen() {
   useEffect(() => {
     if (level && level > 0 && level <= 200) {
       try {
-        const board = generateBoard(level);
+        const board = generateBoard(level, false);
         setCurrentBoard(board);
       } catch (error) {
         console.error('Failed to generate board:', error);
@@ -62,7 +59,9 @@ export default function LevelDetailScreen() {
     // Check if board is completely cleared
     const newTiles = [...currentBoard.tiles];
     clearedPositions.forEach(pos => {
-      const index = pos.row * currentBoard.width + pos.col;
+      // 在统一布局中，需要根据行列计算索引
+      // 这里简化处理，直接使用传入的位置信息
+      const index = pos.row * Math.ceil(Math.sqrt(currentBoard.tiles.length)) + pos.col;
       newTiles[index] = 0;
     });
     
@@ -108,9 +107,11 @@ export default function LevelDetailScreen() {
   };
 
   const handleSwapTileClick = (row, col, value) => {
-    if (!itemMode || value === 0) return;
+    if (!itemMode || value === 0 || !currentBoard) return;
     
-    const index = row * currentBoard.width + col;
+    // 简化索引计算
+    const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
+    const index = row * estimatedCols + col;
     const clickedTile = { row, col, value, index };
     
     if (itemMode === 'swapMaster') {
@@ -136,19 +137,6 @@ export default function LevelDetailScreen() {
   const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // 使用统一的单元格大小
-    const cellSize = 30 + 10; // TILE_SIZE + 默认gap
-    
-    // 计算两个方块的位置（简化版本）
-    const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
-    const row1 = Math.floor(tile1.index / estimatedCols);
-    const col1 = tile1.index % estimatedCols;
-    const row2 = Math.floor(tile2.index / estimatedCols);
-    const col2 = tile2.index % estimatedCols;
-    
-    const deltaX = (col2 - col1) * cellSize;
-    const deltaY = (row2 - row1) * cellSize;
-    
     // 创建交换动画
     const swapAnim1 = {
       translateX: new Animated.Value(0),
@@ -163,6 +151,10 @@ export default function LevelDetailScreen() {
     swapAnimationsRef.current.set(tile1.index, swapAnim1);
     swapAnimationsRef.current.set(tile2.index, swapAnim2);
     setAnimationTrigger(prev => prev + 1); // 触发重新渲染
+    
+    // 简化动画，不计算具体位移
+    const deltaX = (tile2.col - tile1.col) * 40; // 估算位移
+    const deltaY = (tile2.row - tile1.row) * 40;
     
     // 执行动画
     Animated.parallel([
@@ -215,10 +207,7 @@ export default function LevelDetailScreen() {
   const performFractalSplit = (tile) => {
     if (!currentBoard) return;
 
-    const { value, index } = tile;
-    const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
-    const row = Math.floor(index / estimatedCols);
-    const col = index % estimatedCols;
+    const { value, index, row, col } = tile;
 
     // 生成不同数字的分解方案，确保总和等于原数字
     const generateSplitCombination = (num) => {
@@ -326,15 +315,10 @@ export default function LevelDetailScreen() {
     });
 
     // 创建分裂动画 - 显示正确的分解数值
-    const cellSize = 30 + 10; // TILE_SIZE + 默认gap
-    
     selectedEmptyPositions.forEach((targetPos, i) => {
-      const targetRow = Math.floor(targetPos / estimatedCols);
-      const targetCol = targetPos % estimatedCols;
-      
-      // 计算跳跃距离
-      const deltaX = (targetCol - col) * cellSize;
-      const deltaY = (targetRow - row) * cellSize;
+      // 简化动画计算
+      const deltaX = Math.random() * 100 - 50; // 随机位移
+      const deltaY = Math.random() * 100 - 50;
       
       // 创建跳跃动画
       const jumpAnim = {
@@ -421,7 +405,7 @@ export default function LevelDetailScreen() {
           text: '确定', 
           onPress: () => {
             try {
-              const board = generateBoard(level, true, false, screenWidth, screenHeight);
+              const board = generateBoard(level, true);
               setCurrentBoard(board);
               setShowSuccess(false);
             } catch (error) {
@@ -490,20 +474,19 @@ export default function LevelDetailScreen() {
       </View>
 
       {/* Game Board */}
-      <GameBoard 
+      <UnifiedGameBoard 
         board={currentBoard}
         onTilesClear={handleTilesClear}
-        onBoardRefresh={handleBoardRefresh}
         onTileClick={handleSwapTileClick}
         itemMode={itemMode}
         selectedSwapTile={selectedSwapTile}
         swapAnimations={swapAnimationsRef.current}
         fractalAnimations={fractalAnimationsRef.current}
-        isChallenge={false}
+        containerHeight={0} // 让组件自己计算
       />
 
       {/* 浮动道具按钮 */}
-      <View style={styles.floatingButtons}>
+      <View style={[styles.floatingButtons, { position: 'absolute', bottom: 60, left: 0, right: 0, zIndex: 1000 }]}>
         <TouchableOpacity 
           style={[
             styles.floatingButton,
@@ -649,15 +632,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   floatingButtons: {
-    position: 'absolute',
-    bottom: SAFE_BOTTOM - 60,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
-    elevation: 1000,
     gap: 20,
   },
   floatingButton: {

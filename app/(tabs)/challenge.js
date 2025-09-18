@@ -11,84 +11,17 @@ import {
   TouchableOpacity, 
   StyleSheet,
   Modal,
-  Dimensions,
   Animated,
-  PanResponder
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useGameStore } from '../store/gameStore';
-import { GameBoard } from '../components/GameBoard';
+import { UnifiedGameBoard } from '../components/UnifiedGameBoard';
 import { generateChallengeBoard } from '../utils/boardGenerator';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CHALLENGE_DURATION = 60; // 60 seconds
-
-// Check if any rectangle sums to 10
-function hasValidCombinations(tiles, width, height) {
-  const size = width * height;
-  
-  for (let pos1 = 0; pos1 < size; pos1++) {
-    if (tiles[pos1] === 0) continue;
-    
-    for (let pos2 = pos1; pos2 < size; pos2++) {
-      if (tiles[pos2] === 0) continue;
-      
-      const row1 = Math.floor(pos1 / width);
-      const col1 = pos1 % width;
-      const row2 = Math.floor(pos2 / width);
-      const col2 = pos2 % width;
-      
-      const minRow = Math.min(row1, row2);
-      const maxRow = Math.max(row1, row2);
-      const minCol = Math.min(col1, col2);
-      const maxCol = Math.max(col1, col2);
-      
-      let sum = 0;
-      for (let row = minRow; row <= maxRow; row++) {
-        for (let col = minCol; col <= maxCol; col++) {
-          const index = row * width + col;
-          sum += tiles[index];
-        }
-      }
-      
-      if (sum === 10) {
-        return true;
-      }
-    }
-  }
-  
-  return false;
-}
-
-// Reshuffle remaining tiles
-function reshuffleBoard(tiles, width, height) {
-  const newTiles = [...tiles];
-  const nonZeroValues = [];
-  const nonZeroPositions = [];
-  
-  for (let i = 0; i < tiles.length; i++) {
-    if (tiles[i] > 0) {
-      nonZeroValues.push(tiles[i]);
-      nonZeroPositions.push(i);
-    }
-  }
-  
-  // Shuffle values
-  for (let i = nonZeroValues.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [nonZeroValues[i], nonZeroValues[j]] = [nonZeroValues[j], nonZeroValues[i]];
-  }
-  
-  // Place shuffled values back
-  for (let i = 0; i < nonZeroPositions.length; i++) {
-    newTiles[nonZeroPositions[i]] = nonZeroValues[i];
-  }
-  
-  return newTiles;
-}
 
 export default function ChallengeScreen() {
   const { gameData, updateGameData } = useGameStore();
@@ -98,9 +31,6 @@ export default function ChallengeScreen() {
   const [currentBoard, setCurrentBoard] = useState(null);
   const [showResults, setShowResults] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [reshuffleCount, setReshuffleCount] = useState(0);
-  const [showNoSolution, setShowNoSolution] = useState(false);
-  const [noSolutionMessage, setNoSolutionMessage] = useState('');
   
   // 道具状态
   const [itemMode, setItemMode] = useState(null); // 'swapMaster' | 'fractalSplit' | null
@@ -111,25 +41,10 @@ export default function ChallengeScreen() {
   const fractalAnimationsRef = useRef(new Map());
   const [animationTrigger, setAnimationTrigger] = useState(0);
   
-  // Selection state
-  const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
-  
   // Animations
   const progressAnim = useRef(new Animated.Value(1)).current;
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const explosionScale = useRef(new Animated.Value(0)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
   
   const timerRef = useRef();
-
-  const noSolutionMessages = [
-    "Brain Freeze!",
-    "Out of Juice!",
-    "No Ten, No Win!",
-    "All Out of Moves!"
-  ];
 
   useEffect(() => {
     if (gameState === 'playing') {
@@ -194,44 +109,8 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    // 生成满盘棋盘，传入屏幕尺寸以铺满屏幕
-    const board = generateChallengeBoard(screenWidth, screenHeight);
+    const board = generateChallengeBoard();
     setCurrentBoard(board);
-    setReshuffleCount(0);
-  };
-
-  const checkForRescue = () => {
-    if (!currentBoard || gameState !== 'playing') return;
-    
-    const { tiles, width, height } = currentBoard;
-    
-    if (!hasValidCombinations(tiles, width, height)) {
-      if (reshuffleCount < 3) {
-        // Auto reshuffle
-        const newTiles = reshuffleBoard(tiles, width, height);
-        const newBoard = { ...currentBoard, tiles: newTiles };
-        
-        if (hasValidCombinations(newTiles, width, height)) {
-          setCurrentBoard(newBoard);
-          setReshuffleCount(0);
-        } else {
-          setCurrentBoard(newBoard);
-          setReshuffleCount(prev => prev + 1);
-          
-          if (reshuffleCount + 1 >= 3) {
-            // Show no solution message
-            const message = noSolutionMessages[Math.floor(Math.random() * noSolutionMessages.length)];
-            setNoSolutionMessage(message);
-            setShowNoSolution(true);
-            
-            setTimeout(() => {
-              setShowNoSolution(false);
-              generateNewBoard(); // Generate new full board
-            }, 2000);
-          }
-        }
-      }
-    }
   };
 
   const handleTilesClear = (clearedPositions) => {
@@ -250,7 +129,7 @@ export default function ChallengeScreen() {
     // 更新棋盘，清除方块
     const newTiles = [...currentBoard.tiles];
     clearedPositions.forEach(pos => {
-      const index = pos.row * currentBoard.width + pos.col;
+      const index = pos.row * Math.ceil(Math.sqrt(currentBoard.tiles.length)) + pos.col;
       newTiles[index] = 0;
     });
     
@@ -263,11 +142,6 @@ export default function ChallengeScreen() {
       setTimeout(() => {
         generateNewBoard();
       }, 1000);
-    } else {
-      // 延迟检查是否有有效组合
-      setTimeout(() => {
-        checkForRescue();
-      }, 500);
     }
   };
 
@@ -290,9 +164,10 @@ export default function ChallengeScreen() {
   };
 
   const handleTileClick = (row, col, value) => {
-    if (!itemMode || value === 0) return;
+    if (!itemMode || value === 0 || !currentBoard) return;
     
-    const index = row * currentBoard.width + col;
+    const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
+    const index = row * estimatedCols + col;
     const clickedTile = { row, col, value, index };
     
     if (itemMode === 'swapMaster') {
@@ -372,13 +247,7 @@ export default function ChallengeScreen() {
   };
 
   const handleBoardRefresh = (action) => {
-    if (action === 'return') {
-      // 救援选择返回主页
-      handleReturn();
-    } else if (typeof action === 'object') {
-      // 重排后的棋盘
-      setCurrentBoard(action);
-    } else if (action === 'refresh') {
+    if (action === 'refresh') {
       // 棋盘全清，生成新棋盘
       generateNewBoard();
     }
@@ -425,7 +294,7 @@ export default function ChallengeScreen() {
       {(gameState === 'ready' || gameState === 'playing') && (
         <>
           {gameState === 'ready' && (
-            <View style={[styles.readyOverlay, { zIndex: 2000 }]}>
+            <View style={styles.readyOverlay}>
               <View style={styles.readyContent}>
                 <Text style={styles.readyTitle}>Challenge Mode</Text>
                 <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
@@ -437,7 +306,7 @@ export default function ChallengeScreen() {
           )}
           
           {currentBoard && (
-            <GameBoard 
+            <UnifiedGameBoard 
               board={currentBoard}
               onTilesClear={handleTilesClear}
               onTileClick={handleTileClick}
@@ -445,32 +314,29 @@ export default function ChallengeScreen() {
               selectedSwapTile={selectedSwapTile}
               swapAnimations={swapAnimationsRef.current}
               fractalAnimations={fractalAnimationsRef.current}
-              onBoardRefresh={handleBoardRefresh}
               disabled={gameState !== 'playing'}
-              isChallenge={true}
+              containerHeight={0} // 让组件自己计算
             />
           )}
         </>
       )}
 
       {gameState === 'finished' && currentBoard && (
-        <GameBoard 
+        <UnifiedGameBoard 
           board={currentBoard}
-          onTilesClear={handleTilesClear}
           onTileClick={handleTileClick}
           itemMode={itemMode}
           selectedSwapTile={selectedSwapTile}
           swapAnimations={swapAnimationsRef.current}
           fractalAnimations={fractalAnimationsRef.current}
-          onBoardRefresh={handleBoardRefresh}
           disabled={true}
-          isChallenge={true}
+          containerHeight={0}
         />
       )}
 
       {/* 底部道具栏 - 固定在屏幕最底部 */}
       {gameState === 'playing' && (
-        <View style={[styles.itemsBar, { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1000 }]}>
+        <View style={styles.itemsBar}>
           <TouchableOpacity 
             style={[
               styles.itemButton,
@@ -514,13 +380,6 @@ export default function ChallengeScreen() {
               </View>
             )}
           </TouchableOpacity>
-        </View>
-      )}
-
-      {/* No Solution Overlay */}
-      {showNoSolution && (
-        <View style={[styles.noSolutionOverlay, { zIndex: 3000 }]}>
-          <Text style={styles.noSolutionText}>{noSolutionMessage}</Text>
         </View>
       )}
 
@@ -643,7 +502,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(26, 26, 46, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 2000,
   },
   readyContent: {
     alignItems: 'center',
@@ -674,36 +533,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   gameArea: {
-    flex: 1,
-    backgroundColor: '#1E5A3C', // 绿色背景铺满
-    margin: 20, // 与屏幕边缘的距离
-    borderRadius: 16,
-    borderWidth: 8,
-    borderColor: '#8B5A2B', // 木框边框
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  noSolutionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  noSolutionText: {
-    color: '#ff6b6b',
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    // 移除，使用统一组件
   },
   modalOverlay: {
     flex: 1,
@@ -799,6 +629,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   itemsBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

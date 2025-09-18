@@ -22,8 +22,9 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
-  TILE_GAP: 4,          // 方块间距
-  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
+  TILE_GAP: 10,         // 方块间距（5px内边距 × 2）
+  BOARD_PADDING: 5,     // 棋盘内边距（木框留白5px）
+  TILE_INNER_PADDING: 5, // 方块内边距
   GRID_ROWS: 20,        // 固定网格行数
   GRID_COLS: 14,        // 固定网格列数
 };
@@ -35,6 +36,7 @@ function calculateEffectiveAreaLayout() {
   
   const boardPadding = EFFECTIVE_AREA_CONFIG.BOARD_PADDING;
   const tileGap = EFFECTIVE_AREA_CONFIG.TILE_GAP;
+  const tileInnerPadding = EFFECTIVE_AREA_CONFIG.TILE_INNER_PADDING;
   
   const availableWidth = effectiveWidth - boardPadding * 2;
   const availableHeight = effectiveHeight - boardPadding * 2;
@@ -42,13 +44,15 @@ function calculateEffectiveAreaLayout() {
   const gridCols = EFFECTIVE_AREA_CONFIG.GRID_COLS;
   const gridRows = EFFECTIVE_AREA_CONFIG.GRID_ROWS;
   
-  const tileWidth = (availableWidth - (gridCols - 1) * tileGap) / gridCols;
-  const tileHeight = (availableHeight - (gridRows - 1) * tileGap) / gridRows;
+  // 计算方块尺寸时考虑内边距
+  const cellWidth = (availableWidth - (gridCols - 1) * tileGap) / gridCols;
+  const cellHeight = (availableHeight - (gridRows - 1) * tileGap) / gridRows;
   
-  const tileSize = Math.min(tileWidth, tileHeight);
+  const cellSize = Math.min(cellWidth, cellHeight);
+  const tileSize = cellSize - tileInnerPadding * 2; // 方块实际大小
   
-  const boardWidth = gridCols * tileSize + (gridCols - 1) * tileGap + boardPadding * 2;
-  const boardHeight = gridRows * tileSize + (gridRows - 1) * tileGap + boardPadding * 2;
+  const boardWidth = gridCols * cellSize + (gridCols - 1) * tileGap + boardPadding * 2;
+  const boardHeight = gridRows * cellSize + (gridRows - 1) * tileGap + boardPadding * 2;
   
   const boardLeft = (screenWidth - boardWidth) / 2;
   const boardTop = EFFECTIVE_AREA_CONFIG.TOP_RESERVED + (effectiveHeight - boardHeight) / 2;
@@ -59,11 +63,13 @@ function calculateEffectiveAreaLayout() {
     boardWidth,
     boardHeight,
     boardPadding,
+    cellSize,
     tileSize,
     tileGap,
+    tileInnerPadding,
     getTilePosition: (row, col) => ({
-      x: col * (tileSize + tileGap),
-      y: row * (tileSize + tileGap)
+      x: col * (cellSize + tileGap) + tileInnerPadding,
+      y: row * (cellSize + tileGap) + tileInnerPadding
     })
   };
 }

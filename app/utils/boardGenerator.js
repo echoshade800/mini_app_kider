@@ -148,6 +148,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   // 统一使用 14×21格 棋盘
   const width = 14;
   const height = 21;
+  const { rowOffset, colOffset } = getActivationOffset(height, width, activeRows, activeCols);
   const size = width * height;
   
   // Initialize empty board

@@ -316,7 +316,6 @@ export default function ChallengeScreen() {
   // Playing state
   return (
     <SafeAreaView style={styles.container}>
-      {/* Bomb Timer HUD */}
       <View style={styles.timerHUD}>
         <View style={styles.bombContainer}>
           <Animated.View 
@@ -352,7 +351,6 @@ export default function ChallengeScreen() {
         </View>
       </View>
 
-      {/* Game Board */}
       {board && (
         <GameBoard
           tiles={board.tiles}
@@ -373,7 +371,6 @@ export default function ChallengeScreen() {
         />
       )}
 
-      {/* Bottom Item Bar */}
       <View style={styles.itemBar}>
         <TouchableOpacity 
           style={[

@@ -30,32 +30,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-      if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
-        return;
-      }
-      
-      setSelection(prev => ({
-        ...prev,
-        endRow,
-        endCol,
-      }));
-
-      // Update hovered tiles with scaling effect
-      const newSelection = { ...selection, endRow, endCol };
-      const newSelectedTiles = getSelectedTilesForSelection(newSelection);
-      const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
-      const { pageX, pageY } = evt.nativeEvent;
-      
-      if (!fixedLayout) return;
-      
-      const { boardLeft, boardTop, boardWidth, boardHeight, boardPadding, tileSize, tileGap } = fixedLayout;
-
-      const innerLeft = boardLeft + boardPadding;
-      const innerTop = boardTop + boardPadding;
-      const innerWidth = boardWidth - boardPadding * 2;
-      const innerHeight = boardHeight - boardPadding * 2;
-
-      if (pageX < innerLeft || pageX > innerLeft + innerWidth ||
           pageY < innerTop || pageY > innerTop + innerHeight) {
         return;
       }

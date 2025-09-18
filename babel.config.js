@@ -55,6 +55,73 @@ function calculateEffectiveAreaLayout() {
         y: row * (tileSize + tileGap),
       }),
     };
+  }
+
+const GameBoard = ({ tiles, width, height, onTilesClear, disabled, itemMode, onTileClick, selectedSwapTile, swapAnimations, fractalAnimations, settings, isChallenge, onBoardRefresh, showRescueModal, setShowRescueModal, reshuffleCount, setReshuffleCount }) => {
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [fixedLayout, setFixedLayout] = useState(null);
+  
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0.5)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef(new Map()).current;
+
+  const initTileScale = (index) => {
+    if (!tileScales.has(index)) {
+      tileScales.set(index, new Animated.Value(1));
+    }
+    return tileScales.get(index);
+  };
+
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.timing(tileScale, {
+      toValue: scale,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const getTileRotation = (row, col) => {
+    const seed = row * 1000 + col;
+    const random = (seed * 9301 + 49297) % 233280;
+    return ((random / 233280) - 0.5) * 6; // -3 to +3 degrees
+  };
+
+  const getFixedBoardLayout = (availableWidth, availableHeight) => {
+    const boardPadding = EFFECTIVE_AREA_CONFIG.BOARD_PADDING;
+    const tileGap = EFFECTIVE_AREA_CONFIG.TILE_GAP;
+    
+    // Calculate tile size based on available space and grid dimensions
+    const maxTileWidth = (availableWidth - boardPadding * 2 - (width - 1) * tileGap) / width;
+    const maxTileHeight = (availableHeight - boardPadding * 2 - (height - 1) * tileGap) / height;
+    const tileSize = Math.floor(Math.min(maxTileWidth, maxTileHeight, 40)); // Max 40px
+    
+    // Calculate actual board dimensions
+    const boardWidth = width * (tileSize + tileGap) - tileGap + boardPadding * 2;
+    const boardHeight = height * (tileSize + tileGap) - tileGap + boardPadding * 2;
+    
+    // Center the board
+    const boardLeft = (availableWidth - boardWidth) / 2;
+    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    
+    return {
+      tileSize,
+      tileGap,
+      boardPadding,
+      boardWidth,
+      boardHeight,
+      boardLeft,
+      boardTop,
+      gridRows: height,
+      gridCols: width,
+      getTilePosition: (row, col) => ({
+        x: col * (tileSize + tileGap),
+        y: row * (tileSize + tileGap),
+      }),
+    };
   };
 
   const resetSelection = () => {

@@ -18,70 +18,78 @@ import RescueModal from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// 有效游戏区域配置
-const EFFECTIVE_AREA_CONFIG = {
-  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
-  TILE_GAP: 4,          // 方块间距
-  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
-  GRID_ROWS: 20,        // 固定网格行数
-  GRID_COLS: 14,        // 固定网格列数
+// 标准化配置
+const BOARD_CONFIG = {
+  STANDARD_TILE_SIZE: 28,    // 标准方块尺寸
+  TILE_GAP: 2,              // 方块间距
+  BOARD_PADDING: 16,        // 棋盘内边距
+  TOP_RESERVED: 120,        // 顶部保留区域
+  BOTTOM_RESERVED: 120,     // 底部保留区域
 };
 
-// 计算有效游戏区域和棋盘布局
-function calculateEffectiveAreaLayout() {
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  onTilesClear, 
+  disabled = false,
+  settings = {},
+  itemMode = null,
+  onTileClick = null,
+  selectedSwapTile = null,
+  swapAnimations = new Map(),
+  fractalAnimations = new Map(),
+  initTileScale = () => new Animated.Value(1),
+  getTileRotation = () => 0,
+  scaleTile = () => {},
+  isChallenge = false
+}) => {
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+  const [boardLayout, setBoardLayout] = useState(null);
 
-  const getFixedBoardLayout = (availableWidth, availableHeight) => {
-    const calculateEffectiveAreaLayout = () => {
-      // 计算方块的理想尺寸
-      const innerWidth = availableWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-      const innerHeight = availableHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-      
-      let tileSize;
-      
-      if (width && height) {
-        const adjustedTileWidth = (innerWidth - (width - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / width;
-        const adjustedTileHeight = (innerHeight - (height - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / height;
-        tileSize = Math.min(adjustedTileWidth, adjustedTileHeight);
-        
-        // 使用半个方块边长作为屏幕边距
-        const screenMargin = tileSize * 0.5;
-        
-        const boardWidth = width * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-        const boardHeight = height * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-        
-        // 左对齐布局，使用计算出的边距
-        const boardLeft = screenMargin;
-        const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-    // 使用标准方块尺寸，确保和参考图一致
-    const tileSize = EFFECTIVE_AREA_CONFIG.STANDARD_TILE_SIZE;
-    const tileGap = EFFECTIVE_AREA_CONFIG.TILE_GAP;
-    const boardPadding = EFFECTIVE_AREA_CONFIG.BOARD_PADDING;
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(1)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+
+  // 计算棋盘布局
+  const calculateBoardLayout = () => {
+    const { STANDARD_TILE_SIZE, TILE_GAP, BOARD_PADDING, TOP_RESERVED } = BOARD_CONFIG;
+    
+    const availableWidth = screenWidth;
+    const availableHeight = screenHeight - (isChallenge ? 240 : 200);
     
     // 计算棋盘尺寸
-    const boardWidth = width * (tileSize + tileGap) - tileGap + boardPadding * 2;
-    const boardHeight = height * (tileSize + tileGap) - tileGap + boardPadding * 2;
+    const boardWidth = width * (STANDARD_TILE_SIZE + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    const boardHeight = height * (STANDARD_TILE_SIZE + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
     
     // 居中布局
     const boardLeft = (availableWidth - boardWidth) / 2;
-    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    const boardTop = (availableHeight - boardHeight) / 2 + TOP_RESERVED;
     
     return {
-      tileSize,
-      tileGap,
-      boardPadding,
+      tileSize: STANDARD_TILE_SIZE,
+      tileGap: TILE_GAP,
+      boardPadding: BOARD_PADDING,
       boardWidth,
       boardHeight,
       boardLeft,
       boardTop,
-      gridRows: height,
-      gridCols: width,
       getTilePosition: (row, col) => ({
-        x: col * (tileSize + tileGap),
-        y: row * (tileSize + tileGap),
+        x: col * (STANDARD_TILE_SIZE + TILE_GAP),
+        y: row * (STANDARD_TILE_SIZE + TILE_GAP),
       }),
     };
   };
+
+  // 初始化布局
+  React.useEffect(() => {
+    const layout = calculateBoardLayout();
+    setBoardLayout(layout);
+  }, [width, height, isChallenge]);
 
   const resetSelection = () => {
     setSelection(null);
@@ -98,9 +106,9 @@ function calculateEffectiveAreaLayout() {
   };
 
   const isInsideGridArea = (pageX, pageY) => {
-    if (!fixedLayout) return false;
+    if (!boardLayout) return false;
     
-    const { boardLeft, boardTop, boardWidth, boardHeight } = fixedLayout;
+    const { boardLeft, boardTop, boardWidth, boardHeight } = boardLayout;
     
     return pageX >= boardLeft && 
            pageX <= boardLeft + boardWidth && 
@@ -109,8 +117,8 @@ function calculateEffectiveAreaLayout() {
   };
 
   const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-    const bottomRestrictedHeight = screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+    const topRestrictedHeight = BOARD_CONFIG.TOP_RESERVED;
+    const bottomRestrictedHeight = screenHeight - BOARD_CONFIG.BOTTOM_RESERVED;
     
     return pageY < topRestrictedHeight || pageY > bottomRestrictedHeight;
   };
@@ -165,9 +173,9 @@ function calculateEffectiveAreaLayout() {
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
 
-      if (!fixedLayout) return;
+      if (!boardLayout) return;
 
-      const { tileSize, tileGap } = fixedLayout;
+      const { tileSize, tileGap } = boardLayout;
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
 
@@ -256,7 +264,7 @@ function calculateEffectiveAreaLayout() {
       
       if (!isInsideGridArea(pageX, pageY)) return;
       
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = fixedLayout;
+      const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = boardLayout;
 
       const innerLeft = boardLeft + boardPadding;
       const innerTop = boardTop + boardPadding;
@@ -289,7 +297,7 @@ function calculateEffectiveAreaLayout() {
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      const { boardLeft, boardTop, boardWidth, boardHeight, boardPadding, tileSize, tileGap } = fixedLayout;
+      const { boardLeft, boardTop, boardWidth, boardHeight, boardPadding, tileSize, tileGap } = boardLayout;
 
       const innerLeft = boardLeft + boardPadding;
       const innerTop = boardTop + boardPadding;
@@ -370,9 +378,9 @@ function calculateEffectiveAreaLayout() {
     
     onPanResponderTerminationRequest: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
-      const buttonAreaBottom = screenHeight - 80; // 底部道具栏区域
+      const buttonAreaBottom = screenHeight - 80;
       const buttonAreaTop = screenHeight - 160;
-      const topRestrictedHeight = 120; // 顶部HUD区域
+      const topRestrictedHeight = 120;
       
       if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
           pageY < topRestrictedHeight) {
@@ -404,16 +412,11 @@ function calculateEffectiveAreaLayout() {
   const handleRescueContinue = () => {
     setShowRescueModal(false);
     setReshuffleCount(0);
-    // 这里可以触发道具使用逻辑
   };
 
   const handleRescueReturn = () => {
     setShowRescueModal(false);
     setReshuffleCount(0);
-    // 返回主页面的逻辑由父组件处理
-    if (onBoardRefresh) {
-      onBoardRefresh('return');
-    }
   };
 
   const getSelectionStyle = () => {
@@ -429,9 +432,9 @@ function calculateEffectiveAreaLayout() {
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    if (!fixedLayout) return null;
+    if (!boardLayout) return null;
 
-    const { tileSize, tileGap } = fixedLayout;
+    const { tileSize, tileGap } = boardLayout;
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
 
@@ -471,9 +474,9 @@ function calculateEffectiveAreaLayout() {
     const maxRow = Math.max(startRow, endRow);
     const maxCol = Math.max(startCol, endCol);
     
-    if (!fixedLayout) return null;
+    if (!boardLayout) return null;
 
-    const { tileSize, tileGap } = fixedLayout;
+    const { tileSize, tileGap } = boardLayout;
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
 
@@ -500,21 +503,21 @@ function calculateEffectiveAreaLayout() {
         shadowOpacity: 0.3,
         shadowRadius: 4,
         elevation: 6,
-        transform: [{ rotate: '-2deg' }], // Slight rotation like sticky note
+        transform: [{ rotate: '-2deg' }],
       }
     };
   };
 
-  const renderFixedGridBackground = () => {
-    if (!fixedLayout) return null;
+  const renderGridBackground = () => {
+    if (!boardLayout) return null;
 
-    const { gridRows, gridCols, tileSize, tileGap } = fixedLayout;
+    const { tileSize, tileGap } = boardLayout;
     const lines = [];
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
 
-    // 垂直网格线 - 更清晰的线条
-    for (let i = 0; i <= gridCols; i++) {
+    // 垂直网格线
+    for (let i = 0; i <= width; i++) {
       lines.push(
         <View
           key={`v-${i}`}
@@ -523,16 +526,16 @@ function calculateEffectiveAreaLayout() {
             {
               left: i * cellWidth - (i === 0 ? 0 : tileGap / 2),
               top: 0,
-              width: i === 0 || i === gridCols ? 2 : 1,
-              height: gridRows * cellHeight - tileGap,
+              width: i === 0 || i === width ? 2 : 1,
+              height: height * cellHeight - tileGap,
             }
           ]}
         />
       );
     }
 
-    // 水平网格线 - 更清晰的线条
-    for (let i = 0; i <= gridRows; i++) {
+    // 水平网格线
+    for (let i = 0; i <= height; i++) {
       lines.push(
         <View
           key={`h-${i}`}
@@ -541,8 +544,8 @@ function calculateEffectiveAreaLayout() {
             {
               left: 0,
               top: i * cellHeight - (i === 0 ? 0 : tileGap / 2),
-              width: gridCols * cellWidth - tileGap,
-              height: i === 0 || i === gridRows ? 2 : 1,
+              width: width * cellWidth - tileGap,
+              height: i === 0 || i === height ? 2 : 1,
             }
           ]}
         />
@@ -553,18 +556,18 @@ function calculateEffectiveAreaLayout() {
   };
 
   const renderTile = (value, row, col) => {
-    if (!fixedLayout) return null;
+    if (!boardLayout) return null;
 
     const index = row * width + col;
     
-    // 如果值为0，暂时显示随机数字（忽略难度设置）
+    // 所有格子都显示数字方块，值为0时显示随机数字
     const displayValue = value === 0 ? Math.floor(Math.random() * 9) + 1 : value;
 
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
     }
 
-    const { x, y } = fixedLayout.getTilePosition(row, col);
+    const { x, y } = boardLayout.getTilePosition(row, col);
 
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
@@ -619,8 +622,8 @@ function calculateEffectiveAreaLayout() {
           position: 'absolute',
           left: x,
           top: y,
-          width: fixedLayout.tileSize,
-          height: fixedLayout.tileSize,
+          width: boardLayout.tileSize,
+          height: boardLayout.tileSize,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -641,7 +644,7 @@ function calculateEffectiveAreaLayout() {
           <Text style={[
             styles.tileText,
             { 
-              fontSize: Math.max(12, fixedLayout.tileSize * 0.5),
+              fontSize: Math.max(12, boardLayout.tileSize * 0.5),
             }
           ]}>
             {displayValue}
@@ -651,19 +654,10 @@ function calculateEffectiveAreaLayout() {
     );
   };
 
-  // 初始化固定布局
-  React.useEffect(() => {
-    const availableWidth = screenWidth;
-    const availableHeight = isChallenge ? screenHeight - 240 : screenHeight - 200; // 为HUD和道具栏留空间
-    
-    const layout = getFixedBoardLayout(availableWidth, availableHeight);
-    setFixedLayout(layout);
-  }, [isChallenge, width, height]);
-
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();
 
-  if (!fixedLayout) {
+  if (!boardLayout) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -679,36 +673,35 @@ function calculateEffectiveAreaLayout() {
             styles.chalkboard,
             {
               position: 'absolute',
-              left: fixedLayout.boardLeft,
-              top: fixedLayout.boardTop,
-              width: fixedLayout.boardWidth,
-              height: fixedLayout.boardHeight,
+              left: boardLayout.boardLeft,
+              top: boardLayout.boardTop,
+              width: boardLayout.boardWidth,
+              height: boardLayout.boardHeight,
             }
           ]}
         >
-          {/* 固定网格背景 */}
+          {/* 网格背景 */}
           <View
             style={{
               position: 'absolute',
-              left: fixedLayout.boardPadding,
-              top: fixedLayout.boardPadding,
-              width: fixedLayout.gridCols * (fixedLayout.tileSize + fixedLayout.tileGap) - fixedLayout.tileGap,
-              height: fixedLayout.gridRows * (fixedLayout.tileSize + fixedLayout.tileGap) - fixedLayout.tileGap,
+              left: boardLayout.boardPadding,
+              top: boardLayout.boardPadding,
+              width: width * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
+              height: height * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
             }}
           >
-            {/* Grid lines */}
-            {renderFixedGridBackground()}
+            {renderGridBackground()}
           </View>
           
-          {/* 动态数字方块 */}
+          {/* 数字方块 */}
           <View
             style={{
               position: 'absolute',
-              left: fixedLayout.boardPadding,
-              top: fixedLayout.boardPadding,
+              left: boardLayout.boardPadding,
+              top: boardLayout.boardPadding,
             }}
           >
-            {/* Render tiles based on board data */}
+            {/* 渲染所有方块 */}
             {tiles.map((value, index) => {
               const row = Math.floor(index / width);
               const col = index % width;
@@ -803,7 +796,7 @@ const styles = StyleSheet.create({
   },
   gridLine: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)', // 更明显的网格线
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // 更清晰的网格线
   },
   tileInner: {
     width: '100%',
@@ -811,7 +804,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFF9E6', // Cream white sticky note
-    borderRadius: 4,
+    borderRadius: 3,
     borderWidth: 1,
     borderColor: '#333',
     shadowColor: '#000',
@@ -819,9 +812,9 @@ const styles = StyleSheet.create({
       width: 0.5,
       height: 0.5,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 1.5,
-    elevation: 2,
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
   tileSwapSelected: {
     backgroundColor: '#E3F2FD',

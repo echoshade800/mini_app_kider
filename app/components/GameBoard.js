@@ -30,32 +30,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-          pageY < innerTop || pageY > innerTop + innerHeight) {
-        return;
-      }
-      
-      const relativeX = pageX - innerLeft;
-      const relativeY = pageY - innerTop;
-
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
-
-      if (relativeX < 0 || relativeX >= width * cellWidth - tileGap ||
-          relativeY < 0 || relativeY >= height * cellHeight - tileGap) {
-        return;
-      }
-      
-      const endCol = Math.floor(relativeX / cellWidth);
-      const endRow = Math.floor(relativeY / cellHeight);
-      
-      if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
-        return;
-      }
-      
-      setSelection(prev => ({
-        ...prev,
-        endRow,
-        endCol,
       }));
 
       // Update hovered tiles with scaling effect
@@ -74,13 +48,17 @@ function calculateEffectiveAreaLayout() {
       });
       
       hoveredTiles.forEach(index => {
-        if (!newHoveredSet.has(index)) {
-          scaleTile(index, 1);
-        }
-      });
-      
-      setHoveredTiles(newHoveredSet);
-    },
+  const topReserved = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+  const bottomReserved = EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+  const availableHeight = screenHeight - topReserved - bottomReserved;
+  
+  return {
+    topReserved,
+    bottomReserved,
+    availableHeight,
+    availableWidth: screenWidth,
+  };
+}
 
     onPanResponderRelease: () => {
       if (selection && !disabled) {

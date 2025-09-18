@@ -24,18 +24,6 @@ const EFFECTIVE_AREA_CONFIG = {
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
-  GRID_ROWS: 20,        // 固定网格行数
-  GRID_COLS: 14,        // 固定网格列数
-};
-
-// 计算有效游戏区域和棋盘布局
-function calculateEffectiveAreaLayout() {
-  return {
-    // Add implementation here
-  };
-}
-
-const GameBoard = () => {
   const handleSelectionComplete = async () => {
     if (!selection) return;
 
@@ -565,6 +553,8 @@ const GameBoard = () => {
         onReturn={handleRescueReturn}
       />
     </View>
+  );
+};
   );
 };
 

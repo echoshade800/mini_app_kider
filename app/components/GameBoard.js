@@ -24,6 +24,9 @@ const EFFECTIVE_AREA_CONFIG = {
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
+};
+
+const GameBoard = () => {
   const handleSelectionComplete = async () => {
     if (!selection) return;
 
@@ -553,8 +556,6 @@ const EFFECTIVE_AREA_CONFIG = {
         onReturn={handleRescueReturn}
       />
     </View>
-  );
-};
   );
 };
 

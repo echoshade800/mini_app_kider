@@ -26,7 +26,302 @@ const EFFECTIVE_AREA_CONFIG = {
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
 };
 
-const GameBoard = () => {
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  onTilesClear, 
+  disabled = false, 
+  itemMode = null, 
+  onTileClick = null,
+  selectedSwapTile = null,
+  swapAnimations = null,
+  fractalAnimations = null,
+  onBoardRefresh = null,
+  isChallenge = false,
+  settings = {}
+}) => {
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [fixedLayout, setFixedLayout] = useState(null);
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef(new Map()).current;
+
+  const initTileScale = (index) => {
+    if (!tileScales.has(index)) {
+      tileScales.set(index, new Animated.Value(1));
+    }
+    return tileScales.get(index);
+  };
+
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.timing(tileScale, {
+      toValue: scale,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const getTileRotation = (row, col) => {
+    const seed = row * 13 + col * 7;
+    return (seed % 7) - 3; // -3 to 3 degrees
+  };
+
+  const getFixedBoardLayout = (availableWidth, availableHeight) => {
+    const { GRID_ROWS, GRID_COLS, TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
+    
+    const innerWidth = availableWidth - BOARD_PADDING * 2;
+    const innerHeight = availableHeight - BOARD_PADDING * 2;
+    
+    const tileWidth = (innerWidth - (GRID_COLS - 1) * TILE_GAP) / GRID_COLS;
+    const tileHeight = (innerHeight - (GRID_ROWS - 1) * TILE_GAP) / GRID_ROWS;
+    const tileSize = Math.min(tileWidth, tileHeight);
+    
+    const boardWidth = GRID_COLS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    const boardHeight = GRID_ROWS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    
+    const boardLeft = (screenWidth - boardWidth) / 2;
+    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    
+    return {
+      tileSize,
+      tileGap: TILE_GAP,
+      boardPadding: BOARD_PADDING,
+      boardWidth,
+      boardHeight,
+      boardLeft,
+      boardTop,
+      gridRows: GRID_ROWS,
+      gridCols: GRID_COLS,
+      getTilePosition: (row, col) => ({
+        x: col * (tileSize + TILE_GAP),
+        y: row * (tileSize + TILE_GAP),
+      }),
+    };
+  };
+
+  const resetSelection = () => {
+    setSelection(null);
+    hoveredTiles.forEach(index => {
+      scaleTile(index, 1);
+    });
+    setHoveredTiles(new Set());
+    
+    Animated.timing(selectionOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const isInsideGridArea = (pageX, pageY) => {
+    if (!fixedLayout) return false;
+    
+    const { boardLeft, boardTop, boardWidth, boardHeight } = fixedLayout;
+    
+    return pageX >= boardLeft && 
+           pageX <= boardLeft + boardWidth && 
+           pageY >= boardTop && 
+           pageY <= boardTop + boardHeight;
+  };
+
+  const isInRestrictedArea = (pageY) => {
+    const topRestrictedHeight = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    const bottomRestrictedHeight = screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+    
+    return pageY < topRestrictedHeight || pageY > bottomRestrictedHeight;
+  };
+
+  const getSelectedTiles = () => {
+    if (!selection) return [];
+    return getSelectedTilesForSelection(selection);
+  };
+
+  const getSelectedTilesForSelection = (sel) => {
+    if (!sel) return [];
+    
+    const { startRow, startCol, endRow, endCol } = sel;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = [];
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value > 0) {
+            selectedTiles.push({ row, col, value, index });
+          }
+        }
+      }
+    }
+    return selectedTiles;
+  };
+
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: (evt) => {
+      if (itemMode) return false;
+      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
+      const { pageX, pageY } = evt.nativeEvent;
+      return !disabled && isInsideGridArea(pageX, pageY);
+    },
+    onMoveShouldSetPanResponder: (evt) => {
+      if (itemMode) return false;
+      if (isInRestrictedArea(evt.nativeEvent.pageY)) return false;
+      const { pageX, pageY } = evt.nativeEvent;
+      return !disabled && isInsideGridArea(pageX, pageY);
+    },
+
+    onPanResponderGrant: (evt) => {
+      const { pageX, pageY } = evt.nativeEvent;
+      
+      if (!isInsideGridArea(pageX, pageY)) return;
+      
+      const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = fixedLayout;
+
+      const innerLeft = boardLeft + boardPadding;
+      const innerTop = boardTop + boardPadding;
+
+      const relativeX = pageX - innerLeft;
+      const relativeY = pageY - innerTop;
+
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+
+      const startCol = Math.floor(relativeX / cellWidth);
+      const startRow = Math.floor(relativeY / cellHeight);
+      
+      setSelection({
+        startRow,
+        startCol,
+        endRow: startRow,
+        endCol: startCol,
+      });
+      
+      Animated.timing(selectionOpacity, {
+        toValue: 0.6,
+        duration: 80,
+        useNativeDriver: false,
+      }).start();
+    },
+
+    onPanResponderMove: (evt) => {
+      if (!selection) return;
+      
+      const { pageX, pageY } = evt.nativeEvent;
+      
+      const { boardLeft, boardTop, boardWidth, boardHeight, boardPadding, tileSize, tileGap } = fixedLayout;
+
+      const innerLeft = boardLeft + boardPadding;
+      const innerTop = boardTop + boardPadding;
+      const innerWidth = boardWidth - boardPadding * 2;
+      const innerHeight = boardHeight - boardPadding * 2;
+
+      if (pageX < innerLeft || pageX > innerLeft + innerWidth ||
+          pageY < innerTop || pageY > innerTop + innerHeight) {
+        return;
+      }
+      
+      const relativeX = pageX - innerLeft;
+      const relativeY = pageY - innerTop;
+
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+
+      if (relativeX < 0 || relativeX >= width * cellWidth - tileGap ||
+          relativeY < 0 || relativeY >= height * cellHeight - tileGap) {
+        return;
+      }
+      
+      const endCol = Math.floor(relativeX / cellWidth);
+      const endRow = Math.floor(relativeY / cellHeight);
+      
+      if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
+        return;
+      }
+      
+      setSelection(prev => ({
+        ...prev,
+        endRow,
+        endCol,
+      }));
+
+      // Update hovered tiles with scaling effect
+      const newSelection = { ...selection, endRow, endCol };
+      const newSelectedTiles = getSelectedTilesForSelection(newSelection);
+      const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
+      
+      // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
+      const sum = newSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+      const targetScale = sum === 10 ? 1.1 : 1.05;
+      
+      newSelectedTiles.forEach(tile => {
+        if (!hoveredTiles.has(tile.index)) {
+          scaleTile(tile.index, targetScale);
+        }
+      });
+      
+      hoveredTiles.forEach(index => {
+        if (!newHoveredSet.has(index)) {
+          scaleTile(index, 1);
+        }
+      });
+      
+      setHoveredTiles(newHoveredSet);
+    },
+
+    onPanResponderRelease: () => {
+      if (selection && !disabled) {
+        handleSelectionComplete();
+      }
+      
+      hoveredTiles.forEach(index => {
+        scaleTile(index, 1);
+      });
+      setHoveredTiles(new Set());
+      
+      Animated.timing(selectionOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => {
+        setSelection(null);
+      });
+    },
+    
+    onPanResponderTerminationRequest: (evt) => {
+      const { pageX, pageY } = evt.nativeEvent;
+      const buttonAreaBottom = screenHeight - 80; // 底部道具栏区域
+      const buttonAreaTop = screenHeight - 160;
+      const topRestrictedHeight = 120; // 顶部HUD区域
+      
+      if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
+          pageY < topRestrictedHeight) {
+        return true;
+      }
+      
+      return true;
+    },
+    
+    onPanResponderReject: () => {
+      resetSelection();
+    },
+  });
+
+  // Handle tile click in item mode
+  const handleTilePress = (row, col, value) => {
+    if (!itemMode || disabled || value === 0) return;
+
   const handleSelectionComplete = async () => {
     if (!selection) return;
 

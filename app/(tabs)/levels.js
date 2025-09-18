@@ -30,48 +30,91 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-  // 计算方块的理想尺寸
-  const innerWidth = availableWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-  const innerHeight = availableHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-  
-  let tileSize;
-  
-  if (width && height) {
-    const adjustedTileWidth = (innerWidth - (width - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / width;
-    const adjustedTileHeight = (innerHeight - (height - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / height;
-    tileSize = Math.min(adjustedTileWidth, adjustedTileHeight);
-    
-    // 使用半个方块边长作为屏幕边距
-    const screenMargin = tileSize * 0.5;
-    
-    const boardWidth = width * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-    const boardHeight = height * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-    
-    // 左对齐布局，使用计算出的边距
-    const boardLeft = screenMargin;
-    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-    
-    return {
-      tileSize,
-      tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
-      boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
-      screenMargin,
-      boardWidth,
-      boardHeight,
-      boardLeft,
-      boardTop,
-      gridRows: height,
-      gridCols: width,
-      getTilePosition: (row, col) => ({
-        x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
-        y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
-      }),
+          boardWidth,
+          boardHeight,
+          boardLeft,
+          boardTop,
+          gridRows: height,
+          gridCols: width,
+          getTilePosition: (row, col) => ({
+            x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+            y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+          }),
+        };
+      }
+      
+      return calculateEffectiveAreaLayout();
     };
-  }
-  
-  return null;
-}
 
+    return calculateEffectiveAreaLayout();
+  };
+
+  const resetSelection = () => {
+    setSelection(null);
+    hoveredTiles.forEach(index => {
+      scaleTile(index, 1);
+    });
+    setHoveredTiles(new Set());
+    
+    Animated.timing(selectionOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const isInsideGridArea = (pageX, pageY) => {
+    if (!fixedLayout) return false;
+    
+    const { boardLeft, boardTop, boardWidth, boardHeight } = fixedLayout;
+    
+    return pageX >= boardLeft && 
+           pageX <= boardLeft + boardWidth && 
+           pageY >= boardTop && 
+           pageY <= boardTop + boardHeight;
+  };
+
+  const isInRestrictedArea = (pageY) => {
+    const topRestrictedHeight = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    const bottomRestrictedHeight = screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+    
+    return pageY < topRestrictedHeight || pageY > bottomRestrictedHeight;
+  };
+
+  const getSelectedTiles = () => {
+    if (!selection) return [];
+    return getSelectedTilesForSelection(selection);
+  };
+
+  const getSelectedTilesForSelection = (sel) => {
+    if (!sel) return [];
+    
+    const { startRow, startCol, endRow, endCol } = sel;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = [];
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value > 0) {
+            selectedTiles.push({ row, col, value, index });
+          }
+        }
+      }
+    }
+    return selectedTiles;
+  };
+
+  const handleSelectionComplete = async () => {
+    if (!selection) return;
+
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
 const GameBoard = ({ 
   tiles, 
   width, 

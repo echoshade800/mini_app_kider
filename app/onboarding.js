@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { UnifiedGameBoard } from './components/UnifiedGameBoard';
+import { GameBoard } from './components/GameBoard';
 
 // Tutorial board with easy 10-pairs
 const TUTORIAL_BOARD = {
@@ -155,7 +155,6 @@ export default function OnboardingScreen() {
           <GameBoard 
             board={TUTORIAL_BOARD}
             onTilesClear={handleTilesClear}
-            containerHeight={400}
           />
 
           <View style={styles.progressDots}>

@@ -36,33 +36,6 @@ export default function Home() {
     })();
   }, []);
 
-  const handleLevelsPress = () => {
-    console.log('🎯 Levels button pressed');
-    try {
-      router.push('/(tabs)/levels');
-    } catch (error) {
-      console.error('Navigation error:', error);
-    }
-  };
-
-  const handleChallengePress = () => {
-    console.log('🚀 Challenge button pressed');
-    try {
-      router.push('/(tabs)/challenge');
-    } catch (error) {
-      console.error('Navigation error:', error);
-    }
-  };
-
-  const handleProfilePress = () => {
-    console.log('⚙️ Profile button pressed');
-    try {
-      router.push('/(tabs)/profile');
-    } catch (error) {
-      console.error('Navigation error:', error);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       {/* 背景层 - 禁用指针事件 */}
@@ -83,7 +56,6 @@ export default function Home() {
             onPress={() => setShowGuide(true)}
             accessibilityLabel="新手引导"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.7}
           >
             <Text style={styles.topButtonText}>I</Text>
           </TouchableOpacity>
@@ -95,10 +67,9 @@ export default function Home() {
           
           <TouchableOpacity
             style={styles.topButton}
-            onPress={handleProfilePress}
+            onPress={() => router.push('/(tabs)/profile')}
             accessibilityLabel="设置"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.7}
           >
             <Text style={styles.topButtonText}>⚙</Text>
           </TouchableOpacity>
@@ -114,7 +85,7 @@ export default function Home() {
         <View style={styles.bottomButtonBar}>
           <TouchableOpacity
             style={styles.mainButton}
-            onPress={handleLevelsPress}
+            onPress={() => router.push('/(tabs)/levels')}
             accessibilityLabel="LEVELS 按钮"
             activeOpacity={0.8}
             pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
@@ -124,7 +95,7 @@ export default function Home() {
           
           <TouchableOpacity
             style={[styles.mainButton, styles.arcadeButton]}
-            onPress={handleChallengePress}
+            onPress={() => router.push('/(tabs)/challenge')}
             accessibilityLabel="ARCADE 按钮"
             activeOpacity={0.8}
             pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
@@ -150,7 +121,6 @@ export default function Home() {
             <TouchableOpacity 
               style={styles.guideCloseButton}
               onPress={() => setShowGuide(false)}
-              activeOpacity={0.8}
             >
               <Text style={styles.guideCloseButtonText}>Got it!</Text>
             </TouchableOpacity>

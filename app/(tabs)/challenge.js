@@ -108,13 +108,7 @@ export default function ChallengeScreen() {
   };
 
   const generateNewBoard = () => {
-    console.log('🚀 Generating new challenge board');
     const board = generateChallengeBoard();
-    console.log('🎯 Generated challenge board:', {
-      tilesLength: board.tiles?.length,
-      tileCount: board.tileCount,
-      seed: board.seed
-    });
     setCurrentBoard(board);
   };
 

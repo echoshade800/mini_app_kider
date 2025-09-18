@@ -24,41 +24,40 @@ export function UnifiedGameBoard({
   disabled = false,
   swapAnimations = new Map(),
   fractalAnimations = new Map(),
-  containerHeight = 600
 }) {
   const { settings } = useGameStore();
-  const [containerSize, setContainerSize] = useState({ width: 350, height: 600 }); // 设置合理的默认值
+  const [containerSize, setContainerSize] = useState({ width: 350, height: 600 });
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef({}).current;
+  const layoutUpdateRef = useRef(false);
 
   // 计算可用区域
   const usableWidth = Math.max(containerSize.width, 350); // 最小宽度350
   const usableHeight = Math.max(containerSize.height - 240, 400); // 扣除安全区域，最小高度400
   const tileCount = board?.tiles?.length || 0;
   
-  console.log('🎮 UnifiedGameBoard render:', {
-    containerSize,
-    usableWidth,
-    usableHeight,
-    tileCount,
-    hasBoardTiles: !!board?.tiles
-  });
-  
   const layout = useBoardLayout(usableWidth, usableHeight, tileCount);
 
   const onContainerLayout = useCallback((event) => {
     const { width, height } = event.nativeEvent.layout;
-    console.log('🔍 Container layout:', { 
-      width, 
-      height, 
-      containerHeight, 
-      usableWidth: Math.max(width, 350), 
-      usableHeight: Math.max(height - 240, 400) 
-    });
-    setContainerSize({ width, height });
+    
+    // 只有当尺寸变化超过阈值时才更新
+    const threshold = 10;
+    const widthChanged = Math.abs(width - containerSize.width) > threshold;
+    const heightChanged = Math.abs(height - containerSize.height) > threshold;
+    
+    if ((widthChanged || heightChanged) && !layoutUpdateRef.current) {
+      layoutUpdateRef.current = true;
+      setContainerSize({ width, height });
+      
+      // 防止频繁更新
+      setTimeout(() => {
+        layoutUpdateRef.current = false;
+      }, 100);
+    }
   }, []);
 
   // 获取方块旋转角度（稳定的随机值）
@@ -411,24 +410,12 @@ export function UnifiedGameBoard({
   };
 
   if (!board || !layout) {
-    console.log('❌ Board or layout missing:', { 
-      hasBoard: !!board, 
-      hasLayout: !!layout,
-      boardTiles: board?.tiles?.length,
-      layoutSlots: layout?.slots?.length
-    });
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
       </View>
     );
   }
-
-  console.log('✅ Rendering board successfully:', {
-    boardTiles: board.tiles.length,
-    layoutSlots: layout.slots.length,
-    containerSize
-  });
 
   const selectionStyle = getSelectionStyle();
 

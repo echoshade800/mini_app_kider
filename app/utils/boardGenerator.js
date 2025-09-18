@@ -262,12 +262,21 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const width = layout.gridCols;
   const height = layout.gridRows;
   
-  // 根据关卡获取目标填充数量，然后计算最佳矩形
-  const targetFillCount = getTileFillCount(level);
-  const optimalRect = calculateOptimalRect(targetFillCount);
-  const activeRows = optimalRect.rows;
-  const activeCols = optimalRect.cols;
-  const activeSize = activeRows * activeCols;
+  let activeRows, activeCols, activeSize;
+  
+  if (isChallenge) {
+    // 挑战模式：直接使用最大填充（整个棋盘）
+    activeRows = height;
+    activeCols = width;
+    activeSize = width * height;
+  } else {
+    // 关卡模式：根据关卡获取目标填充数量，然后计算最佳矩形
+    const targetFillCount = getTileFillCount(level);
+    const optimalRect = calculateOptimalRect(targetFillCount);
+    activeRows = optimalRect.rows;
+    activeCols = optimalRect.cols;
+    activeSize = activeRows * activeCols;
+  }
   
   // Calculate centered position
   const { rowOffset, colOffset } = getActivationOffset(height, width, activeRows, activeCols);

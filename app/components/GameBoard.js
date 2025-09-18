@@ -172,7 +172,6 @@ const GameBoard = ({
 
   // 初始化布局
   React.useEffect(() => {
-    console.log('📐 重新计算棋盘布局', { width, height, screenWidth, screenHeight });
     const layout = calculateBoardLayout();
     setBoardLayout(layout);
     
@@ -180,6 +179,14 @@ const GameBoard = ({
     if (layout.tileSize === EFFECTIVE_AREA_CONFIG.MIN_TILE_SIZE) {
       console.log('🔧 使用最小方块尺寸限制');
     }
+  }, [width, height, screenWidth, screenHeight]);
+
+  // 🎯 监控tiles变化，避免在选择过程中更新
+  React.useEffect(() => {
+    if (selection) {
+      console.log('⚠️  检测到在选择过程中tiles发生变化，可能导致刷新问题');
+    }
+  }, [tiles, selection]);
 
   const resetSelection = () => {
     setSelection(null);

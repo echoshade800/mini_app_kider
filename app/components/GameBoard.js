@@ -76,7 +76,10 @@ const GameBoard = ({
   const resetSelection = () => {
     setSelection(null);
     hoveredTiles.forEach(index => {
-      scaleTile(index, 1);
+      // 直接调用父组件的清除回调，不做任何额外处理
+      if (onTilesClear) {
+        onTilesClear(clearedPositions);
+      }
     });
     setHoveredTiles(new Set());
     
@@ -449,8 +452,10 @@ const GameBoard = ({
   const renderTile = (value, row, col) => {
     const index = row * width + col;
     
-    // 所有格子都显示数字方块，值为0时显示随机数字
-    const displayValue = value === 0 ? Math.floor(Math.random() * 9) + 1 : value;
+    // 只有非零值才显示数字方块，值为0时不显示任何内容
+    if (value === 0) {
+      return null; // 空位不渲染任何内容
+    }
 
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
@@ -537,7 +542,7 @@ const GameBoard = ({
               fontSize: Math.max(12, tilePos.width * 0.5),
             }
           ]}>
-            {displayValue}
+            {value}
           </Text>
         </Animated.View>
       </View>

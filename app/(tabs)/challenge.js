@@ -109,14 +109,14 @@ export default function ChallengeScreen() {
   };
 
   const handleTilesClear = (clearedPositions) => {
-    // Award points
+    // 奖励分数
     const newIQ = currentIQ + POINTS_PER_CLEAR;
     setCurrentIQ(newIQ);
     
-    // Reset reshuffle count on successful clear
+    // 成功消除后重置重排计数
     setReshuffleCount(0);
 
-    // Update board by removing cleared tiles
+    // 更新棋盘：移除被清除的方块
     if (board) {
       const newTiles = [...board.tiles];
       clearedPositions.forEach(pos => {
@@ -124,16 +124,16 @@ export default function ChallengeScreen() {
         newTiles[index] = 0;
       });
       
-      // Check if board is completely empty
+      // 检查棋盘是否完全清空
       const remainingTiles = newTiles.filter(tile => tile > 0).length;
       
       if (remainingTiles === 0) {
-        // Board completely cleared - generate new board after short delay
+        // 棋盘完全清空 - 短暂延迟后生成新棋盘（挑战模式特有）
         setTimeout(() => {
           generateNewBoard();
         }, 500);
       } else {
-        // Update current board
+        // 更新当前棋盘状态
         setBoard(prev => ({
           ...prev,
           tiles: newTiles

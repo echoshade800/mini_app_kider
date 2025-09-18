@@ -49,21 +49,21 @@ export default function LevelDetailScreen() {
   const handleTilesClear = (clearedPositions) => {
     if (!board) return;
 
-    // Update board by removing cleared tiles
+    // 更新棋盘：将被清除的方块设为0（空位）
     const newTiles = [...board.tiles];
     clearedPositions.forEach(pos => {
       const index = pos.row * board.width + pos.col;
       newTiles[index] = 0;
     });
 
-    // Check if board is completely empty
+    // 检查棋盘是否完全清空（所有非零方块都被消除）
     const remainingTiles = newTiles.filter(tile => tile > 0).length;
     
     if (remainingTiles === 0) {
-      // Level completed! Show completion modal
+      // 关卡完成！显示完成弹窗
       setShowCompletionModal(true);
       
-      // Update progress
+      // 更新进度
       const currentMaxLevel = gameData?.maxLevel || 0;
       const newMaxLevel = Math.max(currentMaxLevel, level);
       const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
@@ -74,16 +74,16 @@ export default function LevelDetailScreen() {
         swapMasterItems: newSwapMasterItems,
       });
       
-      return; // Don't update board, show completion modal instead
+      return; // 不更新棋盘，直接显示完成弹窗
     }
 
-    // Update current board with cleared tiles
+    // 更新当前棋盘状态（被清除的位置变为空位）
     setBoard(prev => ({
       ...prev,
       tiles: newTiles
     }));
 
-    // Reset reshuffle count on successful clear
+    // 成功消除后重置重排计数
     setReshuffleCount(0);
   };
 

@@ -726,10 +726,10 @@ const GameBoard = ({
           <View
             style={{
               position: 'absolute',
-              left: boardLayout.boardPadding,
-              top: boardLayout.boardPadding,
-              width: width * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
-              height: height * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
+             left: boardLayout.boardPadding - boardLayout.tileInnerPadding,
+             top: boardLayout.boardPadding - boardLayout.tileInnerPadding,
+             width: width * (boardLayout.cellSize + boardLayout.tileGap) - boardLayout.tileGap + boardLayout.tileInnerPadding * 2,
+             height: height * (boardLayout.cellSize + boardLayout.tileGap) - boardLayout.tileGap + boardLayout.tileInnerPadding * 2,
             }}
           >
             {renderGridBackground()}

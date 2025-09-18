@@ -49,6 +49,92 @@ function calculateEffectiveAreaLayout() {
           gridCols: width,
           getTilePosition: (row, col) => ({
             x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+            y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+          }),
+        };
+}
+
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  onTilesClear, 
+  disabled, 
+  itemMode, 
+  onTileClick, 
+  selectedSwapTile, 
+  swapAnimations, 
+  fractalAnimations, 
+  onBoardRefresh, 
+  settings, 
+  isChallenge 
+}) => {
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  const [fixedLayout, setFixedLayout] = useState(null);
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
+  const tileScales = useRef(new Map()).current;
+
+  const initTileScale = (index) => {
+    if (!tileScales.has(index)) {
+      tileScales.set(index, new Animated.Value(1));
+    }
+    return tileScales.get(index);
+  };
+
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.timing(tileScale, {
+      toValue: scale,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const getTileRotation = (row, col) => {
+    const seed = row * 1000 + col;
+    const random = (seed * 9301 + 49297) % 233280;
+    return ((random / 233280) - 0.5) * 6; // -3 to +3 degrees
+  };
+
+  const getFixedBoardLayout = (availableWidth, availableHeight) => {
+    const { GRID_ROWS, GRID_COLS, TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
+    
+    const maxTileWidth = (availableWidth - BOARD_PADDING * 2 - (GRID_COLS - 1) * TILE_GAP) / GRID_COLS;
+    const maxTileHeight = (availableHeight - BOARD_PADDING * 2 - (GRID_ROWS - 1) * TILE_GAP) / GRID_ROWS;
+    
+    const tileSize = Math.floor(Math.min(maxTileWidth, maxTileHeight));
+    
+    const boardWidth = GRID_COLS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    const boardHeight = GRID_ROWS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    
+    const boardLeft = (screenWidth - boardWidth) / 2;
+    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    
+    return {
+      tileSize,
+      tileGap: TILE_GAP,
+      boardPadding: BOARD_PADDING,
+      boardWidth,
+      boardHeight,
+      boardLeft,
+      boardTop,
+      gridRows: GRID_ROWS,
+      gridCols: GRID_COLS,
+      getTilePosition: (row, col) => ({
+        x: col * (tileSize + TILE_GAP),
+        y: row * (tileSize + TILE_GAP),
+      }),
+    };
+  };
+
+  const resetSelection = () => {
     setSelection(null);
     hoveredTiles.forEach(index => {
       scaleTile(index, 1);

@@ -142,6 +142,9 @@ export function computeBoardLayout(usableW, usableH, tileCount) {
 }
 
 export function useBoardLayout(usableW, usableH, tileCount) {
+  return useMemo(() => {
+    const safeTileCount = Math.max(0, tileCount || 0);
+    const layout = computeBoardLayout(usableW, usableH, safeTileCount);
     
     if (safeTileCount <= 0) {
       return null;

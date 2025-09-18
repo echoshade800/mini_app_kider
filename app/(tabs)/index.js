@@ -19,6 +19,18 @@ export default function Home() {
   const [iq, setIq] = useState(0);
   const [showGuide, setShowGuide] = useState(false);
 
+  const handleChallengePress = () => {
+    console.log('🎮 [DEBUG] Challenge button clicked');
+    try {
+      console.log('🎮 [DEBUG] Current route info:', router);
+      console.log('🎮 [DEBUG] Navigating to challenge mode...');
+      router.push('/(tabs)/challenge');
+      console.log('🎮 [DEBUG] Navigation command executed');
+    } catch (error) {
+      console.error('🎮 [ERROR] Navigation failed:', error);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {

@@ -62,8 +62,13 @@ export default function LevelsScreen() {
   };
 
   const handleLevelPress = (level) => {
+    console.log('🎮 Level pressed:', level.level);
     if (level.isUnlocked) {
-      router.push(`/details/${level.level}`);
+      try {
+        router.push(`/details/${level.level}`);
+      } catch (error) {
+        console.error('Navigation error:', error);
+      }
     }
   };
 

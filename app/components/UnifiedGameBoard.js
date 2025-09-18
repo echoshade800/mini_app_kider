@@ -411,7 +411,12 @@ export function UnifiedGameBoard({
   };
 
   if (!board || !layout) {
-    console.log('❌ Board or layout missing:', { hasBoard: !!board, hasLayout: !!layout });
+    console.log('❌ Board or layout missing:', { 
+      hasBoard: !!board, 
+      hasLayout: !!layout,
+      boardTiles: board?.tiles?.length,
+      layoutSlots: layout?.slots?.length
+    });
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -419,7 +424,11 @@ export function UnifiedGameBoard({
     );
   }
 
-  console.log('✅ Rendering board successfully');
+  console.log('✅ Rendering board successfully:', {
+    boardTiles: board.tiles.length,
+    layoutSlots: layout.slots.length,
+    containerSize
+  });
 
   const selectionStyle = getSelectionStyle();
 

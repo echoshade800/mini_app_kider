@@ -156,24 +156,17 @@ export function computeBoardLayout(usableW, usableH, tileCount) {
 }
 
 export function useBoardLayout(usableW, usableH, tileCount) {
-  return useMemo(() => {
-    console.log('🎯 useBoardLayout called with:', { 
-      original: { usableW, usableH, tileCount }
-    });
-    
     // 确保有合理的默认值
     const safeUsableW = Math.max(usableW || 350, 350);
     const safeUsableH = Math.max(usableH || 400, 400);
     const safeTileCount = Math.max(tileCount || 16, 1);
     
-    console.log('🔧 Safe values:', { safeUsableW, safeUsableH, safeTileCount });
-    
     if (safeTileCount <= 0) {
-      console.log('❌ Invalid tile count, returning null');
       return null;
     }
     
     const layout = computeBoardLayout(safeUsableW, safeUsableH, safeTileCount);
+    console.log('📐 Layout result:', layout ? 'success' : 'failed');
     return layout;
   }, [usableW, usableH, tileCount]);
 }

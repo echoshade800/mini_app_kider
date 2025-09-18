@@ -14,14 +14,9 @@ import {
   Animated,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import RescueModal from '../components/RescueModal';
+import RescueModal from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-// 检查棋盘是否为空
-const isBoardEmpty = (tiles) => {
-  return tiles.every(tile => tile === 0);
-};
 
 // 有效游戏区域配置
 const EFFECTIVE_AREA_CONFIG = {
@@ -35,40 +30,10 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-  const topReserved = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-  const bottomReserved = EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
-  const availableHeight = screenHeight - topReserved - bottomReserved;
-  
-  return {
-    topReserved,
-    bottomReserved,
-    availableHeight,
-    availableWidth: screenWidth,
-  };
-}
-
-const GameBoard = ({ 
-  tiles, 
-  width, 
-  height, 
-  onTilesClear, 
-  disabled = false, 
-  itemMode = null, 
-  onTileClick = null,
-  selectedSwapTile = null,
-  swapAnimations = null,
-  fractalAnimations = null,
-  onBoardRefresh = null,
-  isChallenge = false,
-  settings = {}
-}) => {
-  const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [fixedLayout, setFixedLayout] = useState(null);
+  const [boardLayout, setBoardLayout] = useState(null);
   const [showRescueModal, setShowRescueModal] = useState(false);
-  const [reshuffleCount, setReshuffleCount] = useState(0);
-
+  
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
@@ -85,48 +50,25 @@ const GameBoard = ({
     const tileScale = initTileScale(index);
     Animated.timing(tileScale, {
       toValue: scale,
-      duration: 150,
+      duration: 100,
       useNativeDriver: true,
     }).start();
   };
 
   const getTileRotation = (row, col) => {
-    const seed = row * 13 + col * 7;
-    return (seed % 7) - 3; // -3 to 3 degrees
+    const seed = row * 31 + col * 17;
+    return ((seed % 7) - 3) * 0.8;
   };
 
-  const getFixedBoardLayout = (availableWidth, availableHeight) => {
-    const { GRID_ROWS, GRID_COLS, TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
-    
-    const innerWidth = availableWidth - BOARD_PADDING * 2;
-    const innerHeight = availableHeight - BOARD_PADDING * 2;
-    
-    const tileWidth = (innerWidth - (GRID_COLS - 1) * TILE_GAP) / GRID_COLS;
-    const tileHeight = (innerHeight - (GRID_ROWS - 1) * TILE_GAP) / GRID_ROWS;
-    const tileSize = Math.min(tileWidth, tileHeight);
-    
-    const boardWidth = GRID_COLS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
-    const boardHeight = GRID_ROWS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
-    
-    const boardLeft = (screenWidth - boardWidth) / 2;
-    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-    
-    return {
-      tileSize,
-      tileGap: TILE_GAP,
-      boardPadding: BOARD_PADDING,
-      boardWidth,
-      boardHeight,
-      boardLeft,
-      boardTop,
-      gridRows: GRID_ROWS,
-      gridCols: GRID_COLS,
-      getTilePosition: (row, col) => ({
-        x: col * (tileSize + TILE_GAP),
-        y: row * (tileSize + TILE_GAP),
-      }),
-    };
+  const calculateBoardLayout = () => {
+    return calculateEffectiveAreaLayout();
   };
+
+  // 初始化布局
+  React.useEffect(() => {
+    const layout = calculateBoardLayout();
+    setBoardLayout(layout);
+  }, [width, height, isChallenge]);
 
   const resetSelection = () => {
     setSelection(null);
@@ -143,9 +85,9 @@ const GameBoard = ({
   };
 
   const isInsideGridArea = (pageX, pageY) => {
-    if (!fixedLayout) return false;
+    if (!boardLayout) return false;
     
-    const { boardLeft, boardTop, boardWidth, boardHeight } = fixedLayout;
+    const { boardLeft, boardTop, boardWidth, boardHeight } = boardLayout;
     
     return pageX >= boardLeft && 
            pageX <= boardLeft + boardWidth && 
@@ -189,6 +131,99 @@ const GameBoard = ({
     return selectedTiles;
   };
 
+  const handleSelectionComplete = async () => {
+    if (!selection) return;
+
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+
+    if (sum === 10 && selectedTiles.length > 0) {
+      // 重置重排计数
+      setReshuffleCount(0);
+      
+      // Success - create explosion effect with yellow "10" note
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      
+      // Calculate explosion center position
+      const { startRow, startCol, endRow, endCol } = selection;
+      const centerRow = (startRow + endRow) / 2;
+      const centerCol = (startCol + endCol) / 2;
+
+      if (!boardLayout) return;
+
+      const { tileSize, tileGap } = boardLayout;
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+
+      const explosionX = centerCol * cellWidth + tileSize / 2;
+      const explosionY = centerRow * cellHeight + tileSize / 2;
+      
+      setExplosionAnimation({ x: explosionX, y: explosionY });
+      
+      // Explosion animation - yellow "10" note
+      explosionScale.setValue(0.5);
+      explosionOpacity.setValue(1);
+      
+      Animated.parallel([
+        Animated.timing(explosionScale, {
+          toValue: 2.0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(explosionOpacity, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setExplosionAnimation(null);
+      });
+
+      // Selection box animation - bright green glow
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+        onTilesClear(tilePositions);
+      });
+
+    } else if (selectedTiles.length > 0) {
+      // Failure - blue feedback with short vibration
+      if (settings?.hapticsEnabled !== false) {
+        Haptics.selectionAsync();
+      }
+      
+      Animated.sequence([
+        Animated.timing(selectionOpacity, {
+          toValue: 0.4,
+          duration: 150,
+          useNativeDriver: false,
+        }),
+        Animated.timing(selectionOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setSelection(null);
+      });
+    } else {
+      setSelection(null);
+    }
+  };
+
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
@@ -208,7 +243,7 @@ const GameBoard = ({
       
       if (!isInsideGridArea(pageX, pageY)) return;
       
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = fixedLayout;
+      const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = boardLayout;
 
       const innerLeft = boardLeft + boardPadding;
       const innerTop = boardTop + boardPadding;
@@ -241,7 +276,7 @@ const GameBoard = ({
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      const { boardLeft, boardTop, boardWidth, boardHeight, boardPadding, tileSize, tileGap } = fixedLayout;
+      const { boardLeft, boardTop, boardWidth, boardHeight, boardPadding, tileSize, tileGap } = boardLayout;
 
       const innerLeft = boardLeft + boardPadding;
       const innerTop = boardTop + boardPadding;
@@ -322,9 +357,9 @@ const GameBoard = ({
     
     onPanResponderTerminationRequest: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
-      const buttonAreaBottom = screenHeight - 80; // 底部道具栏区域
+      const buttonAreaBottom = screenHeight - 80;
       const buttonAreaTop = screenHeight - 160;
-      const topRestrictedHeight = 120; // 顶部HUD区域
+      const topRestrictedHeight = 120;
       
       if ((pageY >= buttonAreaTop && pageY <= buttonAreaBottom) || 
           pageY < topRestrictedHeight) {
@@ -352,113 +387,15 @@ const GameBoard = ({
     }
   };
 
-  const handleSelectionComplete = async () => {
-    if (!selection) return;
-
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
-
-    if (sum === 10 && selectedTiles.length > 0) {
-      // 重置重排计数
-      setReshuffleCount(0);
-      
-      // Success - create explosion effect with yellow "10" note
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-      
-      // Calculate explosion center position
-      const { startRow, startCol, endRow, endCol } = selection;
-      const centerRow = (startRow + endRow) / 2;
-      const centerCol = (startCol + endCol) / 2;
-
-      if (!fixedLayout) return;
-
-      const { tileSize, tileGap } = fixedLayout;
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
-
-      const explosionX = centerCol * cellWidth + tileSize / 2;
-      const explosionY = centerRow * cellHeight + tileSize / 2;
-      
-      setExplosionAnimation({ x: explosionX, y: explosionY });
-      
-      // Explosion animation - yellow "10" note
-      explosionScale.setValue(0.5);
-      explosionOpacity.setValue(1);
-      
-      Animated.parallel([
-        Animated.timing(explosionScale, {
-          toValue: 2.0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(explosionOpacity, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setExplosionAnimation(null);
-      });
-
-      // Selection box animation - bright green glow
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.8,
-          duration: 200,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-        onTilesClear(tilePositions);
-      });
-
-    } else if (selectedTiles.length > 0) {
-      // Failure - blue feedback with short vibration
-      if (settings?.hapticsEnabled !== false) {
-        Haptics.selectionAsync();
-      }
-      
-      Animated.sequence([
-        Animated.timing(selectionOpacity, {
-          toValue: 0.4,
-          duration: 150,
-          useNativeDriver: false,
-        }),
-        Animated.timing(selectionOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-      ]).start(() => {
-        setSelection(null);
-      });
-    } else {
-      setSelection(null);
-    }
-  };
-
   // 处理救援选择
   const handleRescueContinue = () => {
     setShowRescueModal(false);
     setReshuffleCount(0);
-    // 这里可以触发道具使用逻辑
   };
 
   const handleRescueReturn = () => {
     setShowRescueModal(false);
     setReshuffleCount(0);
-    // 返回主页面的逻辑由父组件处理
-    if (onBoardRefresh) {
-      onBoardRefresh('return');
-    }
   };
 
   const getSelectionStyle = () => {
@@ -474,9 +411,9 @@ const GameBoard = ({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    if (!fixedLayout) return null;
+    if (!boardLayout) return null;
 
-    const { tileSize, tileGap } = fixedLayout;
+    const { tileSize, tileGap } = boardLayout;
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
 
@@ -516,9 +453,9 @@ const GameBoard = ({
     const maxRow = Math.max(startRow, endRow);
     const maxCol = Math.max(startCol, endCol);
     
-    if (!fixedLayout) return null;
+    if (!boardLayout) return null;
 
-    const { tileSize, tileGap } = fixedLayout;
+    const { tileSize, tileGap } = boardLayout;
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
 
@@ -545,39 +482,39 @@ const GameBoard = ({
         shadowOpacity: 0.3,
         shadowRadius: 4,
         elevation: 6,
-        transform: [{ rotate: '-2deg' }], // Slight rotation like sticky note
+        transform: [{ rotate: '-2deg' }],
       }
     };
   };
 
-  const renderFixedGridBackground = () => {
-    if (!fixedLayout) return null;
+  const renderGridBackground = () => {
+    if (!boardLayout) return null;
 
-    const { gridRows, gridCols, tileSize, tileGap } = fixedLayout;
+    const { tileSize, tileGap } = boardLayout;
     const lines = [];
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
 
-    // Vertical lines
-    for (let i = 1; i < gridCols; i++) {
+    // 垂直网格线
+    for (let i = 0; i <= width; i++) {
       lines.push(
         <View
           key={`v-${i}`}
           style={[
             styles.gridLine,
             {
-              left: i * cellWidth - tileGap / 2,
+              left: i * cellWidth - (i === 0 ? 0 : tileGap / 2),
               top: 0,
-              width: 1,
-              height: gridRows * cellHeight - tileGap,
+              width: i === 0 || i === width ? 2 : 1,
+              height: height * cellHeight - tileGap,
             }
           ]}
         />
       );
     }
 
-    // Horizontal lines
-    for (let i = 1; i < gridRows; i++) {
+    // 水平网格线
+    for (let i = 0; i <= height; i++) {
       lines.push(
         <View
           key={`h-${i}`}
@@ -585,9 +522,9 @@ const GameBoard = ({
             styles.gridLine,
             {
               left: 0,
-              top: i * cellHeight - tileGap / 2,
-              width: gridCols * cellWidth - tileGap,
-              height: 1,
+              top: i * cellHeight - (i === 0 ? 0 : tileGap / 2),
+              width: width * cellWidth - tileGap,
+              height: i === 0 || i === height ? 2 : 1,
             }
           ]}
         />
@@ -598,92 +535,18 @@ const GameBoard = ({
   };
 
   const renderTile = (value, row, col) => {
-    if (!fixedLayout) return null;
+    if (!boardLayout) return null;
 
     const index = row * width + col;
     
-    if (value === 0) {
-      // 检查是否有临时跳跃动画
-      const tempAnimKeys = Array.from(fractalAnimations ? fractalAnimations.keys() : [])
-        .filter(key => key.toString().startsWith(`temp_${index}_`));
-      
-      if (tempAnimKeys.length > 0) {
-        // 渲染跳跃中的临时方块
-        return tempAnimKeys.map(tempKey => {
-          const tempAnim = fractalAnimations.get(tempKey);
-          if (!tempAnim) return null;
-          
-          const { x, y } = fixedLayout.getTilePosition(row, col);
-          const rotation = getTileRotation(row, col);
-          
-          const transforms = [
-            { scale: tempAnim.scale },
-            { rotate: `${rotation}deg` },
-            { translateX: tempAnim.translateX },
-            { translateY: tempAnim.translateY },
-          ];
-          
-          // 获取正确的分解数值
-          const displayValue = tempAnim.value || Math.floor(Math.random() * 9) + 1;
-          
-          return (
-            <Animated.View 
-              key={tempKey}
-              style={[
-                { 
-                  position: 'absolute',
-                  left: x,
-                  top: y,
-                  width: fixedLayout.tileSize,
-                  height: fixedLayout.tileSize,
-                  transform: transforms,
-                  opacity: tempAnim.opacity,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }
-              ]}
-            >
-              <View style={styles.tileInner}>
-                <Text style={[
-                  styles.tileText,
-                  { 
-                    fontSize: Math.max(14, fixedLayout.tileSize * 0.45),
-                    lineHeight: fixedLayout.tileSize,
-                  }
-                ]}>
-                  {displayValue}
-                </Text>
-              </View>
-            </Animated.View>
-          );
-        });
-      }
-      
-      // 检查是否完全清空（仅挑战模式需要刷新）
-      if (isChallenge) {
-        const newTiles = [...tiles];
-        const tilePositions = []; // This should be defined somewhere
-        tilePositions.forEach(pos => {
-          const index = pos.row * width + pos.col;
-          newTiles[index] = 0;
-        });
-        
-        if (isBoardEmpty(newTiles) && onBoardRefresh) {
-          // 棋盘全清，生成新棋盘
-          setTimeout(() => {
-            onBoardRefresh('refresh');
-          }, 1000);
-        }
-      }
-      
-      return null;
-    }
+    // 所有格子都显示数字方块，值为0时显示随机数字
+    const displayValue = value === 0 ? Math.floor(Math.random() * 9) + 1 : value;
 
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
     }
 
-    const { x, y } = fixedLayout.getTilePosition(row, col);
+    const { x, y } = boardLayout.getTilePosition(row, col);
 
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
@@ -738,8 +601,8 @@ const GameBoard = ({
           position: 'absolute',
           left: x,
           top: y,
-          width: fixedLayout.tileSize,
-          height: fixedLayout.tileSize,
+          width: boardLayout.tileSize,
+          height: boardLayout.tileSize,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -760,30 +623,20 @@ const GameBoard = ({
           <Text style={[
             styles.tileText,
             { 
-              fontSize: Math.max(14, fixedLayout.tileSize * 0.45),
-              lineHeight: fixedLayout.tileSize,
+              fontSize: Math.max(12, boardLayout.tileSize * 0.5),
             }
           ]}>
-            {value}
+            {displayValue}
           </Text>
         </Animated.View>
       </View>
     );
   };
 
-  // 初始化固定布局
-  React.useEffect(() => {
-    const availableWidth = screenWidth;
-    const availableHeight = isChallenge ? screenHeight - 240 : screenHeight - 200; // 为HUD和道具栏留空间
-    
-    const layout = getFixedBoardLayout(availableWidth, availableHeight);
-    setFixedLayout(layout);
-  }, [isChallenge]);
-
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();
 
-  if (!fixedLayout) {
+  if (!boardLayout) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -799,36 +652,35 @@ const GameBoard = ({
             styles.chalkboard,
             {
               position: 'absolute',
-              left: fixedLayout.boardLeft,
-              top: fixedLayout.boardTop,
-              width: fixedLayout.boardWidth,
-              height: fixedLayout.boardHeight,
+              left: boardLayout.boardLeft,
+              top: boardLayout.boardTop,
+              width: boardLayout.boardWidth,
+              height: boardLayout.boardHeight,
             }
           ]}
         >
-          {/* 固定网格背景 */}
+          {/* 网格背景 */}
           <View
             style={{
               position: 'absolute',
-              left: fixedLayout.boardPadding,
-              top: fixedLayout.boardPadding,
-              width: fixedLayout.gridCols * (fixedLayout.tileSize + fixedLayout.tileGap) - fixedLayout.tileGap,
-              height: fixedLayout.gridRows * (fixedLayout.tileSize + fixedLayout.tileGap) - fixedLayout.tileGap,
+              left: boardLayout.boardPadding,
+              top: boardLayout.boardPadding,
+              width: width * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
+              height: height * (boardLayout.tileSize + boardLayout.tileGap) - boardLayout.tileGap,
             }}
           >
-            {/* Grid lines */}
-            {renderFixedGridBackground()}
+            {renderGridBackground()}
           </View>
           
-          {/* 动态数字方块 */}
+          {/* 数字方块 */}
           <View
             style={{
               position: 'absolute',
-              left: fixedLayout.boardPadding,
-              top: fixedLayout.boardPadding,
+              left: boardLayout.boardPadding,
+              top: boardLayout.boardPadding,
             }}
           >
-            {/* Render tiles based on board data */}
+            {/* 渲染所有方块 */}
             {tiles.map((value, index) => {
               const row = Math.floor(index / width);
               const col = index % width;
@@ -923,7 +775,7 @@ const styles = StyleSheet.create({
   },
   gridLine: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)', // Semi-transparent white grid lines
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // 更清晰的网格线
   },
   tileInner: {
     width: '100%',
@@ -931,15 +783,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFF9E6', // Cream white sticky note
-    borderRadius: 3, // 更小的圆角，更接近参考图片
+    borderRadius: 3,
     borderWidth: 1,
     borderColor: '#333',
     shadowColor: '#000',
     shadowOffset: {
-      width: 1,
-      height: 1,
+      width: 0.5,
+      height: 0.5,
     },
-    shadowOpacity: 0.2, // 减轻阴影，更接近参考图片
+    shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 3,
   },
@@ -955,8 +807,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111',
     textAlign: 'center',
-    textAlignVertical: 'center',
-    includeFontPadding: false,
   },
   sumText: {
     fontSize: 16,

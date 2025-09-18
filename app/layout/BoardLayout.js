@@ -111,11 +111,54 @@ export function computeTileSize(containerWidth, containerHeight, rows, cols, gap
  * 自适应棋盘布局计算
  * @param {number} N - 数字方块数量
  * @param {number} targetAspect - 期望宽高比（可选）
+ * @param {number} level - 关卡等级（用于特殊处理）
  * @returns {Object} 完整布局信息
  */
-export function computeAdaptiveLayout(N, targetAspect = null) {
+export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
   const gameArea = getEffectiveGameArea();
   let { rows, cols } = computeGridRC(N, targetAspect);
+  
+  // 前35关：使用第35关的方块尺寸作为基准
+  if (level && level <= 35) {
+    const level35TileCount = getTileCount(35, false);
+    const level35Layout = computeGridRC(level35TileCount, targetAspect);
+    const level35TileSize = computeTileSize(
+      gameArea.width, 
+      gameArea.height, 
+      level35Layout.rows, 
+      level35Layout.cols
+    );
+    
+    if (level35TileSize.isValid) {
+      const targetTileSize = level35TileSize.tileSize;
+      
+      // 使用目标方块尺寸反推棋盘尺寸
+      const contentWidth = 2 * BOARD_PADDING + cols * targetTileSize + (cols - 1) * TILE_GAP;
+      const contentHeight = 2 * BOARD_PADDING + rows * targetTileSize + (rows - 1) * TILE_GAP;
+      const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
+      const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
+      
+      // 检查是否能放入有效区域
+      if (boardWidth <= gameArea.width && boardHeight <= gameArea.height) {
+        const boardLeft = (gameArea.width - boardWidth) / 2;
+        const boardTop = gameArea.top + (gameArea.height - boardHeight) / 2;
+        
+        return {
+          tileSize: targetTileSize,
+          boardWidth,
+          boardHeight,
+          contentWidth,
+          contentHeight,
+          rows,
+          cols,
+          boardLeft,
+          boardTop,
+          gameArea,
+          isValid: true,
+        };
+      }
+    }
+  }
   
   // 策略a: 尝试在有效区域内放大棋盘
   let layout = computeTileSize(gameArea.width, gameArea.height, rows, cols);
@@ -225,10 +268,11 @@ export function layoutTiles(rows, cols, tileSize, gap = TILE_GAP, padding = BOAR
  * 获取完整的棋盘布局配置
  * @param {number} N - 数字方块数量
  * @param {number} targetAspect - 期望宽高比（可选）
+ * @param {number} level - 关卡等级（可选）
  * @returns {Object} 完整布局配置
  */
-export function getBoardLayoutConfig(N, targetAspect = null) {
-  const layout = computeAdaptiveLayout(N, targetAspect);
+export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
+  const layout = computeAdaptiveLayout(N, targetAspect, level);
   const getTilePosition = layoutTiles(layout.rows, layout.cols, layout.tileSize);
   
   return {

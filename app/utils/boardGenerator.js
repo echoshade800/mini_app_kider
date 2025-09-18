@@ -90,7 +90,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const tileCount = getTileCount(level, isChallenge);
   
   // 使用新的自适应布局系统
-  const layoutConfig = getBoardLayoutConfig(tileCount);
+  const layoutConfig = getBoardLayoutConfig(tileCount, null, isChallenge ? null : level);
   const { rows, cols } = layoutConfig;
   const totalSlots = rows * cols;
   

@@ -38,6 +38,15 @@ export function UnifiedGameBoard({
   const usableWidth = Math.max(containerSize.width, 350); // 最小宽度350
   const usableHeight = Math.max(containerSize.height - 240, 400); // 扣除安全区域，最小高度400
   const tileCount = board?.tiles?.length || 0;
+  
+  console.log('🎮 UnifiedGameBoard render:', {
+    containerSize,
+    usableWidth,
+    usableHeight,
+    tileCount,
+    hasBoardTiles: !!board?.tiles
+  });
+  
   const layout = useBoardLayout(usableWidth, usableHeight, tileCount);
 
   const onContainerLayout = useCallback((event) => {
@@ -402,13 +411,7 @@ export function UnifiedGameBoard({
   };
 
   if (!board || !layout) {
-    console.log('❌ Board or layout missing:', { 
-      hasBoard: !!board, 
-      hasLayout: !!layout, 
-      containerSize,
-      boardTiles: board?.tiles?.length,
-      usableHeight: containerSize.height > 0 ? containerSize.height - 240 : 400
-    });
+    console.log('❌ Board or layout missing:', { hasBoard: !!board, hasLayout: !!layout });
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -416,18 +419,7 @@ export function UnifiedGameBoard({
     );
   }
 
-  console.log('✅ Rendering board with layout:', { 
-    boardTiles: board.tiles?.length, 
-    layoutSlots: layout.slots?.length,
-    containerSize,
-    usableHeight,
-    layoutDetails: {
-      rows: layout.rows,
-      cols: layout.cols,
-      boardW: layout.boardW,
-      boardH: layout.boardH
-    }
-  });
+  console.log('✅ Rendering board successfully');
 
   const selectionStyle = getSelectionStyle();
 

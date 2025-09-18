@@ -14,91 +14,166 @@ function canFit(usableW, usableH, rows, cols, gap) {
 }
 
 function pickRowsCols(tileCount, usableW, usableH) {
-  const targetRatio = usableH / usableW;
-  let best = { rows: 1, cols: tileCount, diff: Infinity };
-  for (let r = 1; r <= tileCount; r++) {
-    const c = Math.ceil(tileCount / r);
-    const ratio = r / c;
-    const diff = Math.abs(ratio - targetRatio);
-    if (diff < best.diff || (diff === best.diff && r * c < best.rows * best.cols)) {
-      best = { rows: r, cols: c, diff };
+  // 简化：直接使用常见的行列组合
+  const combinations = [
+    { rows: 4, cols: 4 },   // 16 tiles
+    { rows: 4, cols: 5 },   // 20 tiles
+    { rows: 5, cols: 5 },   // 25 tiles
+    { rows: 6, cols: 5 },   // 30 tiles
+    { rows: 6, cols: 6 },   // 36 tiles
+    { rows: 7, cols: 6 },   // 42 tiles
+    { rows: 7, cols: 7 },   // 49 tiles
+    { rows: 8, cols: 7 },   // 56 tiles
+    { rows: 8, cols: 8 },   // 64 tiles
+    { rows: 9, cols: 8 },   // 72 tiles
+    { rows: 9, cols: 9 },   // 81 tiles
+    { rows: 10, cols: 9 },  // 90 tiles
+    { rows: 10, cols: 10 }, // 100 tiles
+    { rows: 11, cols: 10 }, // 110 tiles
+    { rows: 12, cols: 10 }, // 120 tiles
+  ];
+  
+  // 找到最接近的组合
+  for (const combo of combinations) {
+    if (combo.rows * combo.cols >= tileCount) {
+      return combo;
     }
   }
-  return { rows: best.rows, cols: best.cols };
+  
+  // 如果没找到，使用最大的
+  return combinations[combinations.length - 1];
 }
 
 export function computeBoardLayout(usableW, usableH, tileCount) {
-  let { rows, cols } = pickRowsCols(tileCount, usableW, usableH);
+  console.log('🔧 Starting layout computation:', { usableW, usableH, tileCount });
+  
+  try {
+    let { rows, cols } = pickRowsCols(tileCount, usableW, usableH);
+    console.log('📊 Initial rows/cols:', { rows, cols });
 
-  let foundGap = null;
-  for (let gap = GAP_MAX; gap >= GAP_MIN; gap--) {
-    if (canFit(usableW, usableH, rows, cols, gap)) { foundGap = gap; break; }
-  }
-
-  while (foundGap === null) {
-    const targetRatio = usableH / usableW;
-    const r1 = rows + 1, c1 = Math.ceil(tileCount / r1);
-    const r2 = rows,     c2 = cols + 1;
-    const d1 = Math.abs((r1 / c1) - targetRatio);
-    const d2 = Math.abs((r2 / c2) - targetRatio);
-    if (d1 <= d2) { rows = r1; cols = c1; } else { cols = c2; }
+    let foundGap = null;
     for (let gap = GAP_MAX; gap >= GAP_MIN; gap--) {
-      if (canFit(usableW, usableH, rows, cols, gap)) { foundGap = gap; break; }
+      if (canFit(usableW, usableH, rows, cols, gap)) { 
+        foundGap = gap; 
+        break; 
+      }
     }
-  }
 
-  const gap = foundGap;
-  const padding = gap + PADDING_EXTRA;
-
-  const boardW = cols * TILE_SIZE + (cols - 1) * gap + 2 * padding;
-  const boardH = rows * TILE_SIZE + (rows - 1) * gap + 2 * padding;
-
-  const offsetX = Math.floor((usableW - boardW) / 2);
-  const offsetY = Math.floor((usableH - boardH) / 2);
-
-  const slots = [];
-  const startX = padding; // 相对于棋盘容器的坐标
-  const startY = padding;
-  let placed = 0;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const x = startX + c * (TILE_SIZE + gap);
-      const y = startY + r * (TILE_SIZE + gap);
-      slots.push({ 
-        x, y, w: TILE_SIZE, h: TILE_SIZE, 
-        row: r, col: c, index: placed,
-        filled: placed < tileCount 
-      });
-      placed++;
+    // 如果找不到合适的间距，增加行列数
+    let attempts = 0;
+    while (foundGap === null && attempts < 10) {
+      cols = cols + 1;
+      for (let gap = GAP_MAX; gap >= GAP_MIN; gap--) {
+        if (canFit(usableW, usableH, rows, cols, gap)) { 
+          foundGap = gap; 
+          break; 
+        }
+      }
+      attempts++;
     }
-  }
 
-  return { rows, cols, gap, padding, boardW, boardH, offsetX, offsetY, slots, tileCount };
+    // 如果还是找不到，使用最小间距
+    if (foundGap === null) {
+      foundGap = GAP_MIN;
+    }
+
+    const gap = foundGap;
+    const padding = gap + PADDING_EXTRA;
+
+    const boardW = cols * TILE_SIZE + (cols - 1) * gap + 2 * padding;
+    const boardH = rows * TILE_SIZE + (rows - 1) * gap + 2 * padding;
+
+    const offsetX = Math.floor((usableW - boardW) / 2);
+    const offsetY = Math.floor((usableH - boardH) / 2);
+
+    const slots = [];
+    const startX = padding;
+    const startY = padding;
+    let placed = 0;
+    
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = startX + c * (TILE_SIZE + gap);
+        const y = startY + r * (TILE_SIZE + gap);
+        slots.push({ 
+          x, y, w: TILE_SIZE, h: TILE_SIZE, 
+          row: r, col: c, index: placed,
+          filled: placed < tileCount 
+        });
+        placed++;
+      }
+    }
+
+    const result = { 
+      rows, cols, gap, padding, boardW, boardH, offsetX, offsetY, slots, tileCount 
+    };
+    
+    console.log('✅ Layout computation successful:', {
+      rows: result.rows,
+      cols: result.cols,
+      gap: result.gap,
+      boardW: result.boardW,
+      boardH: result.boardH,
+      slotsCount: result.slots.length
+    });
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Layout computation failed:', error);
+    
+    // 返回一个简单的后备布局
+    const fallbackRows = 4;
+    const fallbackCols = 4;
+    const fallbackGap = GAP_MIN;
+    const fallbackPadding = fallbackGap + PADDING_EXTRA;
+    
+    const fallbackSlots = [];
+    for (let r = 0; r < fallbackRows; r++) {
+      for (let c = 0; c < fallbackCols; c++) {
+        const x = fallbackPadding + c * (TILE_SIZE + fallbackGap);
+        const y = fallbackPadding + r * (TILE_SIZE + fallbackGap);
+        fallbackSlots.push({ 
+          x, y, w: TILE_SIZE, h: TILE_SIZE, 
+          row: r, col: c, index: r * fallbackCols + c,
+          filled: (r * fallbackCols + c) < Math.min(tileCount, 16)
+        });
+      }
+    }
+    
+    return {
+      rows: fallbackRows,
+      cols: fallbackCols,
+      gap: fallbackGap,
+      padding: fallbackPadding,
+      boardW: fallbackCols * TILE_SIZE + (fallbackCols - 1) * fallbackGap + 2 * fallbackPadding,
+      boardH: fallbackRows * TILE_SIZE + (fallbackRows - 1) * fallbackGap + 2 * fallbackPadding,
+      offsetX: 0,
+      offsetY: 0,
+      slots: fallbackSlots,
+      tileCount: Math.min(tileCount, 16)
+    };
+  }
 }
 
 export function useBoardLayout(usableW, usableH, tileCount) {
   return useMemo(() => {
+    console.log('🎯 useBoardLayout called with:', { 
+      original: { usableW, usableH, tileCount }
+    });
+    
     // 确保有合理的默认值
     const safeUsableW = Math.max(usableW || 350, 350);
     const safeUsableH = Math.max(usableH || 400, 400);
     const safeTileCount = Math.max(tileCount || 16, 1);
     
-    console.log('🎯 useBoardLayout called with:', { 
-      original: { usableW, usableH, tileCount },
-      safe: { safeUsableW, safeUsableH, safeTileCount }
-    });
+    console.log('🔧 Safe values:', { safeUsableW, safeUsableH, safeTileCount });
     
-    if (safeTileCount <= 0) return null;
+    if (safeTileCount <= 0) {
+      console.log('❌ Invalid tile count, returning null');
+      return null;
+    }
     
     const layout = computeBoardLayout(safeUsableW, safeUsableH, safeTileCount);
-    console.log('📐 Layout computed:', {
-      rows: layout.rows,
-      cols: layout.cols,
-      gap: layout.gap,
-      boardW: layout.boardW,
-      boardH: layout.boardH,
-      slotsCount: layout.slots.length
-    });
     return layout;
   }, [usableW, usableH, tileCount]);
 }

@@ -28,34 +28,8 @@ const EFFECTIVE_AREA_CONFIG = {
   GRID_COLS: 14,        // 固定网格列数
 };
 
-const GameBoard = ({ 
-  tiles, 
-  width, 
-  height, 
-  disabled, 
-  onTilesClear, 
-  itemMode, 
-  onTileClick, 
-  selectedSwapTile, 
-  settings, 
-  swapAnimations, 
-  fractalAnimations, 
-  initTileScale, 
-  scaleTile, 
-  getTileRotation, 
-  onBoardRefresh, 
-  isChallenge 
-}) => {
-  const [selection, setSelection] = useState(null);
-  const [hoveredTiles, setHoveredTiles] = useState(new Set());
-  const [fixedLayout, setFixedLayout] = useState(null);
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [showRescueModal, setShowRescueModal] = useState(false);
-  const [reshuffleCount, setReshuffleCount] = useState(0);
-
-  const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const explosionScale = useRef(new Animated.Value(0)).current;
-  const explosionOpacity = useRef(new Animated.Value(0)).current;
+// 计算有效游戏区域和棋盘布局
+function calculateEffectiveAreaLayout() {
 
   const getFixedBoardLayout = (availableWidth, availableHeight) => {
     const calculateEffectiveAreaLayout = () => {
@@ -79,29 +53,34 @@ const GameBoard = ({
         // 左对齐布局，使用计算出的边距
         const boardLeft = screenMargin;
         const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-        
-        return {
-          tileSize,
-          tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
-          boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
-          screenMargin,
-          boardWidth,
-          boardHeight,
-          boardLeft,
-          boardTop,
-          gridRows: height,
-          gridCols: width,
-          getTilePosition: (row, col) => ({
-            x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
-            y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
-          }),
-        };
-      }
-      
-      return null;
+    // 使用标准方块尺寸，确保和参考图一致
+    const tileSize = EFFECTIVE_AREA_CONFIG.STANDARD_TILE_SIZE;
+    const tileGap = EFFECTIVE_AREA_CONFIG.TILE_GAP;
+    const boardPadding = EFFECTIVE_AREA_CONFIG.BOARD_PADDING;
+    
+    // 计算棋盘尺寸
+    const boardWidth = width * (tileSize + tileGap) - tileGap + boardPadding * 2;
+    const boardHeight = height * (tileSize + tileGap) - tileGap + boardPadding * 2;
+    
+    // 居中布局
+    const boardLeft = (availableWidth - boardWidth) / 2;
+    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    
+    return {
+      tileSize,
+      tileGap,
+      boardPadding,
+      boardWidth,
+      boardHeight,
+      boardLeft,
+      boardTop,
+      gridRows: height,
+      gridCols: width,
+      getTilePosition: (row, col) => ({
+        x: col * (tileSize + tileGap),
+        y: row * (tileSize + tileGap),
+      }),
     };
-
-    return calculateEffectiveAreaLayout();
   };
 
   const resetSelection = () => {
@@ -534,17 +513,17 @@ const GameBoard = ({
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
 
-    // Vertical lines
-    for (let i = 1; i < gridCols; i++) {
+    // 垂直网格线 - 更清晰的线条
+    for (let i = 0; i <= gridCols; i++) {
       lines.push(
         <View
           key={`v-${i}`}
           style={[
             styles.gridLine,
             {
-              left: i * cellWidth - tileGap / 2,
+              left: i * cellWidth - (i === 0 ? 0 : tileGap / 2),
               top: 0,
-              width: 1,
+              width: i === 0 || i === gridCols ? 2 : 1,
               height: gridRows * cellHeight - tileGap,
             }
           ]}
@@ -552,8 +531,8 @@ const GameBoard = ({
       );
     }
 
-    // Horizontal lines
-    for (let i = 1; i < gridRows; i++) {
+    // 水平网格线 - 更清晰的线条
+    for (let i = 0; i <= gridRows; i++) {
       lines.push(
         <View
           key={`h-${i}`}
@@ -561,9 +540,9 @@ const GameBoard = ({
             styles.gridLine,
             {
               left: 0,
-              top: i * cellHeight - tileGap / 2,
+              top: i * cellHeight - (i === 0 ? 0 : tileGap / 2),
               width: gridCols * cellWidth - tileGap,
-              height: 1,
+              height: i === 0 || i === gridRows ? 2 : 1,
             }
           ]}
         />
@@ -578,64 +557,8 @@ const GameBoard = ({
 
     const index = row * width + col;
     
-    if (value === 0) {
-      // 检查是否有临时跳跃动画
-      const tempAnimKeys = Array.from(fractalAnimations ? fractalAnimations.keys() : [])
-        .filter(key => key.toString().startsWith(`temp_${index}_`));
-      
-      if (tempAnimKeys.length > 0) {
-        // 渲染跳跃中的临时方块
-        return tempAnimKeys.map(tempKey => {
-          const tempAnim = fractalAnimations.get(tempKey);
-          if (!tempAnim) return null;
-          
-          const { x, y } = fixedLayout.getTilePosition(row, col);
-          const rotation = getTileRotation(row, col);
-          
-          const transforms = [
-            { scale: tempAnim.scale },
-            { rotate: `${rotation}deg` },
-            { translateX: tempAnim.translateX },
-            { translateY: tempAnim.translateY },
-          ];
-          
-          // 获取正确的分解数值
-          const displayValue = tempAnim.value || Math.floor(Math.random() * 9) + 1;
-          
-          return (
-            <Animated.View 
-              key={tempKey}
-              style={[
-                { 
-                  position: 'absolute',
-                  left: x,
-                  top: y,
-                  width: fixedLayout.tileSize,
-                  height: fixedLayout.tileSize,
-                  transform: transforms,
-                  opacity: tempAnim.opacity,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }
-              ]}
-            >
-              <View style={styles.tileInner}>
-                <Text style={[
-                  styles.tileText,
-                  { 
-                    fontSize: Math.max(14, fixedLayout.tileSize * 0.45),
-                  }
-                ]}>
-                  {displayValue}
-                </Text>
-              </View>
-            </Animated.View>
-          );
-        });
-      }
-      
-      return null;
-    }
+    // 如果值为0，暂时显示随机数字（忽略难度设置）
+    const displayValue = value === 0 ? Math.floor(Math.random() * 9) + 1 : value;
 
     if (row < 0 || row >= height || col < 0 || col >= width) {
       return null;
@@ -718,10 +641,10 @@ const GameBoard = ({
           <Text style={[
             styles.tileText,
             { 
-              fontSize: Math.max(14, fixedLayout.tileSize * 0.45),
+              fontSize: Math.max(12, fixedLayout.tileSize * 0.5),
             }
           ]}>
-            {value}
+            {displayValue}
           </Text>
         </Animated.View>
       </View>
@@ -880,7 +803,7 @@ const styles = StyleSheet.create({
   },
   gridLine: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)', // Semi-transparent white grid lines
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // 更明显的网格线
   },
   tileInner: {
     width: '100%',
@@ -888,17 +811,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFF9E6', // Cream white sticky note
-    borderRadius: 3, // 更小的圆角，更接近参考图片
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: '#333',
     shadowColor: '#000',
     shadowOffset: {
-      width: 1,
-      height: 1,
+      width: 0.5,
+      height: 0.5,
     },
-    shadowOpacity: 0.2, // 减轻阴影，更接近参考图片
-    shadowRadius: 2,
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 1.5,
+    elevation: 2,
   },
   tileSwapSelected: {
     backgroundColor: '#E3F2FD',

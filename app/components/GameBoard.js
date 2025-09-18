@@ -22,9 +22,8 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
-  TILE_GAP: 10,         // 方块间距（5px内边距 × 2）
-  BOARD_PADDING: 5,     // 棋盘内边距（木框留白5px）
-  TILE_INNER_PADDING: 5, // 方块内边距
+  TILE_SPACING: 8,       // 方块间距（可灵活调整）
+  BOARD_FRAME_PADDING: 5, // 木质边框与方块的距离（固定5px）
   GRID_ROWS: 20,        // 固定网格行数
   GRID_COLS: 14,        // 固定网格列数
 };
@@ -306,16 +305,16 @@ const GameBoard = ({
       
       if (!isInsideGridArea(pageX, pageY)) return;
       
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap } = boardLayout;
+      const { boardLeft, boardTop, boardFramePadding, cellSize, tileSpacing } = boardLayout;
 
-      const innerLeft = boardLeft + boardPadding;
-      const innerTop = boardTop + boardPadding;
+      const innerLeft = boardLeft + boardFramePadding;
+      const innerTop = boardTop + boardFramePadding;
 
       const relativeX = pageX - innerLeft;
       const relativeY = pageY - innerTop;
 
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
+      const cellWidth = cellSize + tileSpacing;
+      const cellHeight = cellSize + tileSpacing;
 
       const startCol = Math.floor(relativeX / cellWidth);
       const startRow = Math.floor(relativeY / cellHeight);
@@ -476,14 +475,14 @@ const GameBoard = ({
     
     if (!boardLayout) return null;
 
-    const { tileSize, tileGap } = boardLayout;
-    const cellWidth = tileSize + tileGap;
-    const cellHeight = tileSize + tileGap;
+    const { cellSize, tileSpacing } = boardLayout;
+    const cellWidth = cellSize + tileSpacing;
+    const cellHeight = cellSize + tileSpacing;
 
     const left = minCol * cellWidth;
     const top = minRow * cellHeight;
-    const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileGap;
-    const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileGap;
+    const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileSpacing;
+    const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileSpacing;
     
     return {
       position: 'absolute',
@@ -518,12 +517,12 @@ const GameBoard = ({
     
     if (!boardLayout) return null;
 
-    const { tileSize, tileGap } = boardLayout;
-    const cellWidth = tileSize + tileGap;
-    const cellHeight = tileSize + tileGap;
+    const { cellSize, tileSpacing } = boardLayout;
+    const cellWidth = cellSize + tileSpacing;
+    const cellHeight = cellSize + tileSpacing;
 
-    const left = maxCol * cellWidth + tileSize;
-    const top = maxRow * cellHeight + tileSize;
+    const left = maxCol * cellWidth + cellSize;
+    const top = maxRow * cellHeight + cellSize;
     
     return {
       sum,
@@ -553,10 +552,10 @@ const GameBoard = ({
   const renderGridBackground = () => {
     if (!boardLayout) return null;
 
-    const { tileSize, tileGap } = boardLayout;
+    const { cellSize, tileSpacing } = boardLayout;
     const lines = [];
-    const cellWidth = tileSize + tileGap;
-    const cellHeight = tileSize + tileGap;
+    const cellWidth = cellSize + tileSpacing;
+    const cellHeight = cellSize + tileSpacing;
 
     // 垂直网格线
     for (let i = 0; i <= width; i++) {
@@ -566,10 +565,10 @@ const GameBoard = ({
           style={[
             styles.gridLine,
             {
-              left: i * cellWidth - (i === 0 ? 0 : tileGap / 2),
+              left: i * cellWidth - (i === 0 ? 0 : tileSpacing / 2),
               top: 0,
               width: i === 0 || i === width ? 2 : 1,
-              height: height * cellHeight - tileGap,
+              height: height * cellHeight - tileSpacing,
             }
           ]}
         />
@@ -585,8 +584,8 @@ const GameBoard = ({
             styles.gridLine,
             {
               left: 0,
-              top: i * cellHeight - (i === 0 ? 0 : tileGap / 2),
-              width: width * cellWidth - tileGap,
+              top: i * cellHeight - (i === 0 ? 0 : tileSpacing / 2),
+              width: width * cellWidth - tileSpacing,
               height: i === 0 || i === height ? 2 : 1,
             }
           ]}
@@ -726,10 +725,10 @@ const GameBoard = ({
           <View
             style={{
               position: 'absolute',
-             left: boardLayout.boardPadding - boardLayout.tileInnerPadding,
-             top: boardLayout.boardPadding - boardLayout.tileInnerPadding,
-             width: width * (boardLayout.cellSize + boardLayout.tileGap) - boardLayout.tileGap + boardLayout.tileInnerPadding * 2,
-             height: height * (boardLayout.cellSize + boardLayout.tileGap) - boardLayout.tileGap + boardLayout.tileInnerPadding * 2,
+             left: boardLayout.boardFramePadding,
+             top: boardLayout.boardFramePadding,
+             width: width * (boardLayout.cellSize + boardLayout.tileSpacing) - boardLayout.tileSpacing,
+             height: height * (boardLayout.cellSize + boardLayout.tileSpacing) - boardLayout.tileSpacing,
             }}
           >
             {renderGridBackground()}
@@ -739,8 +738,8 @@ const GameBoard = ({
           <View
             style={{
               position: 'absolute',
-              left: boardLayout.boardPadding,
-              top: boardLayout.boardPadding,
+              left: boardLayout.boardFramePadding,
+              top: boardLayout.boardFramePadding,
             }}
           >
             {/* 渲染所有方块 */}

@@ -1,7 +1,7 @@
 /**
  * Challenge Mode Screen - 60-second IQ challenge with dense number grid
  * Purpose: Timed gameplay with scoring and leaderboard
- * Features: 14x21 grid (294 tiles), 100% fill rate, bomb timer, item usage
+ * Features: 12x11 grid, variable fill rate, bomb timer, item usage
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -332,11 +332,13 @@ export default function ChallengeScreen() {
             <Animated.View 
               style={[
                 styles.fuse,
-                { width: fuseWidth.interpolate({
-                  inputRange: [0, 100],
-                  outputRange: ['0%', '100%'],
-                  extrapolate: 'clamp'
-                })}
+                { 
+                  width: fuseWidth.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: ['0%', '100%'],
+                    extrapolate: 'clamp'
+                  })
+                }
               ]}
             />
           </View>

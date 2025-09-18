@@ -24,12 +24,13 @@ export function computeBoardLayout({ availableWidth, availableHeight, rows, cols
   const GAP_MIN = 6;    // 最小间距
   const GAP_MAX = 12;   // 最大间距
   
-  // 挑战模式使用更紧密的布局
-  const baseGap = isChallenge ? GAP_MIN : 8;
+  // 挑战模式：方块间距较小，但与木框间距略大
+  const baseGap = isChallenge ? 4 : 8; // 挑战模式方块间距更小
   
   // 1. 初步估算方块尺寸
   let gap = baseGap;
-  let boardPadding = Math.ceil(gap * 1.5); // 外圈留白 > 间距
+  // 挑战模式：外圈留白明显大于方块间距，确保木框可见
+  let boardPadding = isChallenge ? Math.ceil(gap * 3) : Math.ceil(gap * 1.5);
   
   // 计算内部可用空间
   const innerWidth = availableWidth - 2 * boardPadding;
@@ -47,7 +48,7 @@ export function computeBoardLayout({ availableWidth, availableHeight, rows, cols
   } else if (tileSize < TILE_MIN) {
     // 如果方块太小，尝试减小间距
     gap = Math.max(GAP_MIN, gap - 2);
-    boardPadding = Math.ceil(gap * 1.5);
+    boardPadding = isChallenge ? Math.ceil(gap * 3) : Math.ceil(gap * 1.5);
     
     const newInnerWidth = availableWidth - 2 * boardPadding;
     const newInnerHeight = availableHeight - 2 * boardPadding;
@@ -62,7 +63,7 @@ export function computeBoardLayout({ availableWidth, availableHeight, rows, cols
   // 3. 最终调整间距以优化布局
   if (tileSize >= 40 && gap < GAP_MAX && !isChallenge) {
     gap = Math.min(GAP_MAX, gap + 2);
-    boardPadding = Math.ceil(gap * 1.5);
+    boardPadding = isChallenge ? Math.ceil(gap * 3) : Math.ceil(gap * 1.5);
   }
   
   // 4. 计算最终棋盘尺寸
@@ -142,8 +143,8 @@ export function getLevelGridConfig(level) {
  */
 export function getChallengeGridConfig() {
   console.log('🎯 [DEBUG] getChallengeGridConfig called');
-  // 挑战模式使用铺满屏幕的配置
-  const config = { rows: 14, cols: 20, timeLimit: 60 };
+  // 挑战模式：铺满有效游戏界面，自适应屏幕尺寸
+  const config = { rows: 16, cols: 12, timeLimit: 60 };
   console.log('🎯 [DEBUG] Challenge grid config:', config);
   return config;
 }

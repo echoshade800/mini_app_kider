@@ -303,26 +303,28 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
     if (isChallengeMode) {
       console.log('🎯 [DEBUG] Generating challenge mode board...');
       
-      // 挑战模式：铺满屏幕，需要大框消除
+      // 挑战模式：铺满有效游戏界面，必须画大框才能消除
       const { width, height } = getChallengeModeDimensions(screenWidth, screenHeight);
       const size = width * height;
       console.log('🎯 [DEBUG] Challenge board size:', { width, height, size });
       
       const tiles = new Array(size);
       
-      // 生成需要大框消除的数字分布
-      // 策略：分散放置小数字，需要框选多个才能凑成10
+      // 挑战模式数字分布：必须画大框才能消除
+      // 策略1：大量小数字(1-3)，需要框选多个才能凑成10
+      // 策略2：避免简单的配对(如1+9)，强制大框消除
       for (let i = 0; i < size; i++) {
-        // 70% 是 1-3 的小数字，需要框选多个
-        // 30% 是 4-6 的中等数字，增加组合难度
-        if (Math.random() < 0.7) {
+        // 80% 是 1-3 的小数字，强制大框消除
+        // 20% 是 4-5 的中等数字，增加策略性
+        if (Math.random() < 0.8) {
           tiles[i] = Math.floor(Math.random() * 3) + 1; // 1, 2, 3
         } else {
-          tiles[i] = Math.floor(Math.random() * 3) + 4; // 4, 5, 6
+          tiles[i] = Math.floor(Math.random() * 2) + 4; // 4, 5
         }
       }
       
       console.log('🎯 [DEBUG] Challenge board generated successfully');
+      console.log('🎯 [DEBUG] Sample tiles:', tiles.slice(0, 20));
       return {
         seed: `challenge_${Date.now()}`,
         width,

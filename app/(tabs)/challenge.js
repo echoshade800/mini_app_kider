@@ -507,7 +507,7 @@ export default function ChallengeScreen() {
           <View style={styles.readyOverlay}>
             <View style={styles.readyContent}>
               <Text style={styles.readyTitle}>Challenge Mode</Text>
-              <Text style={styles.readySubtitle}>60 seconds of intense puzzle action!</Text>
+              <Text style={styles.readySubtitle}>Draw large rectangles to clear tiles!</Text>
               <TouchableOpacity style={styles.startButton} onPress={startChallenge}>
                 <Text style={styles.startButtonText}>START CHALLENGE</Text>
               </TouchableOpacity>
@@ -534,8 +534,8 @@ export default function ChallengeScreen() {
             onBoardRefresh={handleBoardRefresh}
             disabled={gameState !== 'playing'}
             isChallenge={true}
-            availableWidth={screenWidth - 40}
-            availableHeight={screenHeight - 200} // 扣除顶部HUD和底部道具栏
+            availableWidth={screenWidth - 20} // 减少边距，铺满界面
+            availableHeight={screenHeight - 180} // 扣除顶部HUD和底部道具栏，铺满有效区域
           />
           </>
         )}

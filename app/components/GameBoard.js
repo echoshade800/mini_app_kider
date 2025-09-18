@@ -917,8 +917,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 10,
-    // 内侧描边效果通过box-shadow实现
-    shadowInset: true,
   },
   gridLine: {
     position: 'absolute',

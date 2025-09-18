@@ -195,6 +195,8 @@ export function generateChallengeBoard() {
       } else {
         tiles[i] = lowFreqNumbers[Math.floor(random() * lowFreqNumbers.length)];
       }
+    }
+  }
   return {
     seed,
     tiles: adjustedTiles,

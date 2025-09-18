@@ -124,16 +124,16 @@ export default function ChallengeScreen() {
         newTiles[index] = 0;
       });
       
-      // Check if board is completely empty
+      // Check if board is completely empty (all tiles are 0)
       const remainingTiles = newTiles.filter(tile => tile > 0).length;
       
       if (remainingTiles === 0) {
-        // Board completely cleared - generate new board after short delay
+        // 🎯 只有当所有方块都被消除时才生成新棋盘
         setTimeout(() => {
           generateNewBoard();
         }, 500);
       } else {
-        // Update current board
+        // 🔄 还有剩余方块，只更新当前棋盘状态
         setBoard(prev => ({
           ...prev,
           tiles: newTiles

@@ -34,7 +34,7 @@ const EFFECTIVE_AREA_CONFIG = {
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
   const availableWidth = screenWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-  const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
   
   const tileWidth = (availableWidth - (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_COLS;
   const tileHeight = (availableHeight - (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_ROWS;
@@ -43,52 +43,39 @@ function calculateEffectiveAreaLayout() {
   
   return {
     tileSize,
-    boardWidth: EFFECTIVE_AREA_CONFIG.GRID_COLS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2,
-    boardHeight: EFFECTIVE_AREA_CONFIG.GRID_ROWS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2,
-    boardLeft: (screenWidth - (EFFECTIVE_AREA_CONFIG.GRID_COLS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2)) / 2,
+    boardWidth: EFFECTIVE_AREA_CONFIG.GRID_COLS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP,
+    boardHeight: EFFECTIVE_AREA_CONFIG.GRID_ROWS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP,
+    boardLeft: (screenWidth - (EFFECTIVE_AREA_CONFIG.GRID_COLS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP)) / 2,
     boardTop: EFFECTIVE_AREA_CONFIG.TOP_RESERVED,
-    boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
-    tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
-    gridRows: EFFECTIVE_AREA_CONFIG.GRID_ROWS,
-    gridCols: EFFECTIVE_AREA_CONFIG.GRID_COLS,
-    getTilePosition: (row, col) => ({
-      x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
-      y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP)
-    })
   };
 }
 
-export const GameBoard = ({ 
+const GameBoard = ({ 
   tiles, 
   width, 
   height, 
   onTilesClear, 
-  disabled = false,
-  itemMode = null,
+  disabled = false, 
+  itemMode = null, 
   onTileClick = null,
   selectedSwapTile = null,
   swapAnimations = null,
   fractalAnimations = null,
   onBoardRefresh = null,
-  isChallenge = false
+  isChallenge = false,
+  settings = {}
 }) => {
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [fixedLayout, setFixedLayout] = useState(null);
-  const [reshuffleCount, setReshuffleCount] = useState(0);
   const [showRescueModal, setShowRescueModal] = useState(false);
-  
+  const [reshuffleCount, setReshuffleCount] = useState(0);
+
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef(new Map()).current;
-  
-  const { settings } = useGameStore();
-
-  const getFixedBoardLayout = (availableWidth, availableHeight) => {
-    return calculateEffectiveAreaLayout();
-  };
 
   const initTileScale = (index) => {
     if (!tileScales.has(index)) {
@@ -97,18 +84,65 @@ export const GameBoard = ({
     return tileScales.get(index);
   };
 
-  const scaleTile = (index, targetScale) => {
-    const scale = initTileScale(index);
-    Animated.timing(scale, {
-      toValue: targetScale,
-      duration: 100,
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.timing(tileScale, {
+      toValue: scale,
+      duration: 150,
       useNativeDriver: true,
     }).start();
   };
 
   const getTileRotation = (row, col) => {
     const seed = row * 13 + col * 7;
-    return ((seed % 7) - 3) * 0.8;
+    return (seed % 7) - 3; // -3 to 3 degrees
+  };
+
+  const getFixedBoardLayout = (availableWidth, availableHeight) => {
+    const { GRID_ROWS, GRID_COLS, TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
+    
+    const innerWidth = availableWidth - BOARD_PADDING * 2;
+    const innerHeight = availableHeight - BOARD_PADDING * 2;
+    
+    const tileWidth = (innerWidth - (GRID_COLS - 1) * TILE_GAP) / GRID_COLS;
+    const tileHeight = (innerHeight - (GRID_ROWS - 1) * TILE_GAP) / GRID_ROWS;
+    const tileSize = Math.min(tileWidth, tileHeight);
+    
+    const boardWidth = GRID_COLS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    const boardHeight = GRID_ROWS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    
+    const boardLeft = (screenWidth - boardWidth) / 2;
+    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    
+    return {
+      tileSize,
+      tileGap: TILE_GAP,
+      boardPadding: BOARD_PADDING,
+      boardWidth,
+      boardHeight,
+      boardLeft,
+      boardTop,
+      gridRows: GRID_ROWS,
+      gridCols: GRID_COLS,
+      getTilePosition: (row, col) => ({
+        x: col * (tileSize + TILE_GAP),
+        y: row * (tileSize + TILE_GAP),
+      }),
+    };
+  };
+
+  const resetSelection = () => {
+    setSelection(null);
+    hoveredTiles.forEach(index => {
+      scaleTile(index, 1);
+    });
+    setHoveredTiles(new Set());
+    
+    Animated.timing(selectionOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
   };
 
   const isInsideGridArea = (pageX, pageY) => {
@@ -123,25 +157,27 @@ export const GameBoard = ({
   };
 
   const isInRestrictedArea = (pageY) => {
-    const topRestrictedHeight = 120;
-    const buttonAreaBottom = screenHeight - 80;
-    const buttonAreaTop = screenHeight - 160;
+    const topRestrictedHeight = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    const bottomRestrictedHeight = screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
     
-    return pageY < topRestrictedHeight || 
-           (pageY >= buttonAreaTop && pageY <= buttonAreaBottom);
+    return pageY < topRestrictedHeight || pageY > bottomRestrictedHeight;
   };
 
-  const getSelectedTilesForSelection = (currentSelection) => {
-    if (!currentSelection) return [];
+  const getSelectedTiles = () => {
+    if (!selection) return [];
+    return getSelectedTilesForSelection(selection);
+  };
+
+  const getSelectedTilesForSelection = (sel) => {
+    if (!sel) return [];
     
-    const { startRow, startCol, endRow, endCol } = currentSelection;
+    const { startRow, startCol, endRow, endCol } = sel;
     const minRow = Math.min(startRow, endRow);
     const maxRow = Math.max(startRow, endRow);
     const minCol = Math.min(startCol, endCol);
     const maxCol = Math.max(startCol, endCol);
     
     const selectedTiles = [];
-    
     for (let row = minRow; row <= maxRow; row++) {
       for (let col = minCol; col <= maxCol; col++) {
         if (row >= 0 && row < height && col >= 0 && col < width) {
@@ -153,21 +189,7 @@ export const GameBoard = ({
         }
       }
     }
-    
     return selectedTiles;
-  };
-
-  const getSelectedTiles = () => {
-    return getSelectedTilesForSelection(selection);
-  };
-
-  const resetSelection = () => {
-    setSelection(null);
-    selectionOpacity.setValue(0);
-    hoveredTiles.forEach(index => {
-      scaleTile(index, 1);
-    });
-    setHoveredTiles(new Set());
   };
 
   const panResponder = PanResponder.create({
@@ -846,7 +868,7 @@ export const GameBoard = ({
                   }
                 ]}
               >
-                <View style={[styles.explosionNote, { transform: [{ rotate: '5deg' }] }]}>
+                <View style={styles.explosionNote}>
                   <Text style={styles.explosionText}>10</Text>
                 </View>
               </Animated.View>
@@ -972,3 +994,5 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 });
+
+export default GameBoard;

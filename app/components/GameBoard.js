@@ -59,8 +59,8 @@ const GameBoard = ({
 
   const getFixedBoardLayout = (availableWidth, availableHeight) => {
     const calculateEffectiveAreaLayout = () => {
-      const boardMargin = 16;
-      const innerWidth = availableWidth - boardMargin * 2 - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+      // 计算方块的理想尺寸
+      const innerWidth = availableWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
       const innerHeight = availableHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
       
       let tileSize;
@@ -70,18 +70,21 @@ const GameBoard = ({
         const adjustedTileHeight = (innerHeight - (height - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / height;
         tileSize = Math.min(adjustedTileWidth, adjustedTileHeight);
         
+        // 使用半个方块边长作为屏幕边距
+        const screenMargin = tileSize * 0.5;
+        
         const boardWidth = width * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
         const boardHeight = height * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
         
-        // 使用计算出的边距而不是居中
-        const boardLeft = boardMargin;
+        // 左对齐布局，使用计算出的边距
+        const boardLeft = screenMargin;
         const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
         
         return {
           tileSize,
           tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
           boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
-          boardMargin,
+          screenMargin,
           boardWidth,
           boardHeight,
           boardLeft,
@@ -95,7 +98,7 @@ const GameBoard = ({
         };
       }
       
-      return calculateEffectiveAreaLayout();
+      return null;
     };
 
     return calculateEffectiveAreaLayout();

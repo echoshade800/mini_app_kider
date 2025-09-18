@@ -30,7 +30,114 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-    overflow: 'hidden', // 防止内容溢出木框
+    const { boardLeft, boardTop, boardWidth, boardHeight } = boardLayout;
+    
+    return pageX >= boardLeft && 
+           pageX <= boardLeft + boardWidth && 
+           pageY >= boardTop && 
+           pageY <= boardTop + boardHeight;
+}
+
+const GameBoard = ({ tiles, width, height, onTilesClear, disabled, itemMode, onTileClick, selectedSwapTile, swapAnimations, fractalAnimations, settings, boardLayout, onRescueNeeded, showRescueModal, setShowRescueModal, reshuffleCount, setReshuffleCount }) => {
+  const [selection, setSelection] = useState(null);
+  const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
+  
+  const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0.5)).current;
+  const explosionOpacity = useRef(new Animated.Value(1)).current;
+  const tileScales = useRef(new Map()).current;
+
+  const initTileScale = (index) => {
+    if (!tileScales.has(index)) {
+      tileScales.set(index, new Animated.Value(1));
+    }
+    return tileScales.get(index);
+  };
+
+  const scaleTile = (index, scale) => {
+    const tileScale = initTileScale(index);
+    Animated.timing(tileScale, {
+      toValue: scale,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const getTileRotation = (row, col) => {
+    const seed = row * 31 + col * 17;
+    return ((seed % 7) - 3) * 0.8;
+  };
+
+  const resetSelection = () => {
+    setSelection(null);
+    hoveredTiles.forEach(index => {
+      scaleTile(index, 1);
+    });
+    setHoveredTiles(new Set());
+    
+    Animated.timing(selectionOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const isInsideGridArea = (pageX, pageY) => {
+    if (!boardLayout) return false;
+    
+    const { boardLeft, boardTop, boardWidth, boardHeight } = boardLayout;
+    
+    return pageX >= boardLeft && 
+           pageX <= boardLeft + boardWidth && 
+           pageY >= boardTop && 
+           pageY <= boardTop + boardHeight;
+  };
+
+  const isInRestrictedArea = (pageY) => {
+    const topRestrictedHeight = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    const bottomRestrictedHeight = screenHeight - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+    
+    return pageY < topRestrictedHeight || pageY > bottomRestrictedHeight;
+  };
+
+  const getSelectedTiles = () => {
+    if (!selection) return [];
+    return getSelectedTilesForSelection(selection);
+  };
+
+  const getSelectedTilesForSelection = (sel) => {
+    if (!sel) return [];
+    
+    const { startRow, startCol, endRow, endCol } = sel;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    const selectedTiles = [];
+    for (let row = minRow; row <= maxRow; row++) {
+      for (let col = minCol; col <= maxCol; col++) {
+        if (row >= 0 && row < height && col >= 0 && col < width) {
+          const index = row * width + col;
+          const value = tiles[index];
+          if (value > 0) {
+            selectedTiles.push({ row, col, value, index });
+          }
+        }
+      }
+    }
+    return selectedTiles;
+  };
+
+  const handleSelectionComplete = async () => {
+    if (!selection) return;
+
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+
+    if (sum === 10 && selectedTiles.length > 0) {
       // 重置重排计数
       setReshuffleCount(0);
       
@@ -699,10 +806,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111',
     textAlign: 'center',
-    textAlignVertical: 'center',
-    includeFontPadding: false,
-    allowFontScaling: false, // 防止系统字体放大影响布局
-    maxFontSizeMultiplier: 1.0, // 限制字体放大倍数
   },
   sumText: {
     fontSize: 16,

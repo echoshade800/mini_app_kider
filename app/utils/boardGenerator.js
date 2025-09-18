@@ -312,6 +312,7 @@ export function generateChallengeBoard(screenWidth = 390, screenHeight = 844) {
     requiredSwaps: 0,
     level: 'challenge',
     solvable: true,
+    isChallengeMode
     isChallengeMode: true,
   };
 }

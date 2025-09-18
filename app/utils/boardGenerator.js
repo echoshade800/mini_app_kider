@@ -10,6 +10,7 @@ function seededRandom(seed) {
   for (let i = 0; i < seed.length; i++) {
     state = ((state << 5) - state + seed.charCodeAt(i)) & 0xffffffff;
   }
+    maxFillableCount: gridCols * gridRows, // 最大可填充数量
   
   return function() {
     state = ((state * 1103515245) + 12345) & 0x7fffffff;
@@ -17,6 +18,55 @@ function seededRandom(seed) {
   };
 }
 
+// 棋盘格限制常量 - 基于GameBoard组件的网格系统
+const BOARD_GRID_LIMITS = {
+  // 假设棋盘格为14列×21行 = 294格（这是GameBoard中的最大网格）
+  MAX_COLS: 14,
+  MAX_ROWS: 21,
+  get MAX_FILLABLE_COUNT() {
+    return this.MAX_COLS * this.MAX_ROWS;
+  }
+};
+
+// 重新设计的难度系统 - 基于棋盘格限制
+function getTileFillCount(level) {
+  const maxCount = BOARD_GRID_LIMITS.MAX_FILLABLE_COUNT; // 294格
+  
+  // 1-200关的数字方块数量递进表
+  if (level >= 1 && level <= 5) {
+    return Math.floor(maxCount * 0.15); // ~44格 (新手引导)
+  }
+  if (level >= 6 && level <= 10) {
+    return Math.floor(maxCount * 0.20); // ~59格 (幼儿园)
+  }
+  if (level >= 11 && level <= 20) {
+    return Math.floor(maxCount * 0.25); // ~74格 (小学低年级)
+  }
+  if (level >= 21 && level <= 30) {
+    return Math.floor(maxCount * 0.35); // ~103格 (小学高年级)
+  }
+  if (level >= 31 && level <= 45) {
+    return Math.floor(maxCount * 0.45); // ~132格 (中学)
+  }
+  if (level >= 46 && level <= 65) {
+    return Math.floor(maxCount * 0.55); // ~162格 (高中)
+  }
+  if (level >= 66 && level <= 85) {
+    return Math.floor(maxCount * 0.65); // ~191格 (大学)
+  }
+  if (level >= 86 && level <= 100) {
+    return Math.floor(maxCount * 0.75); // ~221格 (研究生/教授)
+  }
+  if (level >= 101 && level <= 150) {
+    return Math.floor(maxCount * 0.85); // ~250格 (职业生涯)
+  }
+  if (level >= 151 && level <= 200) {
+    return maxCount; // 294格 (人生阶段/超现实 - 最大填充)
+  }
+  
+  // 200关以后保持最大填充
+  return maxCount;
+}
 // 计算整齐四边形的激活区域尺寸
 function calculateRectangularActivationArea(level, totalCols, totalRows) {
   const fillRatio = getTileFillRatio(level);
@@ -46,31 +96,40 @@ function calculateRectangularActivationArea(level, totalCols, totalRows) {
   return { cols: bestCols, rows: bestRows };
 }
 
-// 关卡 → 激活矩形（行×列）映射表
-function getActivationRect(level) {
-  if (level >= 1 && level <= 10) return { rows: 6, cols: 4 };     // 24格
-  if (level >= 11 && level <= 20) return { rows: 7, cols: 5 };    // 35格
-  if (level >= 21 && level <= 30) return { rows: 8, cols: 6 };    // 48格
-  if (level >= 31 && level <= 40) return { rows: 9, cols: 6 };    // 54格
-  if (level >= 41 && level <= 50) return { rows: 9, cols: 7 };    // 63格
-  if (level >= 51 && level <= 60) return { rows: 10, cols: 7 };   // 70格
-  if (level >= 61 && level <= 70) return { rows: 10, cols: 8 };   // 80格
-  if (level >= 71 && level <= 80) return { rows: 11, cols: 8 };   // 88格
-  if (level >= 81 && level <= 90) return { rows: 11, cols: 9 };   // 99格
-  if (level >= 91 && level <= 100) return { rows: 12, cols: 9 };  // 108格
-  if (level >= 101 && level <= 110) return { rows: 12, cols: 10 }; // 120格
-  if (level >= 111 && level <= 120) return { rows: 13, cols: 10 }; // 130格
-  if (level >= 121 && level <= 130) return { rows: 13, cols: 11 }; // 143格
-  if (level >= 131 && level <= 140) return { rows: 14, cols: 11 }; // 154格
-  if (level >= 141 && level <= 150) return { rows: 14, cols: 12 }; // 168格
-  if (level >= 151 && level <= 160) return { rows: 14, cols: 13 }; // 182格
-  if (level >= 161 && level <= 170) return { rows: 14, cols: 14 }; // 196格
-  if (level >= 171 && level <= 180) return { rows: 14, cols: 15 }; // 210格
-  if (level >= 181 && level <= 190) return { rows: 14, cols: 17 }; // 238格
-  if (level >= 191 && level <= 200) return { rows: 14, cols: 21 }; // 294格（满屏）
+// 根据目标填充数量计算最佳矩形尺寸（在棋盘格限制内）
+function calculateOptimalRect(targetCount) {
+  const maxCols = BOARD_GRID_LIMITS.MAX_COLS;
+  const maxRows = BOARD_GRID_LIMITS.MAX_ROWS;
   
-  // 200关以后继续使用满屏
-  return { rows: 14, cols: 21 };
+  // 如果目标数量超过最大容量，返回最大尺寸
+  if (targetCount >= BOARD_GRID_LIMITS.MAX_FILLABLE_COUNT) {
+    return { rows: maxRows, cols: maxCols };
+  }
+  
+  let bestCols = 1;
+  let bestRows = 1;
+  let bestDiff = Math.abs(1 - targetCount);
+  
+  // 寻找最接近目标数量的矩形尺寸
+  for (let cols = 1; cols <= maxCols; cols++) {
+    for (let rows = 1; rows <= maxRows; rows++) {
+      const actualCount = cols * rows;
+      const diff = Math.abs(actualCount - targetCount);
+      
+      if (diff < bestDiff || (diff === bestDiff && actualCount <= targetCount)) {
+        bestCols = cols;
+        bestRows = rows;
+        bestDiff = diff;
+      }
+      
+      // 如果找到完全匹配，提前退出
+      if (actualCount === targetCount) {
+        return { rows, cols };
+      }
+    }
+  }
+  
+  return { rows: bestRows, cols: bestCols };
 }
 
 // Get number distribution based on level difficulty
@@ -199,14 +258,15 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   const random = seededRandom(seed);
   
-  // 统一使用 14×21格 棋盘
-  const width = 14;
-  const height = 21;
+  // 使用棋盘格限制
+  const width = BOARD_GRID_LIMITS.MAX_COLS;  // 14
+  const height = BOARD_GRID_LIMITS.MAX_ROWS; // 21
   
-  // 计算整齐四边形的激活区域
-  const rectangularArea = calculateRectangularActivationArea(level, width, height);
-  const activeRows = rectangularArea.rows;
-  const activeCols = rectangularArea.cols;
+  // 根据关卡获取目标填充数量，然后计算最佳矩形
+  const targetFillCount = getTileFillCount(level);
+  const optimalRect = calculateOptimalRect(targetFillCount);
+  const activeRows = optimalRect.rows;
+  const activeCols = optimalRect.cols;
   const activeSize = activeRows * activeCols;
   
   // Calculate centered position
@@ -221,12 +281,12 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const targetCombinations = getTargetCombinations(level);
   const minDistance = getMinDistance(level);
   
-  // 填充整个激活矩形区域
-  const targetFillCount = activeSize;
+  // 填充整个激活矩形区域（现在activeSize就是我们想要的填充数量）
+  const actualFillCount = activeSize;
   
   // Calculate number of target combinations (pairs/triples/quads that sum to 10)
   const combinationRatio = level <= 50 ? 0.4 : level <= 100 ? 0.35 : 0.3;
-  const combinationCount = Math.floor(targetFillCount * combinationRatio / 2.5); // Average combination size
+  const combinationCount = Math.floor(actualFillCount * combinationRatio / 2.5); // Average combination size
   
   const placedPositions = new Set();
   let combinationsPlaced = 0;
@@ -239,7 +299,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     const combinations = targetCombinations[chosenType];
     const combination = combinations[Math.floor(random() * combinations.length)];
     
-    // Get available positions within rectangular activation area only
+    // Get available positions within the centered rectangular activation area
     const availablePositions = [];
     for (let row = 0; row < height; row++) {
       for (let col = 0; col < width; col++) {
@@ -290,9 +350,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     }
   }
   
-  // Fill remaining spots in rectangular activation area with random numbers
+  // Fill remaining spots in the centered rectangular activation area with random numbers
   const totalPlacedTiles = Array.from(placedPositions).length;
-  const remainingCount = Math.max(0, targetFillCount - totalPlacedTiles);
+  const remainingCount = Math.max(0, actualFillCount - totalPlacedTiles);
   
   const availablePositions = [];
   for (let row = 0; row < height; row++) {
@@ -331,7 +391,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
       cols: activeCols,
       rowOffset,
       colOffset,
-      activeSize
+      activeSize,
+      targetFillCount,
+      actualFillCount
     }
   };
 }

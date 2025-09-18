@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: timeLeft <= 10 ? '#f44336' : '#333',
+    color: '#333',
   },
   iqText: {
     fontSize: 16,

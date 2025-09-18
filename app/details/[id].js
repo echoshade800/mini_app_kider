@@ -502,7 +502,6 @@ export default function LevelDetailScreen() {
         swapAnimations={swapAnimationsRef.current}
         fractalAnimations={fractalAnimationsRef.current}
         disabled={false}
-        containerHeight={600}
       />
 
       {/* 浮动道具按钮 */}

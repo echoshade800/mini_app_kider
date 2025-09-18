@@ -37,11 +37,18 @@ export function UnifiedGameBoard({
   // 计算可用区域
   const usableWidth = Math.max(containerSize.width, 350); // 最小宽度350
   const usableHeight = Math.max(containerSize.height - 240, 400); // 扣除安全区域，最小高度400
-  const layout = useBoardLayout(containerSize.width, usableHeight, board?.tiles?.filter(t => t > 0).length || 0);
+  const tileCount = board?.tiles?.length || 0;
+  const layout = useBoardLayout(usableWidth, usableHeight, tileCount);
 
   const onContainerLayout = useCallback((event) => {
     const { width, height } = event.nativeEvent.layout;
-    console.log('🔍 Container layout:', { width, height, containerHeight, usableWidth: width, usableHeight: height - 240 });
+    console.log('🔍 Container layout:', { 
+      width, 
+      height, 
+      containerHeight, 
+      usableWidth: Math.max(width, 350), 
+      usableHeight: Math.max(height - 240, 400) 
+    });
     setContainerSize({ width, height });
   }, []);
 

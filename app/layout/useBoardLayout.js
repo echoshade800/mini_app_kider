@@ -90,7 +90,7 @@ export function useBoardLayout(usableW, usableH, tileCount) {
     
     if (safeTileCount <= 0) return null;
     
-    const layout = computeBoardLayout(usableW, usableH, tileCount);
+    const layout = computeBoardLayout(safeUsableW, safeUsableH, safeTileCount);
     console.log('📐 Layout computed:', {
       rows: layout.rows,
       cols: layout.cols,

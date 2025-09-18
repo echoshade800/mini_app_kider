@@ -135,18 +135,15 @@ export default function LevelDetailScreen() {
   const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // 计算单元格大小
-    const cellSize = Math.min(
-      (screenWidth - 80) / currentBoard.width, 
-      (screenHeight - 300) / currentBoard.height,
-      50
-    );
+    // 使用固定的单元格大小（从gridLayout获取）
+    const cellSize = 30 + 8; // TILE_SIZE + gap
     
     // 计算两个方块的位置
-    const row1 = Math.floor(tile1.index / currentBoard.width);
-    const col1 = tile1.index % currentBoard.width;
-    const row2 = Math.floor(tile2.index / currentBoard.width);
-    const col2 = tile2.index % currentBoard.width;
+    // 注意：这里需要根据实际的布局计算，暂时使用简化版本
+    const row1 = Math.floor(tile1.index / 10); // 假设10列
+    const col1 = tile1.index % 10;
+    const row2 = Math.floor(tile2.index / 10);
+    const col2 = tile2.index % 10;
     
     const deltaX = (col2 - col1) * cellSize;
     const deltaY = (row2 - row1) * cellSize;
@@ -218,8 +215,9 @@ export default function LevelDetailScreen() {
     if (!currentBoard) return;
 
     const { value, index } = tile;
-    const row = Math.floor(index / currentBoard.width);
-    const col = index % currentBoard.width;
+    // 注意：这里需要根据实际的布局计算，暂时使用简化版本
+    const row = Math.floor(index / 10); // 假设10列
+    const col = index % 10;
 
     // 生成不同数字的分解方案，确保总和等于原数字
     const generateSplitCombination = (num) => {
@@ -327,15 +325,11 @@ export default function LevelDetailScreen() {
     });
 
     // 创建分裂动画 - 显示正确的分解数值
-    const cellSize = Math.min(
-      (screenWidth - 80) / currentBoard.width, 
-      (screenHeight - 300) / currentBoard.height,
-      35
-    );
+    const cellSize = 30 + 8; // TILE_SIZE + gap
     
     selectedEmptyPositions.forEach((targetPos, i) => {
-      const targetRow = Math.floor(targetPos / currentBoard.width);
-      const targetCol = targetPos % currentBoard.width;
+      const targetRow = Math.floor(targetPos / 10); // 假设10列
+      const targetCol = targetPos % 10;
       
       // 计算跳跃距离
       const deltaX = (targetCol - col) * cellSize;

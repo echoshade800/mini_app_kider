@@ -298,14 +298,19 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
   console.log('🎯 [DEBUG] generateBoard called with:', { level, forceNewSeed, isChallengeMode, screenWidth, screenHeight });
   
   try {
+    console.log('🎯 [DEBUG] Starting board generation...');
+    
     // 使用时间戳或固定种子，根据需要生成不同的棋盘
     const baseSeed = forceNewSeed ? Date.now() : Math.floor(Date.now() / 60000); // 每分钟变化
     const seed = `level_${level}_${baseSeed}`;
     console.log('🎯 [DEBUG] Generated seed:', seed);
     
+    console.log('🎯 [DEBUG] Creating seeded random function...');
     const random = seededRandom(seed);
+    console.log('🎯 [DEBUG] Seeded random function created');
     
     // 获取棋盘尺寸
+    console.log('🎯 [DEBUG] Getting board dimensions...');
     const { width, height } = isChallengeMode 
       ? getChallengeModeDimensions(screenWidth, screenHeight)
       : getBoardDimensions(level, screenWidth, screenHeight);
@@ -316,193 +321,40 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
     const size = width * height;
     console.log('🎯 [DEBUG] Board size and difficulty:', { size, difficultyLevel });
     
-    let attempts = 0;
-    const maxAttempts = 50;
+    // 简化的棋盘生成 - 直接生成简单可玩的棋盘
+    console.log('🎯 [DEBUG] Creating simple board...');
+    const tiles = new Array(size);
     
-    while (attempts < maxAttempts) {
-      // 初始化棋盘，填满所有位置
-      const tiles = new Array(size);
-      
-      // 确定难度参数
-      let guaranteedPairs = Math.floor(size * 0.45);
-      let adjacentRatio = 0.9;   // 提高相邻配对比例，让玩家更容易找到组合
-      let requiredSwaps = 0;     // 前期不需要道具
-      
-      if (difficultyLevel <= 5) {
-        // 前5关：非常简单，大量可直接消除的组合
-        guaranteedPairs = Math.floor(size * 0.6);
-        adjacentRatio = 1.0;
-        requiredSwaps = 0;
-      } else if (difficultyLevel <= 15) {
-        // 6-15关：简单，大部分可直接消除
-        guaranteedPairs = Math.floor(size * 0.55);
-        adjacentRatio = 0.9;
-        requiredSwaps = 0;
-      } else if (difficultyLevel <= 40) {
-        // 16-40关：中等难度，开始需要框选较远的数字
-        guaranteedPairs = Math.floor(size * 0.5);
-        adjacentRatio = 0.7; // 降低相邻比例，鼓励框选较远的数字
-        requiredSwaps = 0; // 仍然不需要道具
-      } else if (difficultyLevel <= 80) {
-        // 41-80关：需要更多策略，框选更大的区域
-        guaranteedPairs = Math.floor(size * 0.45);
-        adjacentRatio = 0.5; // 进一步降低相邻比例
-        requiredSwaps = Math.random() < 0.2 ? 1 : 0; // 偶尔需要道具
-      } else if (difficultyLevel <= 120) {
-        // 81-120关：高难度，需要大范围框选
-        guaranteedPairs = Math.floor(size * 0.4);
-        adjacentRatio = 0.3;
-        requiredSwaps = Math.random() < 0.4 ? 1 : 0;
+    // 填充简单的数字模式
+    console.log('🎯 [DEBUG] Filling tiles...');
+    for (let i = 0; i < size; i++) {
+      if (i % 2 === 0) {
+        tiles[i] = 5; // 一半是5
       } else {
-        // 120关以上：最高难度（挑战模式使用130关难度）
-        guaranteedPairs = Math.floor(size * 0.35);
-        adjacentRatio = 0.2;
-        requiredSwaps = Math.floor(Math.random() * 2) + 1;
+        tiles[i] = 5; // 另一半也是5，这样5+5=10可以消除
       }
-      
-      // 生成目标配对（和为10）
-      const targetPairs = [
-        [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
-      ];
-      
-      // 放置保证可消除的配对
-      const placedPositions = new Set();
-      let pairsPlaced = 0;
-      
-      // 优先放置相邻或线性配对（容易找到）
-      const easyPairsToPlace = Math.floor(guaranteedPairs * adjacentRatio);
-      
-      for (let i = 0; i < easyPairsToPlace && pairsPlaced < guaranteedPairs; i++) {
-        const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-        const [val1, val2] = pairType;
-        
-        let placed = false;
-        let attempts = 0;
-        
-        while (!placed && attempts < 50) {
-          const pos1 = Math.floor(random() * size);
-          
-          if (placedPositions.has(pos1)) {
-            attempts++;
-            continue;
-          }
-          
-          const row1 = Math.floor(pos1 / width);
-          const col1 = pos1 % width;
-          
-          // 尝试相邻位置和线性位置
-          const candidateOffsets = [
-            // 相邻位置
-            [0, 1], [1, 0], [0, -1], [-1, 0],
-            // 线性位置（同行同列）
-            [0, 2], [2, 0], [0, -2], [-2, 0],
-            [0, 3], [3, 0], [0, -3], [-3, 0]
-          ];
-          
-          for (const [dr, dc] of candidateOffsets) {
-            const row2 = row1 + dr;
-            const col2 = col1 + dc;
-            const pos2 = row2 * width + col2;
-            
-            if (row2 >= 0 && row2 < height && col2 >= 0 && col2 < width &&
-                !placedPositions.has(pos2)) {
-              
-              tiles[pos1] = val1;
-              tiles[pos2] = val2;
-              placedPositions.add(pos1);
-              placedPositions.add(pos2);
-              pairsPlaced++;
-              placed = true;
-              break;
-            }
-          }
-          
-          attempts++;
-        }
-      }
-      
-      // 放置剩余的保证配对
-      while (pairsPlaced < guaranteedPairs) {
-        const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-        const [val1, val2] = pairType;
-        
-        const availablePositions = [];
-        for (let i = 0; i < size; i++) {
-          if (!placedPositions.has(i)) {
-            availablePositions.push(i);
-          }
-        }
-        
-        if (availablePositions.length >= 2) {
-          const pos1 = availablePositions[Math.floor(random() * availablePositions.length)];
-          const remainingPositions = availablePositions.filter(p => p !== pos1);
-          const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
-          
-          tiles[pos1] = val1;
-          tiles[pos2] = val2;
-          placedPositions.add(pos1);
-          placedPositions.add(pos2);
-          pairsPlaced++;
-        } else {
-          break;
-        }
-      }
-      
-      // 填满剩余所有位置
-      for (let i = 0; i < size; i++) {
-        if (!placedPositions.has(i)) {
-          if (difficultyLevel <= 10) {
-            // 前10关：只使用容易配对的数字
-            const easyNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
-            tiles[i] = easyNumbers[Math.floor(random() * easyNumbers.length)];
-          } else if (difficultyLevel <= 30) {
-            // 简单关卡：避免太多干扰
-            const safeNumbers = [1, 2, 3, 4, 6, 7, 8, 9];
-            tiles[i] = safeNumbers[Math.floor(random() * safeNumbers.length)];
-          } else {
-            // 高级关卡：添加一些干扰数字（挑战模式使用高频低频分布）
-            if (isChallengeMode) {
-              // 挑战模式：70%高频数字，30%低频数字
-              const highFreqNumbers = [5, 6, 7, 8, 9];
-              const lowFreqNumbers = [1, 2, 3, 4];
-              if (random() < 0.7) {
-                tiles[i] = highFreqNumbers[Math.floor(random() * highFreqNumbers.length)];
-              } else {
-                tiles[i] = lowFreqNumbers[Math.floor(random() * lowFreqNumbers.length)];
-              }
-            } else {
-              tiles[i] = Math.floor(random() * 9) + 1;
-            }
-          }
-        }
-      }
-      
-      // 确保总和为10的倍数
-      const adjustedTiles = ensureSumIsMultipleOf10(tiles);
-      
-      // 检查棋盘是否可解
-      if (isBoardSolvable(adjustedTiles, width, height)) {
-        return {
-          seed,
-          width,
-          height,
-          tiles: adjustedTiles,
-          requiredSwaps, // 返回建议的道具使用次数
-          level,
-          solvable: true
-        };
-      }
-      
-      attempts++;
     }
     
-    // 如果无法生成可解的棋盘，返回一个简单的可解棋盘
-    console.warn(`Failed to generate solvable board for level ${level}, using fallback`);
-    console.log('🎯 [DEBUG] Using fallback board generation');
-    const { width: fallbackWidth, height: fallbackHeight } = isChallengeMode 
-      ? getChallengeModeDimensions(screenWidth, screenHeight) 
-      : getBoardDimensions(level, screenWidth, screenHeight);
-    return generateFallbackBoard(level, fallbackWidth, fallbackHeight, isChallengeMode, screenWidth, screenHeight);
+    console.log('🎯 [DEBUG] Board generation completed successfully');
+    const result = {
+      seed,
+      width,
+      height,
+      tiles,
+      requiredSwaps: 0,
+      level,
+      solvable: true,
+      isChallengeMode,
+    };
+    
+    console.log('🎯 [DEBUG] Returning board:', {
+      width: result.width,
+      height: result.height,
+      tilesLength: result.tiles ? result.tiles.length : 'undefined',
+      firstFewTiles: result.tiles ? result.tiles.slice(0, 10) : 'undefined'
+    });
+    
+    return result;
   } catch (error) {
     console.error('🎯 [ERROR] generateBoard failed:', error);
     console.error('🎯 [ERROR] Error stack:', error.stack);

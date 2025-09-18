@@ -242,6 +242,7 @@ export default function ChallengeScreen() {
       console.error('🎯 [ERROR] Failed to generate board:', error);
       console.error('🎯 [ERROR] Error stack:', error.stack);
       
+      console.log('🎯 [DEBUG] Setting fallback board due to error');
       // 设置一个简单的后备棋盘
       const fallbackBoard = {
         width: 6,
@@ -254,6 +255,7 @@ export default function ChallengeScreen() {
       };
       console.log('🎯 [DEBUG] Using fallback board:', fallbackBoard);
       setCurrentBoard(fallbackBoard);
+      console.log('🎯 [DEBUG] Fallback board set');
     }
   };
 

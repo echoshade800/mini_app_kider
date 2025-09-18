@@ -18,18 +18,18 @@ import RescueModal from './RescueModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// 检查棋盘是否为空
+const isBoardEmpty = (tiles) => {
+  return tiles.every(tile => tile === 0);
+};
+
 // 有效游戏区域配置
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
-  GRID_ROWS: 20,        // 固定网格行数
-  GRID_COLS: 14,        // 固定网格列数
 };
-
-// 计算有效游戏区域和棋盘布局
-function calculateEffectiveAreaLayout() {
 
 const GameBoard = ({ 
   tiles, 
@@ -80,17 +80,23 @@ const GameBoard = ({
   };
 
   const getFixedBoardLayout = (availableWidth, availableHeight) => {
-    const { GRID_ROWS, GRID_COLS, TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
+    const { TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
     
     const innerWidth = availableWidth - BOARD_PADDING * 2;
     const innerHeight = availableHeight - BOARD_PADDING * 2;
     
-    const tileWidth = (innerWidth - (GRID_COLS - 1) * TILE_GAP) / GRID_COLS;
-    const tileHeight = (innerHeight - (GRID_ROWS - 1) * TILE_GAP) / GRID_ROWS;
-    const tileSize = Math.min(tileWidth, tileHeight);
+    // 使用实际的棋盘尺寸而不是固定网格
+    const tileWidth = (innerWidth - (width - 1) * TILE_GAP) / width;
+    const tileHeight = (innerHeight - (height - 1) * TILE_GAP) / height;
+    let tileSize = Math.min(tileWidth, tileHeight);
     
-    const boardWidth = GRID_COLS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
-    const boardHeight = GRID_ROWS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    // 挑战模式方块大小+2px
+    if (isChallenge) {
+      tileSize += 2;
+    }
+    
+    const boardWidth = width * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    const boardHeight = height * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
     
     const boardLeft = (screenWidth - boardWidth) / 2;
     const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
@@ -103,8 +109,8 @@ const GameBoard = ({
       boardHeight,
       boardLeft,
       boardTop,
-      gridRows: GRID_ROWS,
-      gridCols: GRID_COLS,
+      gridRows: height,
+      gridCols: width,
       getTilePosition: (row, col) => ({
         x: col * (tileSize + TILE_GAP),
         y: row * (tileSize + TILE_GAP),
@@ -632,7 +638,6 @@ const GameBoard = ({
                   styles.tileText,
                   { 
                     fontSize: Math.max(14, fixedLayout.tileSize * 0.45),
-                    lineHeight: fixedLayout.tileSize,
                   }
                 ]}>
                   {displayValue}
@@ -641,23 +646,6 @@ const GameBoard = ({
             </Animated.View>
           );
         });
-      }
-      
-      // 检查是否完全清空（仅挑战模式需要刷新）
-      if (isChallenge) {
-        const newTiles = [...tiles];
-        const tilePositions = []; // This should be defined somewhere
-        tilePositions.forEach(pos => {
-          const index = pos.row * width + pos.col;
-          newTiles[index] = 0;
-        });
-        
-        if (isBoardEmpty(newTiles) && onBoardRefresh) {
-          // 棋盘全清，生成新棋盘
-          setTimeout(() => {
-            onBoardRefresh('refresh');
-          }, 1000);
-        }
       }
       
       return null;
@@ -745,7 +733,6 @@ const GameBoard = ({
             styles.tileText,
             { 
               fontSize: Math.max(14, fixedLayout.tileSize * 0.45),
-              lineHeight: fixedLayout.tileSize,
             }
           ]}>
             {value}
@@ -762,7 +749,7 @@ const GameBoard = ({
     
     const layout = getFixedBoardLayout(availableWidth, availableHeight);
     setFixedLayout(layout);
-  }, [isChallenge]);
+  }, [isChallenge, width, height]);
 
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();
@@ -939,8 +926,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111',
     textAlign: 'center',
-    textAlignVertical: 'center',
-    includeFontPadding: false,
   },
   sumText: {
     fontSize: 16,

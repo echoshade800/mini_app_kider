@@ -33,16 +33,22 @@ function calculateEffectiveAreaLayout() {
   const effectiveHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
   const effectiveWidth = screenWidth;
   
-  const availableWidth = effectiveWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-  const availableHeight = effectiveHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  const boardPadding = EFFECTIVE_AREA_CONFIG.BOARD_PADDING;
+  const tileGap = EFFECTIVE_AREA_CONFIG.TILE_GAP;
   
-  const tileWidth = (availableWidth - (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_COLS;
-  const tileHeight = (availableHeight - (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / EFFECTIVE_AREA_CONFIG.GRID_ROWS;
+  const availableWidth = effectiveWidth - boardPadding * 2;
+  const availableHeight = effectiveHeight - boardPadding * 2;
+  
+  const gridCols = EFFECTIVE_AREA_CONFIG.GRID_COLS;
+  const gridRows = EFFECTIVE_AREA_CONFIG.GRID_ROWS;
+  
+  const tileWidth = (availableWidth - (gridCols - 1) * tileGap) / gridCols;
+  const tileHeight = (availableHeight - (gridRows - 1) * tileGap) / gridRows;
   
   const tileSize = Math.min(tileWidth, tileHeight);
   
-  const boardWidth = EFFECTIVE_AREA_CONFIG.GRID_COLS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_COLS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-  const boardHeight = EFFECTIVE_AREA_CONFIG.GRID_ROWS * tileSize + (EFFECTIVE_AREA_CONFIG.GRID_ROWS - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+  const boardWidth = gridCols * tileSize + (gridCols - 1) * tileGap + boardPadding * 2;
+  const boardHeight = gridRows * tileSize + (gridRows - 1) * tileGap + boardPadding * 2;
   
   const boardLeft = (screenWidth - boardWidth) / 2;
   const boardTop = EFFECTIVE_AREA_CONFIG.TOP_RESERVED + (effectiveHeight - boardHeight) / 2;
@@ -52,14 +58,13 @@ function calculateEffectiveAreaLayout() {
     boardTop,
     boardWidth,
     boardHeight,
+    boardPadding,
     tileSize,
-    tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
-    boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
-    getTilePosition: (row, col) => {
-      const x = col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP);
-      const y = row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP);
-      return { x, y };
-    }
+    tileGap,
+    getTilePosition: (row, col) => ({
+      x: col * (tileSize + tileGap),
+      y: row * (tileSize + tileGap)
+    })
   };
 }
 

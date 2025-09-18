@@ -95,7 +95,7 @@ export default function ChallengeScreen() {
   }, [gameState, timeLeft]);
 
   const generateNewBoard = () => {
-    const newBoard = generateBoard(100, true, true); // High difficulty challenge board
+    const newBoard = generateBoard(100, true, true); // 挑战模式：高数量方块
     setBoard(newBoard);
   };
 
@@ -264,6 +264,7 @@ export default function ChallengeScreen() {
             reshuffleCount={reshuffleCount}
             setReshuffleCount={setReshuffleCount}
             onRescueNeeded={() => setShowRescueModal(true)}
+            layoutConfig={board.layoutConfig}
           />
         )}
 

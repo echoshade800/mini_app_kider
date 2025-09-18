@@ -1,0 +1,243 @@
+/**
+ * 棋盘自适应布局系统 - 唯一布局规则来源
+ * Purpose: 根据数字方块数量动态计算棋盘尺寸和布局
+ * Features: 自适应尺寸、最小28px限制、棋盘比矩形大一圈
+ */
+
+import { Dimensions } from 'react-native';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// 布局常量
+const MIN_TILE_SIZE = 28; // 最小方块尺寸
+const TILE_GAP = 4; // 方块间距
+const BOARD_PADDING = 5; // 棋盘内边距（方块矩形到木框的留白）
+const WOOD_FRAME_WIDTH = 8; // 木框厚度
+
+// 有效游戏区域配置
+const EFFECTIVE_AREA = {
+  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
+  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+};
+
+/**
+ * 获取有效游戏区域尺寸
+ */
+function getEffectiveGameArea() {
+  const effectiveHeight = screenHeight - EFFECTIVE_AREA.TOP_RESERVED - EFFECTIVE_AREA.BOTTOM_RESERVED;
+  const effectiveWidth = screenWidth;
+  
+  return {
+    width: effectiveWidth,
+    height: effectiveHeight,
+    top: EFFECTIVE_AREA.TOP_RESERVED,
+    left: 0,
+  };
+}
+
+/**
+ * 根据数字方块数量计算最佳矩形行列数
+ * @param {number} N - 数字方块数量
+ * @param {number} targetAspect - 期望宽高比（可选，默认根据屏幕比例）
+ * @returns {Object} { rows, cols }
+ */
+export function computeGridRC(N, targetAspect = null) {
+  if (N <= 0) return { rows: 1, cols: 1 };
+  
+  const gameArea = getEffectiveGameArea();
+  const defaultAspect = targetAspect || (gameArea.width / gameArea.height);
+  
+  // 寻找最接近目标宽高比的 (R, C) 组合
+  let bestR = 1, bestC = N;
+  let bestDiff = Infinity;
+  
+  for (let r = 1; r <= N; r++) {
+    const c = Math.ceil(N / r);
+    if (r * c >= N) {
+      const currentAspect = c / r;
+      const diff = Math.abs(currentAspect - defaultAspect);
+      
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestR = r;
+        bestC = c;
+      }
+    }
+  }
+  
+  return { rows: bestR, cols: bestC };
+}
+
+/**
+ * 计算在给定容器内能放下的最大方块尺寸
+ * @param {number} containerWidth - 容器宽度
+ * @param {number} containerHeight - 容器高度
+ * @param {number} rows - 行数
+ * @param {number} cols - 列数
+ * @param {number} gap - 方块间距
+ * @param {number} padding - 内边距
+ * @param {number} minTile - 最小方块尺寸
+ * @returns {Object} 布局信息
+ */
+export function computeTileSize(containerWidth, containerHeight, rows, cols, gap = TILE_GAP, padding = BOARD_PADDING, minTile = MIN_TILE_SIZE) {
+  // 计算可用空间（减去木框厚度）
+  const availableWidth = containerWidth - WOOD_FRAME_WIDTH * 2;
+  const availableHeight = containerHeight - WOOD_FRAME_WIDTH * 2;
+  
+  // 计算方块尺寸上限
+  const tileW = (availableWidth - 2 * padding - (cols - 1) * gap) / cols;
+  const tileH = (availableHeight - 2 * padding - (rows - 1) * gap) / rows;
+  const tileSize = Math.floor(Math.min(tileW, tileH));
+  
+  // 计算棋盘内容区尺寸（方块矩形 + 内边距）
+  const contentWidth = 2 * padding + cols * tileSize + (cols - 1) * gap;
+  const contentHeight = 2 * padding + rows * tileSize + (rows - 1) * gap;
+  
+  // 棋盘总尺寸（内容区 + 木框）
+  const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
+  const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
+  
+  return {
+    tileSize,
+    boardWidth,
+    boardHeight,
+    contentWidth,
+    contentHeight,
+    isValid: tileSize >= minTile,
+  };
+}
+
+/**
+ * 自适应棋盘布局计算
+ * @param {number} N - 数字方块数量
+ * @param {number} targetAspect - 期望宽高比（可选）
+ * @returns {Object} 完整布局信息
+ */
+export function computeAdaptiveLayout(N, targetAspect = null) {
+  const gameArea = getEffectiveGameArea();
+  let { rows, cols } = computeGridRC(N, targetAspect);
+  
+  // 策略a: 尝试在有效区域内放大棋盘
+  let layout = computeTileSize(gameArea.width, gameArea.height, rows, cols);
+  
+  if (layout.isValid) {
+    // 计算棋盘在有效区域内的居中位置
+    const boardLeft = (gameArea.width - layout.boardWidth) / 2;
+    const boardTop = gameArea.top + (gameArea.height - layout.boardHeight) / 2;
+    
+    return {
+      ...layout,
+      rows,
+      cols,
+      boardLeft,
+      boardTop,
+      gameArea,
+    };
+  }
+  
+  // 策略b: 调整 (R, C) 比例
+  const alternatives = [];
+  for (let r = 1; r <= N; r++) {
+    const c = Math.ceil(N / r);
+    if (r * c >= N && (r !== rows || c !== cols)) {
+      const testLayout = computeTileSize(gameArea.width, gameArea.height, r, c);
+      if (testLayout.isValid) {
+        alternatives.push({ rows: r, cols: c, ...testLayout });
+      }
+    }
+  }
+  
+  if (alternatives.length > 0) {
+    // 选择方块尺寸最大的方案
+    const bestAlt = alternatives.reduce((best, current) => 
+      current.tileSize > best.tileSize ? current : best
+    );
+    
+    const boardLeft = (gameArea.width - bestAlt.boardWidth) / 2;
+    const boardTop = gameArea.top + (gameArea.height - bestAlt.boardHeight) / 2;
+    
+    return {
+      ...bestAlt,
+      boardLeft,
+      boardTop,
+      gameArea,
+    };
+  }
+  
+  // 策略c: 使用最小尺寸，允许N向上取整
+  const finalRows = Math.ceil(Math.sqrt(N));
+  const finalCols = Math.ceil(N / finalRows);
+  const finalLayout = computeTileSize(gameArea.width, gameArea.height, finalRows, finalCols);
+  
+  // 强制使用最小尺寸
+  const forcedTileSize = MIN_TILE_SIZE;
+  const forcedContentWidth = 2 * BOARD_PADDING + finalCols * forcedTileSize + (finalCols - 1) * TILE_GAP;
+  const forcedContentHeight = 2 * BOARD_PADDING + finalRows * forcedTileSize + (finalRows - 1) * TILE_GAP;
+  const forcedBoardWidth = forcedContentWidth + WOOD_FRAME_WIDTH * 2;
+  const forcedBoardHeight = forcedContentHeight + WOOD_FRAME_WIDTH * 2;
+  
+  const boardLeft = (gameArea.width - forcedBoardWidth) / 2;
+  const boardTop = gameArea.top + (gameArea.height - forcedBoardHeight) / 2;
+  
+  return {
+    tileSize: forcedTileSize,
+    boardWidth: forcedBoardWidth,
+    boardHeight: forcedBoardHeight,
+    contentWidth: forcedContentWidth,
+    contentHeight: forcedContentHeight,
+    rows: finalRows,
+    cols: finalCols,
+    boardLeft,
+    boardTop,
+    gameArea,
+    isValid: true,
+  };
+}
+
+/**
+ * 计算每个方块的位置
+ * @param {number} rows - 行数
+ * @param {number} cols - 列数
+ * @param {number} tileSize - 方块尺寸
+ * @param {number} gap - 间距
+ * @param {number} padding - 内边距
+ * @returns {Function} 位置计算函数
+ */
+export function layoutTiles(rows, cols, tileSize, gap = TILE_GAP, padding = BOARD_PADDING) {
+  return function getTilePosition(row, col) {
+    if (row < 0 || row >= rows || col < 0 || col >= cols) {
+      return null;
+    }
+    
+    const x = padding + col * (tileSize + gap);
+    const y = padding + row * (tileSize + gap);
+    
+    return {
+      x,
+      y,
+      width: tileSize,
+      height: tileSize,
+    };
+  };
+}
+
+/**
+ * 获取完整的棋盘布局配置
+ * @param {number} N - 数字方块数量
+ * @param {number} targetAspect - 期望宽高比（可选）
+ * @returns {Object} 完整布局配置
+ */
+export function getBoardLayoutConfig(N, targetAspect = null) {
+  const layout = computeAdaptiveLayout(N, targetAspect);
+  const getTilePosition = layoutTiles(layout.rows, layout.cols, layout.tileSize);
+  
+  return {
+    ...layout,
+    getTilePosition,
+    // 布局常量
+    tileGap: TILE_GAP,
+    boardPadding: BOARD_PADDING,
+    woodFrameWidth: WOOD_FRAME_WIDTH,
+    minTileSize: MIN_TILE_SIZE,
+  };
+}

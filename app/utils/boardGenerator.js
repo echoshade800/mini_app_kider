@@ -1,8 +1,10 @@
 /**
- * Board Generator - Generate game boards with target pairs and difficulty scaling
- * Purpose: Create solvable puzzles with guaranteed 10-sum combinations
- * Features: Deterministic generation, difficulty progression, balanced distribution
+ * Board Generator - 使用新的自适应布局系统
+ * Purpose: 根据难度生成数字方块，布局由BoardLayout统一管理
+ * Features: 只负责数字生成，不涉及布局计算
  */
+
+import { getBoardLayoutConfig } from '../layout/BoardLayout';
 
 // Deterministic random number generator for consistent board generation
 function seededRandom(seed) {
@@ -17,32 +19,38 @@ function seededRandom(seed) {
   };
 }
 
-// Get tile fill ratio based on level difficulty
-function getTileFillRatio(level) {
-  if (level >= 1 && level <= 10) {
-    return 0.3;    // 新手引导，方块少
-  }
-  if (level >= 11 && level <= 20) {
-    return 0.4;    // 逐步增加
-  }
-  if (level >= 21 && level <= 30) {
-    return 0.5;
-  }
-  if (level >= 31 && level <= 50) {
-    return 0.6;
-  }
-  if (level >= 51 && level <= 80) {
-    return 0.7;    // 中期稳态
-  }
-  if (level >= 81 && level <= 120) {
-    return 0.75;
-  }
-  if (level >= 121 && level <= 200) {
-    return 0.8;    // 高难度
+// 根据关卡获取数字方块数量
+function getTileCount(level, isChallenge = false) {
+  if (isChallenge) {
+    // 挑战模式：使用高数量提供最大挑战
+    return 200; // 固定高数量
   }
   
-  // 200关以后继续使用高填充率
-  return 0.8;
+  // 关卡模式：渐进式增长
+  if (level >= 1 && level <= 10) {
+    return Math.floor(12 + level * 2); // 14-32个方块
+  }
+  if (level >= 11 && level <= 20) {
+    return Math.floor(30 + (level - 10) * 3); // 33-60个方块
+  }
+  if (level >= 21 && level <= 30) {
+    return Math.floor(60 + (level - 20) * 4); // 64-100个方块
+  }
+  if (level >= 31 && level <= 50) {
+    return Math.floor(100 + (level - 30) * 3); // 103-160个方块
+  }
+  if (level >= 51 && level <= 80) {
+    return Math.floor(160 + (level - 50) * 2); // 162-220个方块
+  }
+  if (level >= 81 && level <= 120) {
+    return Math.floor(220 + (level - 80) * 1.5); // 221-280个方块
+  }
+  if (level >= 121 && level <= 200) {
+    return Math.floor(280 + (level - 120) * 1); // 281-360个方块
+  }
+  
+  // 200关以后继续增长
+  return Math.floor(360 + (level - 200) * 0.5);
 }
 
 // Get number distribution strategy based on level
@@ -78,20 +86,19 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   const random = seededRandom(seed);
   
-  // 统一使用 14×21格 棋盘
-  const width = 14;
-  const height = 21;
-  const size = width * height;
+  // 获取数字方块数量
+  const tileCount = getTileCount(level, isChallenge);
+  
+  // 使用新的自适应布局系统
+  const layoutConfig = getBoardLayoutConfig(tileCount);
+  const { rows, cols } = layoutConfig;
+  const totalSlots = rows * cols;
   
   // Initialize empty board
-  const tiles = new Array(size).fill(0);
+  const tiles = new Array(totalSlots).fill(0);
   
   // Get difficulty parameters
-  const fillRatio = getTileFillRatio(level);
   const distribution = getNumberDistribution(level);
-  
-  // Calculate number of filled tiles
-  const filledCount = Math.floor(size * fillRatio);
   
   // Target pairs that sum to 10
   const targetPairs = [
@@ -107,7 +114,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     targetPairRatio = 0.25; // Hard levels
   }
   
-  const pairCount = Math.floor((filledCount / 2) * targetPairRatio);
+  const pairCount = Math.floor((tileCount / 2) * targetPairRatio);
   const placedPositions = new Set();
   let pairsPlaced = 0;
   
@@ -117,7 +124,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     const [val1, val2] = pairType;
     
     const availablePositions = [];
-    for (let i = 0; i < size; i++) {
+    for (let i = 0; i < totalSlots; i++) {
       if (!placedPositions.has(i)) {
         availablePositions.push(i);
       }
@@ -139,9 +146,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   }
   
   // Fill remaining spots with random numbers based on distribution
-  const remainingCount = filledCount - (pairsPlaced * 2);
+  const remainingCount = tileCount - (pairsPlaced * 2);
   const availablePositions = [];
-  for (let i = 0; i < size; i++) {
+  for (let i = 0; i < totalSlots; i++) {
     if (!placedPositions.has(i)) {
       availablePositions.push(i);
     }
@@ -165,8 +172,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   return {
     seed,
-    width,
-    height,
+    width: cols,
+    height: rows,
     tiles,
+    layoutConfig, // 包含完整的布局信息
   };
 }

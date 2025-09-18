@@ -191,6 +191,7 @@ export default function LevelDetailScreen() {
         reshuffleCount={reshuffleCount}
         setReshuffleCount={setReshuffleCount}
         onRescueNeeded={() => setShowRescueModal(true)}
+        layoutConfig={board.layoutConfig}
       />
 
       {/* Bottom Toolbar */}

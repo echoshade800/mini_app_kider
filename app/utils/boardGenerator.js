@@ -316,75 +316,6 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
     const size = width * height;
     console.log('🎯 [DEBUG] Board size and difficulty:', { size, difficultyLevel });
     
-    // 简化挑战模式的棋盘生成逻辑
-    if (isChallengeMode) {
-      console.log('🎯 [DEBUG] Generating challenge mode board...');
-      const tiles = new Array(size);
-      
-      // 简单填充：70%的位置放置数字
-      const fillRatio = 0.7;
-      const filledCount = Math.floor(size * fillRatio);
-      
-      // 生成一些保证可消除的配对
-      const targetPairs = [[1, 9], [2, 8], [3, 7], [4, 6], [5, 5]];
-      const pairCount = Math.floor(filledCount / 3); // 约1/3是配对
-      
-      // 初始化为0
-      for (let i = 0; i < size; i++) {
-        tiles[i] = 0;
-      }
-      
-      // 放置配对
-      const placedPositions = new Set();
-      for (let i = 0; i < pairCount; i++) {
-        const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
-        const [val1, val2] = pairType;
-        
-        // 找两个空位置
-        let pos1, pos2;
-        let attempts = 0;
-        do {
-          pos1 = Math.floor(random() * size);
-          pos2 = Math.floor(random() * size);
-          attempts++;
-        } while ((placedPositions.has(pos1) || placedPositions.has(pos2) || pos1 === pos2) && attempts < 100);
-        
-        if (attempts < 100) {
-          tiles[pos1] = val1;
-          tiles[pos2] = val2;
-          placedPositions.add(pos1);
-          placedPositions.add(pos2);
-        }
-      }
-      
-      // 填充剩余位置
-      const remainingCount = filledCount - placedPositions.size;
-      let filled = 0;
-      for (let i = 0; i < size && filled < remainingCount; i++) {
-        if (!placedPositions.has(i)) {
-          tiles[i] = Math.floor(random() * 9) + 1;
-          filled++;
-        }
-      }
-      
-      console.log('🎯 [DEBUG] Challenge board generated successfully:', {
-        width, height, size,
-        filledPositions: placedPositions.size,
-        totalFilled: tiles.filter(t => t > 0).length
-      });
-      
-      return {
-        seed,
-        width,
-        height,
-        tiles,
-        requiredSwaps: 0,
-        level,
-        solvable: true,
-        isChallengeMode: true,
-      };
-    }
-    
     let attempts = 0;
     const maxAttempts = 50;
     
@@ -567,16 +498,28 @@ export function generateBoard(level, forceNewSeed = false, isChallengeMode = fal
     
     // 如果无法生成可解的棋盘，返回一个简单的可解棋盘
     console.warn(`Failed to generate solvable board for level ${level}, using fallback`);
+    console.log('🎯 [DEBUG] Using fallback board generation');
     const { width: fallbackWidth, height: fallbackHeight } = isChallengeMode 
       ? getChallengeModeDimensions(screenWidth, screenHeight) 
       : getBoardDimensions(level, screenWidth, screenHeight);
     return generateFallbackBoard(level, fallbackWidth, fallbackHeight, isChallengeMode, screenWidth, screenHeight);
   } catch (error) {
-    console.error('Error generating board:', error);
-    const { width: fallbackWidth, height: fallbackHeight } = isChallengeMode 
-      ? getChallengeModeDimensions(screenWidth, screenHeight) 
-      : getBoardDimensions(level, screenWidth, screenHeight);
-    return generateFallbackBoard(level, fallbackWidth, fallbackHeight, isChallengeMode, screenWidth, screenHeight);
+    console.error('🎯 [ERROR] generateBoard failed:', error);
+    console.error('🎯 [ERROR] Error stack:', error.stack);
+    
+    // 返回一个最简单的棋盘作为后备
+    const simpleBoard = {
+      seed: `error_fallback_${Date.now()}`,
+      width: 6,
+      height: 6,
+      tiles: new Array(36).fill(0).map((_, i) => i % 2 === 0 ? 5 : 5), // 全是5，可以组成10
+      requiredSwaps: 0,
+      level,
+      solvable: true,
+      isChallengeMode,
+    };
+    console.log('🎯 [DEBUG] Returning error fallback board:', simpleBoard);
+    return simpleBoard;
   }
 }
 

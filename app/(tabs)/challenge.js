@@ -229,20 +229,11 @@ export default function ChallengeScreen() {
         firstFewTiles: board.tiles ? board.tiles.slice(0, 10) : 'undefined'
       });
       
-      // 重写尺寸为挑战模式配置
-      board.width = cols;
-      board.height = rows;
-      console.log('🎯 [DEBUG] Updated board dimensions:', { width: board.width, height: board.height });
-      
-      // 重新生成对应尺寸的tiles数组
-      const newSize = rows * cols;
-      console.log('🎯 [DEBUG] Generating new tiles array, size:', newSize);
-      const newTiles = new Array(newSize);
-      for (let i = 0; i < newSize; i++) {
-        newTiles[i] = Math.floor(Math.random() * 9) + 1;
+      // 验证棋盘数据
+      if (!board || !board.tiles || board.tiles.length === 0) {
+        console.error('🎯 [ERROR] Invalid board generated:', board);
+        return;
       }
-      board.tiles = newTiles;
-      console.log('🎯 [DEBUG] New tiles generated, first 10:', newTiles.slice(0, 10));
       
       setCurrentBoard(board);
       setReshuffleCount(0);
@@ -250,6 +241,19 @@ export default function ChallengeScreen() {
     } catch (error) {
       console.error('🎯 [ERROR] Failed to generate board:', error);
       console.error('🎯 [ERROR] Error stack:', error.stack);
+      
+      // 设置一个简单的后备棋盘
+      const fallbackBoard = {
+        width: 6,
+        height: 6,
+        tiles: new Array(36).fill(0).map((_, i) => (i % 2 === 0 ? 5 : 5)),
+        seed: `fallback_${Date.now()}`,
+        level: 130,
+        solvable: true,
+        isChallengeMode: true,
+      };
+      console.log('🎯 [DEBUG] Using fallback board:', fallbackBoard);
+      setCurrentBoard(fallbackBoard);
     }
   };
 

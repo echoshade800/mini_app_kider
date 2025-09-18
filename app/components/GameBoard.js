@@ -1,14 +1,3 @@
-const EFFECTIVE_AREA_CONFIG = {
-  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
-  TILE_GAP: 4,          // 方块间距
-  BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
-  GRID_ROWS: 20,        // 固定网格行数
-  GRID_COLS: 14,        // 固定网格列数
-};
-
-// 计算有效游戏区域和棋盘布局
-function calculateEffectiveAreaLayout() {
 /**
  * GameBoard Component - Green chalkboard with sticky note style tiles
  * Purpose: Render game tiles with rectangle drawing on a classroom chalkboard theme
@@ -41,11 +30,54 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
+  const topReserved = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+  const bottomReserved = EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+  const availableHeight = screenHeight - topReserved - bottomReserved;
+  
+  return {
+    topReserved,
     bottomReserved,
     availableHeight,
     availableWidth: screenWidth,
   };
 }
+
+const GameBoard = ({ 
+  tiles, 
+  width, 
+  height, 
+  onTilePress, 
+  onBoardRefresh, 
+  isChallenge,
+  itemMode,
+  selectedSwapTile,
+  swapAnimations,
+  fractalAnimations,
+  initTileScale,
+  getTileRotation,
+  getFixedBoardLayout,
+  panResponder,
+  selection,
+  setSelection,
+  selectionOpacity,
+  getSelectedTiles,
+  explosionAnimation,
+  explosionScale,
+  explosionOpacity,
+  showRescueModal,
+  setShowRescueModal,
+  reshuffleCount,
+  setReshuffleCount,
+  isBoardEmpty,
+  handleTilePress
+}) => {
+  const [fixedLayout, setFixedLayout] = useState(null);
+
+  // 清除选择
+  const clearSelection = () => {
+    if (selection && selectionOpacity) {
+      Animated.parallel([
+        Animated.timing(selectionOpacity, {
           toValue: 0,
           duration: 300,
           useNativeDriver: false,
@@ -567,5 +599,42 @@ const styles = StyleSheet.create({
   tileText: {
     fontWeight: 'bold',
     color: '#111',
-// 有效游戏区域配置
     textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
+  sumText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  explosion: {
+    position: 'absolute',
+    width: 80,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  explosionNote: {
+    width: 80,
+    height: 60,
+    backgroundColor: '#FFEB3B', // Yellow sticky note
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#F57F17',
+    shadowColor: '#000',
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  explosionText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+});
+
+export default GameBoard;

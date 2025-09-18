@@ -21,6 +21,9 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 // 有效游戏区域配置
 const EFFECTIVE_AREA_CONFIG = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
+// 有效游戏区域配置
+const EFFECTIVE_AREA_CONFIG = {
+  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
   BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
   TILE_GAP: 4,          // 方块间距
   BOARD_PADDING: 16,    // 棋盘内边距（木框留白）
@@ -30,35 +33,6 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-      }));
-
-      // Update hovered tiles with scaling effect
-      const newSelection = { ...selection, endRow, endCol };
-      const newSelectedTiles = getSelectedTilesForSelection(newSelection);
-      const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
-      
-      // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
-      const sum = newSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-      const targetScale = sum === 10 ? 1.1 : 1.05;
-      
-      newSelectedTiles.forEach(tile => {
-        if (!hoveredTiles.has(tile.index)) {
-          scaleTile(tile.index, targetScale);
-        }
-      });
-      
-      hoveredTiles.forEach(index => {
-  const topReserved = EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-  const bottomReserved = EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
-  const availableHeight = screenHeight - topReserved - bottomReserved;
-  
-  return {
-    topReserved,
-    bottomReserved,
-    availableHeight,
-    availableWidth: screenWidth,
-  };
-}
 
     onPanResponderRelease: () => {
       if (selection && !disabled) {

@@ -1,10 +1,10 @@
 /**
- * Levels Screen - Level selection and progress tracking
- * Purpose: Display available levels with progress indicators and filtering
- * Features: Level grid, progress tracking, stage filtering, unlock system
+ * Level Mode Screen - Browse and select levels to play
+ * Purpose: Show level list with filtering, navigate to level details
+ * Extend: Add search, favorites, difficulty indicators, or completion stats
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -19,139 +19,106 @@ import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
 import { STAGE_NAMES, STAGE_GROUPS, getStageGroup } from '../utils/stageNames';
 
-const FILTER_OPTIONS = [
-  { key: 'all', label: 'All Levels', color: '#4CAF50' },
-  { key: 'daycare', label: 'Daycare', color: '#FFB74D' },
-  { key: 'kindergarten', label: 'Kindergarten', color: '#81C784' },
-  { key: 'elementary', label: 'Elementary', color: '#64B5F6' },
-  { key: 'middle', label: 'Middle School', color: '#BA68C8' },
-  { key: 'high', label: 'High School', color: '#F06292' },
-  { key: 'college', label: 'College', color: '#4DB6AC' },
-  { key: 'career', label: 'Career', color: '#A1C181' },
-  { key: 'life', label: 'Life Stages', color: '#DDA0DD' },
-  { key: 'beyond', label: 'Beyond Reality', color: '#87CEEB' },
+const FILTER_CHIPS = [
+  { id: 'all', label: 'All Levels', range: [1, 200] },
+  { id: 'daycare', label: 'Daycare', range: [1, 5] },
+  { id: 'kindergarten', label: 'Kindergarten', range: [6, 10] },
+  { id: 'elementary', label: 'Elementary', range: [11, 30] },
+  { id: 'middle', label: 'Middle School', range: [31, 45] },
+  { id: 'high', label: 'High School', range: [46, 65] },
+  { id: 'college', label: 'College', range: [66, 85] },
+  { id: 'graduate', label: 'Graduate', range: [86, 95] },
+  { id: 'professor', label: 'Professor', range: [96, 100] },
+  { id: 'career', label: 'Career', range: [101, 150] },
+  { id: 'life', label: 'Life Stages', range: [151, 180] },
+  { id: 'beyond', label: 'Beyond Reality', range: [181, 200] },
 ];
 
 export default function LevelsScreen() {
   const { gameData } = useGameStore();
   const [selectedFilter, setSelectedFilter] = useState('all');
   
-  const maxLevel = gameData?.maxLevel || 1;
-  const totalLevels = 200;
+  const maxLevel = gameData?.maxLevel || 1; // 至少可以玩第1关
+  const lastPlayedLevel = gameData?.lastPlayedLevel || 1;
 
   const getFilteredLevels = () => {
+    const filter = FILTER_CHIPS.find(f => f.id === selectedFilter);
+    if (!filter) return [];
+    
     const levels = [];
-    for (let i = 1; i <= totalLevels; i++) {
-      const stageGroup = getStageGroup(i).toLowerCase().replace(' ', '');
-      
-      if (selectedFilter === 'all' || 
-          selectedFilter === stageGroup ||
-          (selectedFilter === 'middle' && stageGroup === 'middleschool') ||
-          (selectedFilter === 'high' && stageGroup === 'highschool') ||
-          (selectedFilter === 'life' && stageGroup === 'lifestages') ||
-          (selectedFilter === 'beyond' && stageGroup === 'beyondreality')) {
-        levels.push(i);
-      }
+    for (let i = filter.range[0]; i <= filter.range[1]; i++) {
+      levels.push({
+        id: i,
+        level: i,
+        stageName: STAGE_NAMES[i] || `Level ${i}`,
+        group: getStageGroup(i),
+        isUnlocked: i <= Math.max(maxLevel + 1, 1), // 至少第1关是解锁的
+        isUnlocked: true, // 开放所有关卡用于测试
+        isCompleted: i <= maxLevel,
+        isLastPlayed: i === lastPlayedLevel,
+      });
     }
     return levels;
   };
 
-  const getLevelStatus = (level) => {
-    if (level <= maxLevel) return 'completed';
-    if (level === maxLevel + 1) return 'current';
-    return 'locked';
-  };
-
-  const getLevelColor = (level) => {
-    const status = getLevelStatus(level);
-    switch (status) {
-      case 'completed': return '#4CAF50';
-      case 'current': return '#FF9800';
-      case 'locked': return '#BDBDBD';
-      default: return '#BDBDBD';
-    }
-  };
-
-  const getLevelIcon = (level) => {
-    const status = getLevelStatus(level);
-    switch (status) {
-      case 'completed': return 'checkmark-circle';
-      case 'current': return 'play-circle';
-      case 'locked': return 'lock-closed';
-      default: return 'lock-closed';
-    }
-  };
-
   const handleLevelPress = (level) => {
-    if (level <= maxLevel + 1) {
-      router.push(`/details/${level}`);
+    if (level.isUnlocked) {
+      router.push(`/details/${level.level}`);
     }
   };
 
-  const renderLevelItem = ({ item: level }) => {
-    const status = getLevelStatus(level);
-    const isPlayable = level <= maxLevel + 1;
-    const stageName = STAGE_NAMES[level] || `Level ${level}`;
-    
-    return (
-      <TouchableOpacity
-        style={[
-          styles.levelCard,
-          { borderColor: getLevelColor(level) },
-          !isPlayable && styles.levelCardDisabled
-        ]}
-        onPress={() => handleLevelPress(level)}
-        disabled={!isPlayable}
-        activeOpacity={0.7}
-      >
-        <View style={styles.levelHeader}>
-          <Text style={[styles.levelNumber, { color: getLevelColor(level) }]}>
-            {level}
-          </Text>
-          <Ionicons 
-            name={getLevelIcon(level)} 
-            size={20} 
-            color={getLevelColor(level)} 
-          />
-        </View>
-        
-        <Text 
-          style={[
-            styles.levelName,
-            !isPlayable && styles.levelNameDisabled
-          ]}
-          numberOfLines={2}
-        >
-          {stageName}
-        </Text>
-        
-        <View style={styles.levelFooter}>
-          <Text style={[styles.levelStatus, { color: getLevelColor(level) }]}>
-            {status === 'completed' ? 'Completed' : 
-             status === 'current' ? 'Play Now' : 'Locked'}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderFilterButton = (filter) => (
+  const renderFilterChip = ({ item }) => (
     <TouchableOpacity
-      key={filter.key}
       style={[
-        styles.filterButton,
-        selectedFilter === filter.key && [
-          styles.filterButtonActive,
-          { backgroundColor: filter.color }
-        ]
+        styles.filterChip,
+        selectedFilter === item.id && styles.filterChipActive
       ]}
-      onPress={() => setSelectedFilter(filter.key)}
+      onPress={() => setSelectedFilter(item.id)}
     >
       <Text style={[
-        styles.filterButtonText,
-        selectedFilter === filter.key && styles.filterButtonTextActive
+        styles.filterChipText,
+        selectedFilter === item.id && styles.filterChipTextActive
       ]}>
-        {filter.label}
+        {item.label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderLevelCard = ({ item }) => (
+    <TouchableOpacity
+      style={[
+        styles.levelCard,
+        !item.isUnlocked && styles.levelCardLocked,
+        item.isLastPlayed && styles.levelCardCurrent
+      ]}
+      onPress={() => handleLevelPress(item)}
+      disabled={!item.isUnlocked}
+    >
+      <View style={styles.levelCardHeader}>
+        <Text style={[
+          styles.levelNumber,
+          !item.isUnlocked && styles.levelNumberLocked
+        ]}>
+          {item.level}
+        </Text>
+        {item.isCompleted && (
+          <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+        )}
+        {!item.isUnlocked && (
+          <Ionicons name="lock-closed" size={20} color="#ccc" />
+        )}
+      </View>
+      <Text style={[
+        styles.levelName,
+        !item.isUnlocked && styles.levelNameLocked
+      ]} numberOfLines={2}>
+        {item.stageName}
+      </Text>
+      <Text style={[
+        styles.levelGroup,
+        !item.isUnlocked && styles.levelGroupLocked
+      ]}>
+        {item.group}
       </Text>
     </TouchableOpacity>
   );
@@ -160,55 +127,42 @@ export default function LevelsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      {/* 返回按钮 */}
+      <View style={styles.topBar}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => router.back()}
+          onPress={() => router.replace('/')}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Level Selection</Text>
-          <Text style={styles.subtitle}>
-            Progress: {maxLevel}/{totalLevels} levels
-          </Text>
-        </View>
-        
         <View style={styles.placeholder} />
       </View>
-
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill,
-              { width: `${(maxLevel / totalLevels) * 100}%` }
-            ]} 
-          />
-        </View>
-        <Text style={styles.progressText}>
-          {Math.round((maxLevel / totalLevels) * 100)}% Complete
-        </Text>
+      
+      <View style={styles.header}>
+        <Text style={styles.title}>Level Mode</Text>
+        <Text style={styles.subtitle}>Choose your stage</Text>
       </View>
 
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterContainer}
-        contentContainerStyle={styles.filterContent}
-      >
-        {FILTER_OPTIONS.map(renderFilterButton)}
-      </ScrollView>
+      {/* Filter Chips */}
+      <View style={styles.filtersContainer}>
+        <FlatList
+          data={FILTER_CHIPS}
+          renderItem={renderFilterChip}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersContent}
+        />
+      </View>
 
+      {/* Levels Grid */}
       <FlatList
         data={filteredLevels}
-        renderItem={renderLevelItem}
-        keyExtractor={(item) => item.toString()}
+        renderItem={renderLevelCard}
+        keyExtractor={(item) => item.id.toString()}
         numColumns={2}
-        contentContainerStyle={styles.levelsContainer}
+        contentContainerStyle={styles.levelsContent}
         showsVerticalScrollIndicator={false}
-        columnWrapperStyle={styles.levelRow}
       />
     </SafeAreaView>
   );
@@ -219,112 +173,85 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f0f8ff',
   },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   backButton: {
     padding: 8,
   },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
   placeholder: {
-    width: 40,
+    flex: 1,
   },
-  progressContainer: {
+  header: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 4,
-    overflow: 'hidden',
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 12,
+  subtitle: {
+    fontSize: 16,
     color: '#666',
-    textAlign: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
-  filterContainer: {
+  filtersContainer: {
     backgroundColor: 'white',
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  filterContent: {
+  filtersContent: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
   },
-  filterButton: {
+  filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#f5f5f5',
     marginRight: 8,
   },
-  filterButtonActive: {
+  filterChipActive: {
     backgroundColor: '#4CAF50',
   },
-  filterButtonText: {
+  filterChipText: {
     fontSize: 14,
     color: '#666',
     fontWeight: '500',
   },
-  filterButtonTextActive: {
+  filterChipTextActive: {
     color: 'white',
   },
-  levelsContainer: {
+  levelsContent: {
     padding: 16,
-  },
-  levelRow: {
-    justifyContent: 'space-between',
   },
   levelCard: {
     flex: 1,
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    marginHorizontal: 4,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
+    margin: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  levelCardDisabled: {
+  levelCardLocked: {
+    backgroundColor: '#f8f8f8',
     opacity: 0.6,
   },
-  levelHeader: {
+  levelCardCurrent: {
+    borderWidth: 2,
+    borderColor: '#FF9800',
+  },
+  levelCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -333,22 +260,26 @@ const styles = StyleSheet.create({
   levelNumber: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  levelNumberLocked: {
+    color: '#ccc',
   },
   levelName: {
     fontSize: 14,
+    fontWeight: '600',
     color: '#333',
-    lineHeight: 18,
+    marginBottom: 4,
     minHeight: 36,
   },
-  levelNameDisabled: {
+  levelNameLocked: {
     color: '#999',
   },
-  levelFooter: {
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  levelStatus: {
+  levelGroup: {
     fontSize: 12,
-    fontWeight: '600',
+    color: '#666',
+  },
+  levelGroupLocked: {
+    color: '#ccc',
   },
 });

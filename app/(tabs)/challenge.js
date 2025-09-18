@@ -49,15 +49,6 @@ function calculateEffectiveAreaLayout() {
           gridCols: width,
           getTilePosition: (row, col) => ({
             x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
-            y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
-          }),
-        };
-      }
-      
-      return calculateEffectiveAreaLayout();
-  };
-
-  const resetSelection = () => {
     setSelection(null);
     hoveredTiles.forEach(index => {
       scaleTile(index, 1);

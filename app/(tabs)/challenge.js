@@ -28,73 +28,59 @@ const EFFECTIVE_AREA_CONFIG = {
   GRID_COLS: 14,        // 固定网格列数
 };
 
-// 计算有效游戏区域和棋盘布局
-function calculateEffectiveAreaLayout() {
-  const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
-  const availableWidth = screenWidth;
-  
-  const width = EFFECTIVE_AREA_CONFIG.GRID_COLS;
-  const height = EFFECTIVE_AREA_CONFIG.GRID_ROWS;
-  
-  const maxTileWidth = (availableWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2 - (width - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / width;
-  const maxTileHeight = (availableHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2 - (height - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / height;
-  
-  const tileSize = Math.floor(Math.min(maxTileWidth, maxTileHeight));
-        
-  const boardWidth = width * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-  const boardHeight = height * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
-  
-  const boardLeft = (screenWidth - boardWidth) / 2;
-  const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
-  
-  return {
-    tileSize,
-    tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
-    boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
-    boardWidth,
-    boardHeight,
-    boardLeft,
-    boardTop,
-    gridRows: height,
-    gridCols: width,
-    getTilePosition: (row, col) => ({
-      x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
-      y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
-    }),
-  };
-}
-
-const GameBoard = ({ 
-  tiles, 
-  width, 
-  height, 
-  onTilesClear, 
-  disabled, 
-  itemMode, 
-  selectedSwapTile, 
-  onTileClick, 
-  settings, 
-  onBoardRefresh, 
-  isChallenge,
-  swapAnimations,
-  fractalAnimations,
-  initTileScale,
-  scaleTile,
-  getTileRotation
-}) => {
+const GameBoard = ({ tiles, width, height, onTilesClear, disabled, settings, itemMode, onTileClick, selectedSwapTile, swapAnimations, fractalAnimations, initTileScale, getTileRotation, scaleTile, isChallenge, onBoardRefresh, showRescueModal, setShowRescueModal, reshuffleCount, setReshuffleCount }) => {
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
-  const [explosionAnimation, setExplosionAnimation] = useState(null);
   const [fixedLayout, setFixedLayout] = useState(null);
-  const [showRescueModal, setShowRescueModal] = useState(false);
-  const [reshuffleCount, setReshuffleCount] = useState(0);
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
-  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0.5)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
 
+  const availableWidth = screenWidth;
+  const availableHeight = isChallenge ? screenHeight - 240 : screenHeight - 200;
+
   const getFixedBoardLayout = (availableWidth, availableHeight) => {
-    return calculateEffectiveAreaLayout();
+    // 计算有效游戏区域和棋盘布局
+    function calculateEffectiveAreaLayout() {
+        const innerWidth = availableWidth - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+        const innerHeight = availableHeight - EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+        
+        // 使用实际的棋盘尺寸而不是固定网格
+        const tileWidth = (innerWidth - (width - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / width;
+        const tileHeight = (innerHeight - (height - 1) * EFFECTIVE_AREA_CONFIG.TILE_GAP) / height;
+        let tileSize = Math.min(tileWidth, tileHeight);
+        
+        // 挑战模式方块大小+2px
+        if (isChallenge) {
+          tileSize += 2;
+        }
+        
+        const boardWidth = width * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+        const boardHeight = height * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP + EFFECTIVE_AREA_CONFIG.BOARD_PADDING * 2;
+        
+        const boardLeft = (screenWidth - boardWidth) / 2;
+        const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+        
+        return {
+          tileSize,
+          tileGap: EFFECTIVE_AREA_CONFIG.TILE_GAP,
+          boardPadding: EFFECTIVE_AREA_CONFIG.BOARD_PADDING,
+          boardWidth,
+          boardHeight,
+          boardLeft,
+          boardTop,
+          gridRows: height,
+          gridCols: width,
+          getTilePosition: (row, col) => ({
+            x: col * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+            y: row * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP),
+          }),
+        };
+      }
+      
+      return calculateEffectiveAreaLayout();
   };
 
   const resetSelection = () => {

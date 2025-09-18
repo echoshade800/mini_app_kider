@@ -20,7 +20,6 @@ import { Dimensions, Animated } from 'react-native';
 import { useGameStore } from '../store/gameStore';
 import { GameBoard } from '../components/GameBoard';
 import { generateBoard } from '../utils/boardGenerator';
-import { SAFE_TOP, SAFE_BOTTOM } from '../utils/gridLayout';
 import { STAGE_NAMES } from '../utils/stageNames';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -136,15 +135,18 @@ export default function LevelDetailScreen() {
   const performSwap = (tile1, tile2) => {
     if (!currentBoard) return;
 
-    // 使用统一的单元格大小
-    const cellSize = 30 + 10; // TILE_SIZE + 默认gap
+    // 计算单元格大小
+    const cellSize = Math.min(
+      (screenWidth - 80) / currentBoard.width, 
+      (screenHeight - 300) / currentBoard.height,
+      50
+    );
     
-    // 计算两个方块的位置（简化版本）
-    const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
-    const row1 = Math.floor(tile1.index / estimatedCols);
-    const col1 = tile1.index % estimatedCols;
-    const row2 = Math.floor(tile2.index / estimatedCols);
-    const col2 = tile2.index % estimatedCols;
+    // 计算两个方块的位置
+    const row1 = Math.floor(tile1.index / currentBoard.width);
+    const col1 = tile1.index % currentBoard.width;
+    const row2 = Math.floor(tile2.index / currentBoard.width);
+    const col2 = tile2.index % currentBoard.width;
     
     const deltaX = (col2 - col1) * cellSize;
     const deltaY = (row2 - row1) * cellSize;
@@ -216,9 +218,8 @@ export default function LevelDetailScreen() {
     if (!currentBoard) return;
 
     const { value, index } = tile;
-    const estimatedCols = Math.ceil(Math.sqrt(currentBoard.tiles.length));
-    const row = Math.floor(index / estimatedCols);
-    const col = index % estimatedCols;
+    const row = Math.floor(index / currentBoard.width);
+    const col = index % currentBoard.width;
 
     // 生成不同数字的分解方案，确保总和等于原数字
     const generateSplitCombination = (num) => {
@@ -326,11 +327,15 @@ export default function LevelDetailScreen() {
     });
 
     // 创建分裂动画 - 显示正确的分解数值
-    const cellSize = 30 + 10; // TILE_SIZE + 默认gap
+    const cellSize = Math.min(
+      (screenWidth - 80) / currentBoard.width, 
+      (screenHeight - 300) / currentBoard.height,
+      35
+    );
     
     selectedEmptyPositions.forEach((targetPos, i) => {
-      const targetRow = Math.floor(targetPos / estimatedCols);
-      const targetCol = targetPos % estimatedCols;
+      const targetRow = Math.floor(targetPos / currentBoard.width);
+      const targetCol = targetPos % currentBoard.width;
       
       // 计算跳跃距离
       const deltaX = (targetCol - col) * cellSize;
@@ -421,7 +426,7 @@ export default function LevelDetailScreen() {
           text: '确定', 
           onPress: () => {
             try {
-              const board = generateBoard(level, true, false, screenWidth, screenHeight);
+              const board = generateBoard(level, true, false, screenWidth, screenHeight); // Force new board
               setCurrentBoard(board);
               setShowSuccess(false);
             } catch (error) {
@@ -440,8 +445,10 @@ export default function LevelDetailScreen() {
 
   const handleBoardRefresh = (action) => {
     if (action === 'return') {
+      // 救援选择返回主页
       handleBackToLevels();
     } else if (typeof action === 'object') {
+      // 重排后的棋盘
       setCurrentBoard(action);
     }
   };
@@ -502,8 +509,9 @@ export default function LevelDetailScreen() {
         isChallenge={false}
       />
 
-      {/* 浮动道具按钮 */}
+      {/* Floating Action Buttons */}
       <View style={styles.floatingButtons}>
+        {/* SwapMaster Button */}
         <TouchableOpacity 
           style={[
             styles.floatingButton,
@@ -526,6 +534,7 @@ export default function LevelDetailScreen() {
           )}
         </TouchableOpacity>
         
+        {/* FractalSplit Button */}
         <TouchableOpacity 
           style={[
             styles.floatingButton,
@@ -549,7 +558,7 @@ export default function LevelDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 成功弹窗 */}
+      {/* Success Modal */}
       <Modal
         visible={showSuccess}
         transparent
@@ -650,7 +659,7 @@ const styles = StyleSheet.create({
   },
   floatingButtons: {
     position: 'absolute',
-    bottom: SAFE_BOTTOM - 60,
+    bottom: 30,
     left: 0,
     right: 0,
     flexDirection: 'row',

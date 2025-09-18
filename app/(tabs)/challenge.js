@@ -30,11 +30,7 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
-  const availableWidth = screenWidth;
-  const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
-  
-  const gridWidth = EFFECTIVE_AREA_CONFIG.GRID_COLS * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP;
-  const gridHeight = EFFECTIVE_AREA_CONFIG.GRID_ROWS * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP;
+  };
 
   const getTileRotation = (row, col) => {
     const seed = row * 13 + col * 7;

@@ -30,6 +30,36 @@ const EFFECTIVE_AREA_CONFIG = {
 
 // 计算有效游戏区域和棋盘布局
 function calculateEffectiveAreaLayout() {
+  const availableWidth = screenWidth;
+  const availableHeight = screenHeight - EFFECTIVE_AREA_CONFIG.TOP_RESERVED - EFFECTIVE_AREA_CONFIG.BOTTOM_RESERVED;
+  
+  const gridWidth = EFFECTIVE_AREA_CONFIG.GRID_COLS * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP;
+  const gridHeight = EFFECTIVE_AREA_CONFIG.GRID_ROWS * (tileSize + EFFECTIVE_AREA_CONFIG.TILE_GAP) - EFFECTIVE_AREA_CONFIG.TILE_GAP;
+
+  const getTileRotation = (row, col) => {
+    const seed = row * 13 + col * 7;
+    return (seed % 7) - 3; // -3 to 3 degrees
+  };
+
+  const getFixedBoardLayout = (availableWidth, availableHeight) => {
+    const { GRID_ROWS, GRID_COLS, TILE_GAP, BOARD_PADDING } = EFFECTIVE_AREA_CONFIG;
+    
+    const innerWidth = availableWidth - BOARD_PADDING * 2;
+    const innerHeight = availableHeight - BOARD_PADDING * 2;
+    
+    const tileWidth = (innerWidth - (GRID_COLS - 1) * TILE_GAP) / GRID_COLS;
+    const tileHeight = (innerHeight - (GRID_ROWS - 1) * TILE_GAP) / GRID_ROWS;
+    const tileSize = Math.min(tileWidth, tileHeight);
+    
+    const boardWidth = GRID_COLS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    const boardHeight = GRID_ROWS * (tileSize + TILE_GAP) - TILE_GAP + BOARD_PADDING * 2;
+    
+    // 居中放置棋盘
+    const boardLeft = (screenWidth - boardWidth) / 2;
+    const boardTop = (availableHeight - boardHeight) / 2 + EFFECTIVE_AREA_CONFIG.TOP_RESERVED;
+    
+    return {
+      tileSize,
       tileGap: TILE_GAP,
       boardPadding: BOARD_PADDING,
       boardWidth,

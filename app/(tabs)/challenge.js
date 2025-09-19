@@ -60,8 +60,6 @@ export default function ChallengeScreen() {
   const [currentIQ, setCurrentIQ] = useState(0);
   const [board, setBoard] = useState(null);
   const [showRescueModal, setShowRescueModal] = useState(false);
-  const [reshuffleCount, setReshuffleCount] = useState(0);
-  const [hasInitialCheck, setHasInitialCheck] = useState(false);
   
   // Refs
   const timerRef = useRef(null);
@@ -105,7 +103,6 @@ export default function ChallengeScreen() {
     setGameState('playing');
     setTimeLeft(CHALLENGE_TIME);
     setCurrentIQ(0);
-    setReshuffleCount(0);
     gameStartTimeRef.current = Date.now();
     generateNewBoard();
   };
@@ -114,9 +111,6 @@ export default function ChallengeScreen() {
     // 奖励分数
     const newIQ = currentIQ + POINTS_PER_CLEAR;
     setCurrentIQ(newIQ);
-    
-    // 成功消除后重置重排计数
-    setReshuffleCount(0);
 
     // 更新棋盘：移除被清除的方块
     if (board) {
@@ -264,9 +258,6 @@ export default function ChallengeScreen() {
             disabled={false}
             settings={settings}
             isChallenge={true}
-            reshuffleCount={reshuffleCount}
-            setReshuffleCount={setReshuffleCount}
-            onRescueNeeded={() => setShowRescueModal(true)}
             layoutConfig={board.layoutConfig}
           />
         )}

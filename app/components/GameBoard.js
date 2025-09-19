@@ -216,6 +216,7 @@ const GameBoard = ({
     } else {
       setSelection(null);
     }
+  }
 
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {

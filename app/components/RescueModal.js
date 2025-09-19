@@ -16,8 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 const RescueModal = ({ 
   visible, 
   onContinue, 
-  onReturn, 
-  hasItems = false 
+  onReturn
 }) => {
   return (
     <Modal 
@@ -34,7 +33,7 @@ const RescueModal = ({
           
           <Text style={styles.title}>No Valid Moves</Text>
           <Text style={styles.message}>
-            After 3 automatic calibrations, no valid combinations remain on the board. You can choose to:
+            No valid combinations remain on the board. You can choose to:
           </Text>
           
           <View style={styles.buttonContainer}>
@@ -43,7 +42,7 @@ const RescueModal = ({
               onPress={onContinue}
             >
               <Ionicons name="construct" size={20} color="white" />
-              <Text style={styles.buttonText}>Use Items to Continue</Text>
+              <Text style={styles.buttonText}>Generate New Board</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 

@@ -39,13 +39,6 @@ function getRectanglePositions(pos1, pos2, width, height) {
 
 // 检查棋盘是否有可消除的组合
 export function hasValidCombinations(tiles, width, height) {
-  console.log('🔍 [GAME_LOGIC] hasValidCombinations called:', { 
-    tilesLength: tiles.length, 
-    width, 
-    height,
-    nonZeroCount: tiles.filter(t => t > 0).length
-  });
-  
   const size = width * height;
   let combinationsChecked = 0;
   let validCombinationsFound = 0;
@@ -66,49 +59,13 @@ export function hasValidCombinations(tiles, width, height) {
         
         if (sum === 10) {
           validCombinationsFound++;
-          console.log('✅ [GAME_LOGIC] Found valid combination:', {
-            pos1, pos2, positions, sum,
-            tiles: positions.map(p => tiles[p])
-          });
           return true; // 找到可消除的组合
         }
       }
     }
   }
   
-  console.log('❌ [GAME_LOGIC] No valid combinations found:', {
-    combinationsChecked,
-    validCombinationsFound
-  });
   return false; // 没有可消除的组合
-}
-
-// 重新排列棋盘数字位置（保持数字不变，只改变位置）
-export function reshuffleBoard(tiles, width, height) {
-  const newTiles = [...tiles];
-  const nonZeroValues = [];
-  const nonZeroPositions = [];
-  
-  // 收集所有非零数字和它们的位置
-  for (let i = 0; i < tiles.length; i++) {
-    if (tiles[i] > 0) {
-      nonZeroValues.push(tiles[i]);
-      nonZeroPositions.push(i);
-    }
-  }
-  
-  // 打乱数字顺序
-  for (let i = nonZeroValues.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [nonZeroValues[i], nonZeroValues[j]] = [nonZeroValues[j], nonZeroValues[i]];
-  }
-  
-  // 将打乱后的数字放回原位置
-  for (let i = 0; i < nonZeroPositions.length; i++) {
-    newTiles[nonZeroPositions[i]] = nonZeroValues[i];
-  }
-  
-  return newTiles;
 }
 
 // 检查消除规则是否有效

@@ -36,9 +36,7 @@ export default function LevelDetailScreen() {
   const [selectedSwapTile, setSelectedSwapTile] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
   const [fractalAnimations, setFractalAnimations] = useState(new Map());
-  const [reshuffleCount, setReshuffleCount] = useState(0);
 
-  // 重置初始检查状态当关卡改变时
   useEffect(() => {
     if (level && !isNaN(level)) {
       const newBoard = generateBoard(level);
@@ -47,39 +45,12 @@ export default function LevelDetailScreen() {
   }, [level]);
 
   const handleTilesClear = (clearedPositions, newTilesData = null) => {
-    console.log('🎯 [LEVEL] handleTilesClear called:', { 
-      clearedPositionsLength: clearedPositions.length,
-      hasNewTilesData: !!newTilesData,
-      boardExists: !!board
-    });
-    
     if (!board) return;
 
-    // 处理校准更新
-    if (newTilesData) {
-      console.log('🔄 [LEVEL] Updating board with calibration data');
-      setBoard(prev => ({
-        ...prev,
-        tiles: newTilesData
-      }));
-      setReshuffleCount(0);
-      return;
-    }
-
     if (clearedPositions.length === 0) {
-      // 空数组表示重排请求
-      console.log('🔄 [LEVEL] Empty array - reshuffling board');
-      const { reshuffleBoard } = require('../utils/gameLogic');
-      const newTiles = reshuffleBoard(board.tiles, board.width, board.height);
-      setBoard(prev => ({
-        ...prev,
-        tiles: newTiles
-      }));
-      
-      // 重置校准计数
-      setReshuffleCount(0);
+      // 空数组 - 暂时不处理
+      return;
     } else {
-      console.log('🎯 [LEVEL] Processing cleared positions:', clearedPositions);
       // 更新棋盘：将被清除的方块设为0（空位）
       const newTiles = [...board.tiles];
       clearedPositions.forEach(pos => {
@@ -89,11 +60,9 @@ export default function LevelDetailScreen() {
 
       // 检查棋盘是否完全清空（所有非零方块都被消除）
       const remainingTiles = newTiles.filter(tile => tile > 0).length;
-      console.log('🎯 [LEVEL] Remaining tiles after clear:', remainingTiles);
       
       if (remainingTiles === 0) {
         // 关卡完成！显示完成弹窗
-        console.log('🎉 [LEVEL] Level completed!');
         setShowCompletionModal(true);
         
         // 更新进度
@@ -113,16 +82,11 @@ export default function LevelDetailScreen() {
       }
 
       // 更新当前棋盘状态（被清除的位置变为空位）
-      console.log('🔄 [LEVEL] Updating board state with cleared positions');
       setBoard(prev => ({
         ...prev,
         tiles: newTiles
       }));
 
-      // 成功消除后重置重排计数
-      setReshuffleCount(0);
-      
-      // 校准检查现在由GameBoard组件内部处理
     }
   };
 
@@ -142,8 +106,6 @@ export default function LevelDetailScreen() {
   };
 
   const handleTileClick = (row, col, value) => {
-    console.log('🎯 handleTileClick called:', { row, col, value, itemMode, selectedSwapTile });
-    
     if (!itemMode || !board || value === 0) return;
 
     const index = row * board.width + col;
@@ -151,15 +113,12 @@ export default function LevelDetailScreen() {
     if (itemMode === 'swapMaster') {
       if (!selectedSwapTile) {
         // Select first tile
-        console.log('🔵 Selecting first tile for swap:', { row, col, value, index });
         setSelectedSwapTile({ row, col, value, index });
       } else if (selectedSwapTile.index === index) {
         // Deselect same tile
-        console.log('❌ Deselecting tile');
         setSelectedSwapTile(null);
       } else {
         // Swap tiles
-        console.log('🔄 Swapping tiles:', selectedSwapTile, 'with', { row, col, value, index });
         const newTiles = [...board.tiles];
         newTiles[selectedSwapTile.index] = value;
         newTiles[index] = selectedSwapTile.value;
@@ -174,7 +133,6 @@ export default function LevelDetailScreen() {
       }
     } else if (itemMode === 'fractalSplit') {
       // Split the selected tile into two tiles with value 1 and (value-1)
-      console.log('✂️ Attempting to split tile:', { row, col, value });
       if (value > 1) {
         const newTiles = [...board.tiles];
         
@@ -189,7 +147,6 @@ export default function LevelDetailScreen() {
         
         if (emptyIndex !== -1) {
           // Split: original tile becomes 1, new tile gets (value-1)
-          console.log('✅ Splitting tile: original becomes 1, new tile gets', value - 1, 'at index', emptyIndex);
           newTiles[index] = 1;
           newTiles[emptyIndex] = value - 1;
           
@@ -209,45 +166,25 @@ export default function LevelDetailScreen() {
   };
 
   const handleUseSwapMaster = () => {
-    console.log('🔧 SwapMaster button clicked, current state:', { 
-      itemMode, 
-      swapMasterItems: gameData?.swapMasterItems 
-    });
-    
     if ((gameData?.swapMasterItems || 0) <= 0) {
-      console.log('❌ No SwapMaster items available');
       Alert.alert('No Items', 'You don\'t have any SwapMaster items.');
       return;
     }
     
     const newMode = itemMode === 'swapMaster' ? null : 'swapMaster';
-    console.log('🔧 Setting itemMode to:', newMode);
     setItemMode(newMode);
     setSelectedSwapTile(null);
-    
-    // 强制重新渲染
-    console.log('🔧 ItemMode changed to:', newMode);
   };
 
   const handleUseFractalSplit = () => {
-    console.log('✂️ FractalSplit button clicked, current state:', { 
-      itemMode, 
-      splitItems: gameData?.splitItems 
-    });
-    
     if ((gameData?.splitItems || 0) <= 0) {
-      console.log('❌ No FractalSplit items available');
       Alert.alert('No Items', 'You don\'t have any Split items.');
       return;
     }
     
     const newMode = itemMode === 'fractalSplit' ? null : 'fractalSplit';
-    console.log('✂️ Setting itemMode to:', newMode);
     setItemMode(newMode);
     setSelectedSwapTile(null);
-    
-    // 强制重新渲染
-    console.log('✂️ ItemMode changed to:', newMode);
   };
 
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
@@ -298,9 +235,6 @@ export default function LevelDetailScreen() {
         fractalAnimations={fractalAnimations}
         settings={settings}
         isChallenge={false}
-        reshuffleCount={reshuffleCount}
-        setReshuffleCount={setReshuffleCount}
-        onRescueNeeded={() => setShowRescueModal(true)}
         layoutConfig={board.layoutConfig}
       />
 
@@ -313,8 +247,6 @@ export default function LevelDetailScreen() {
             (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
           ]}
           onPress={handleUseSwapMaster}
-          onPressIn={() => console.log('🔧 BOTTOM SwapMaster button pressed IN')}
-          onPressOut={() => console.log('🔧 BOTTOM SwapMaster button pressed OUT')}
           disabled={(gameData?.swapMasterItems || 0) <= 0}
           activeOpacity={0.7}
           hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
@@ -350,8 +282,6 @@ export default function LevelDetailScreen() {
             (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
           ]}
           onPress={handleUseFractalSplit}
-          onPressIn={() => console.log('✂️ BOTTOM FractalSplit button pressed IN')}
-          onPressOut={() => console.log('✂️ BOTTOM FractalSplit button pressed OUT')}
           disabled={(gameData?.splitItems || 0) <= 0}
           activeOpacity={0.7}
           hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
@@ -438,7 +368,6 @@ export default function LevelDetailScreen() {
           setShowRescueModal(false);
           handleBackPress();
         }}
-        hasItems={(gameData?.swapMasterItems || 0) > 0}
       />
     </SafeAreaView>
   );

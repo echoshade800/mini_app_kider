@@ -13,7 +13,7 @@ import {
   Animated,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { hasValidCombinations, reshuffleBoard } from '../utils/gameLogic';
+import { hasValidCombinations } from '../utils/gameLogic';
 import RescueModal from './RescueModal';
 
 const GameBoard = ({ 
@@ -37,44 +37,11 @@ const GameBoard = ({
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [calibrationAttempts, setCalibrationAttempts] = useState(0);
-  const [isCalibrating, setIsCalibrating] = useState(false);
-  const [calibrationAnimations, setCalibrationAnimations] = useState(new Map());
-  const [hasInitialCheck, setHasInitialCheck] = useState(false);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef(new Map()).current;
-
-  // 重置初始检查状态当关卡改变时
-  useEffect(() => {
-    console.log('🔍 [CALIBRATION] useEffect triggered:', { 
-      hasInitialCheck, 
-      tilesLength: tiles?.length, 
-      width, 
-      height, 
-      hasLayoutConfig: !!layoutConfig 
-    });
-    
-    if (!hasInitialCheck && tiles && width && height && layoutConfig) {
-      console.log('🔍 [CALIBRATION] Setting hasInitialCheck to true, scheduling check...');
-      setHasInitialCheck(true);
-      // 延迟检查，确保组件完全渲染
-      setTimeout(() => {
-        console.log('🔍 [CALIBRATION] Executing delayed checkForValidCombinations...');
-        checkForValidCombinations();
-      }, 500);
-    } else {
-      console.log('🔍 [CALIBRATION] Skipping initial check:', {
-        hasInitialCheck,
-        hasTiles: !!tiles,
-        hasWidth: !!width,
-        hasHeight: !!height,
-        hasLayoutConfig: !!layoutConfig
-      });
-    }
-  }, [tiles, width, height, layoutConfig, hasInitialCheck]);
 
   // 如果没有布局配置，显示加载状态
   if (!layoutConfig) {
@@ -171,7 +138,6 @@ const GameBoard = ({
     if (sum === 10 && selectedTiles.length > 0) {
       // 重置重排计数
       setReshuffleCount(0);
-      setCalibrationAttempts(0);
       
       // Success - create explosion effect with yellow "10" note
       if (settings?.hapticsEnabled !== false) {
@@ -251,202 +217,6 @@ const GameBoard = ({
       setSelection(null);
     }
 
-  };
-
-  // 检查是否有可消除的组合，如果没有则进行校准
-  const checkForValidCombinations = async () => {
-    console.log('🔍 [CALIBRATION] checkForValidCombinations called');
-    
-    if (!tiles || !width || !height) return;
-      console.log('❌ [CALIBRATION] Missing required data:', { 
-        hasTiles: !!tiles, 
-        width, 
-        height 
-      });
-    
-    console.log('🔍 [CALIBRATION] Checking for valid combinations...');
-    console.log('🔍 [CALIBRATION] Board state:', {
-      tilesLength: tiles.length,
-      nonZeroTiles: tiles.filter(t => t > 0).length,
-      calibrationAttempts,
-      tiles: tiles.slice(0, Math.min(20, tiles.length)) // 只显示前20个方块
-    });
-    
-    const hasValidMoves = hasValidCombinations(tiles, width, height);
-    console.log('🔍 [CALIBRATION] hasValidCombinations result:', hasValidMoves);
-    
-    if (!hasValidMoves) {
-      // 没有可消除组合，尝试重排
-      if (calibrationAttempts < 3) {
-        console.log(`🔧 [CALIBRATION] 校准尝试 ${calibrationAttempts + 1}/3`);
-        setCalibrationAttempts(prev => prev + 1);
-        await performReshuffleAnimation();
-      } else {
-        // 已经尝试3次，显示救援弹窗
-        console.log('🚨 [CALIBRATION] Maximum calibration attempts reached, showing rescue modal');
-        if (onRescueNeeded) {
-          console.log('🚨 [CALIBRATION] Calling onRescueNeeded...');
-          onRescueNeeded();
-        } else {
-          console.log('❌ [CALIBRATION] onRescueNeeded is not available');
-        }
-      }
-    } else {
-      console.log('✅ [CALIBRATION] Board has valid combinations, no calibration needed');
-    }
-  };
-
-  // 执行重排列动画
-  const performReshuffleAnimation = async () => {
-    console.log('🔄 [CALIBRATION] performReshuffleAnimation started');
-    setIsCalibrating(true);
-    
-    console.log('🔄 [CALIBRATION] Starting reshuffle animation...');
-    
-    // 获取所有非零数字的位置和值
-    const nonZeroTiles = [];
-    for (let i = 0; i < tiles.length; i++) {
-      if (tiles[i] > 0) {
-        const row = Math.floor(i / width);
-        const col = i % width;
-        nonZeroTiles.push({
-          index: i,
-          row,
-          col,
-          value: tiles[i],
-          currentPos: layoutConfig.getTilePosition(row, col)
-        });
-      }
-    }
-    
-    console.log('🔄 [CALIBRATION] Found non-zero tiles:', nonZeroTiles.length);
-    
-    // 生成新的排列（只重排数字，位置保持不变）
-    const newTiles = reshuffleBoard(tiles, width, height);
-    console.log('🔄 [CALIBRATION] Generated new tiles arrangement');
-    console.log('🔄 [CALIBRATION] New tiles preview:', newTiles.slice(0, Math.min(20, newTiles.length)));
-    
-    const newNonZeroTiles = [];
-    for (let i = 0; i < newTiles.length; i++) {
-      if (newTiles[i] > 0) {
-        const row = Math.floor(i / width);
-        const col = i % width;
-        newNonZeroTiles.push({
-          index: i,
-          row,
-          col,
-          value: newTiles[i],
-          targetPos: layoutConfig.getTilePosition(row, col)
-        });
-      }
-    }
-    
-    console.log('🔄 [CALIBRATION] Prepared new tile positions:', newNonZeroTiles.length);
-    
-    // 创建重排列动画
-    await createReshuffleAnimations(nonZeroTiles, newNonZeroTiles, newTiles);
-    
-    console.log('🔄 [CALIBRATION] performReshuffleAnimation completed');
-    setIsCalibrating(false);
-  };
-
-  // 创建重排列动画
-  const createReshuffleAnimations = (oldTiles, newTiles, newTilesData) => {
-    return new Promise((resolve) => {
-      console.log(`🎬 [CALIBRATION] Creating reshuffle animation for ${oldTiles.length} tiles`);
-      console.log('🎬 [CALIBRATION] Old tiles positions:', oldTiles.map(t => ({ index: t.index, value: t.value })));
-      console.log('🎬 [CALIBRATION] New tiles positions:', newTiles.map(t => ({ index: t.index, value: t.value })));
-      
-      const animations = new Map();
-      const animationPromises = [];
-      
-      // 为每个方块创建移动动画
-      oldTiles.forEach((oldTile, index) => {
-        if (index < newTiles.length) {
-          const newTile = newTiles[index];
-          
-          if (oldTile.currentPos && newTile.targetPos) {
-            // 计算移动距离
-            const deltaX = newTile.targetPos.x - oldTile.currentPos.x;
-            const deltaY = newTile.targetPos.y - oldTile.currentPos.y;
-            
-            console.log(`🎬 [CALIBRATION] Tile ${index}: deltaX=${deltaX}, deltaY=${deltaY}`);
-            
-            // 只有位置发生变化才创建动画
-            if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
-              console.log(`🎬 [CALIBRATION] Animating tile from (${oldTile.row},${oldTile.col}) to (${newTile.row},${newTile.col})`);
-              
-              // 创建动画值
-              const translateX = new Animated.Value(0);
-              const translateY = new Animated.Value(0);
-              
-              animations.set(oldTile.index, { 
-                translateX, 
-                translateY,
-                newValue: newTile.value
-              });
-              
-              // 创建移动动画
-              const animation = Animated.parallel([
-                Animated.timing(translateX, {
-                  toValue: deltaX,
-                  duration: 1000,
-                  useNativeDriver: true,
-                }),
-                Animated.timing(translateY, {
-                  toValue: deltaY,
-                  duration: 1000,
-                  useNativeDriver: true,
-                }),
-              ]);
-              
-              animationPromises.push(animation);
-            } else {
-              console.log(`🎬 [CALIBRATION] Tile ${index}: No movement needed (deltaX=${deltaX}, deltaY=${deltaY})`);
-            }
-          }
-        }
-      });
-      
-      // 设置动画状态
-      setCalibrationAnimations(animations);
-      
-      // 执行所有动画
-      if (animationPromises.length > 0) {
-        console.log(`🎬 [CALIBRATION] Starting ${animationPromises.length} animations`);
-        Animated.parallel(animationPromises).start(() => {
-          console.log('✅ [CALIBRATION] Reshuffle animation completed');
-          
-          // 动画完成后更新棋盘数据
-          if (onTilesClear) {
-            console.log('🔄 [CALIBRATION] Calling onTilesClear with new tiles data');
-            onTilesClear([], newTilesData);
-          } else {
-            console.log('❌ [CALIBRATION] onTilesClear is not available');
-          }
-          
-          // 清理动画状态
-          setTimeout(() => {
-            console.log('🧹 [CALIBRATION] Cleaning up animation state');
-            setCalibrationAnimations(new Map());
-            resolve();
-          }, 200);
-        });
-      } else {
-        console.log('📝 [CALIBRATION] No animations needed, updating data directly');
-        // 没有动画需要执行，直接更新数据
-        if (onTilesClear) {
-          console.log('🔄 [CALIBRATION] Calling onTilesClear with new tiles data (no animation)');
-          onTilesClear([], newTilesData);
-        } else {
-          console.log('❌ [CALIBRATION] onTilesClear is not available');
-        }
-        setCalibrationAnimations(new Map());
-        resolve();
-      }
-    });
-  };
-    
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
@@ -593,15 +363,6 @@ const GameBoard = ({
     }
   };
 
-  // 处理救援选择
-  const handleRescueContinue = () => {
-    setCalibrationAttempts(0);
-  };
-
-  const handleRescueReturn = () => {
-    setCalibrationAttempts(0);
-  };
-
   const getSelectionStyle = () => {
     if (!selection) return null;
     
@@ -711,7 +472,6 @@ const GameBoard = ({
     // Get swap and fractal animations
     const swapAnim = swapAnimations ? swapAnimations.get(index) : null;
     const fractalAnim = fractalAnimations ? fractalAnimations.get(index) : null;
-    const calibrationAnim = calibrationAnimations ? calibrationAnimations.get(index) : null;
     
     // Check if this tile is in the current selection
     const isInSelection = hoveredTiles.has(index);
@@ -727,15 +487,6 @@ const GameBoard = ({
       });
       transforms.push({
         translateY: swapAnim.translateY,
-      });
-    }
-    
-    if (calibrationAnim && calibrationAnim.translateX && calibrationAnim.translateY) {
-      transforms.push({
-        translateX: calibrationAnim.translateX,
-      });
-      transforms.push({
-        translateY: calibrationAnim.translateY,
       });
     }
     

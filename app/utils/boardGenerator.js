@@ -132,7 +132,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     targetPairRatio = 0.25; // Hard levels
   }
   
-  const pairCount = Math.floor((tileCount / 2) * targetPairRatio);
+  const pairCount = Math.floor((actualTileCount / 2) * targetPairRatio);
   const placedPositions = new Set();
   let pairsPlaced = 0;
   
@@ -142,7 +142,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     const [val1, val2] = pairType;
     
     const availablePositions = [];
-    for (let i = 0; i < totalSlots; i++) {
+    for (let i = 0; i < actualTileCount; i++) {
       if (!placedPositions.has(i)) {
         availablePositions.push(i);
       }
@@ -153,8 +153,8 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
       const remainingPositions = availablePositions.filter(p => p !== pos1);
       const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
       
-      tiles[pos1] = val1;
-      tiles[pos2] = val2;
+      numberTiles[pos1] = val1;
+      numberTiles[pos2] = val2;
       placedPositions.add(pos1);
       placedPositions.add(pos2);
       pairsPlaced++;
@@ -164,19 +164,19 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   }
   
   // Fill remaining spots with random numbers based on distribution
-  const remainingCount = tileCount - (pairsPlaced * 2);
+  const remainingCount = actualTileCount - (pairsPlaced * 2);
   const availablePositions = [];
-  for (let i = 0; i < totalSlots; i++) {
-    if (!placedPositions.has(i)) {
+  for (let i = 0; i < actualTileCount; i++) {
+    if (!placedPositions.has(i) && numberTiles[i] === 0) {
       availablePositions.push(i);
     }
   }
   
   // Calculate current sum from placed pairs
   let currentSum = 0;
-  for (let i = 0; i < totalSlots; i++) {
-    if (tiles[i] > 0) {
-      currentSum += tiles[i];
+  for (let i = 0; i < actualTileCount; i++) {
+    if (numberTiles[i] > 0) {
+      currentSum += numberTiles[i];
     }
   }
   
@@ -201,7 +201,6 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   // Generate remaining tiles to achieve target sum
   const remainingTiles = [];
   for (let i = 0; i < Math.min(remainingCount, availablePositions.length); i++) {
-    const pos = availablePositions[i];
     remainingTiles.push(0); // Placeholder
   }
   
@@ -255,20 +254,33 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   // Place the calculated remaining tiles
   for (let i = 0; i < remainingTiles.length; i++) {
     const pos = availablePositions[i];
-    tiles[pos] = remainingTiles[i];
+    numberTiles[pos] = remainingTiles[i];
+  }
+  
+  // 将数字方块矩形放置到棋盘的居中位置
+  for (let tileRow = 0; tileRow < actualTileRows; tileRow++) {
+    for (let tileCol = 0; tileCol < actualTileCols; tileCol++) {
+      const tileIndex = tileRow * actualTileCols + tileCol;
+      if (tileIndex < actualTileCount) {
+        const boardRow = startRow + tileRow;
+        const boardCol = startCol + tileCol;
+        const boardIndex = boardRow * cols + boardCol;
+        tiles[boardIndex] = numberTiles[tileIndex];
+      }
+    }
   }
   
   // Verify the sum is a multiple of 10 (for debugging)
-  const finalSum = tiles.reduce((sum, val) => sum + val, 0);
+  const finalSum = numberTiles.reduce((sum, val) => sum + val, 0);
   if (finalSum % 10 !== 0) {
-    console.warn(`Board sum ${finalSum} is not a multiple of 10 for level ${level}`);
+    console.warn(`Number tiles sum ${finalSum} is not a multiple of 10 for level ${level}`);
   }
     
   
   return {
     seed,
-    width: cols,
-    height: rows,
+    width: cols,  // 棋盘总宽度
+    height: rows, // 棋盘总高度
     tiles,
     layoutConfig, // 包含完整的布局信息
   };

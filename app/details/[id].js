@@ -275,139 +275,140 @@ export default function LevelDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safeContainer}>
-        {/* Header */}
-        <View style={styles.header}>
+    <>
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeContainer}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={handleBackPress}
+            >
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+            
+            <View style={styles.headerCenter}>
+              {/* 进度条容器 */}
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+                </View>
+                {/* 角色图标 */}
+                <View style={styles.characterIcon}>
+                  <Text style={styles.characterEmoji}>🤗</Text>
+                </View>
+              </View>
+            </View>
+            
+            <View style={styles.headerRight}>
+              {/* 蓝色书本图标 */}
+              <View style={styles.bookIcon}>
+                <Ionicons name="book" size={24} color="#2196F3" />
+              </View>
+              {/* 关卡名称显示区 */}
+              {displayLevelName && (
+                <Text style={styles.levelNameText} numberOfLines={1}>
+                  {displayLevelName}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* Game Board */}
+          <GameBoard
+            key={boardKey}
+            tiles={board.tiles}
+            width={board.width}
+            height={board.height}
+            onTilesClear={handleTilesClear}
+            disabled={false}
+            itemMode={itemMode}
+            onTileClick={handleTileClick}
+            selectedSwapTile={selectedSwapTile}
+            swapAnimations={swapAnimations}
+            fractalAnimations={fractalAnimations}
+            settings={settings}
+            isChallenge={false}
+            layoutConfig={board.layoutConfig}
+          />
+        </SafeAreaView>
+
+        {/* Bottom Toolbar - 固定在屏幕最底部 */}
+        <View style={styles.bottomToolbar}>
           <TouchableOpacity 
-            style={styles.backButton}
-            onPress={handleBackPress}
+            style={[
+              styles.bottomToolButton,
+              itemMode === 'swapMaster' && styles.toolButtonActive,
+              (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
+            ]}
+            onPress={handleUseSwapMaster}
+            disabled={(gameData?.swapMasterItems || 0) <= 0}
+            activeOpacity={0.7}
+            hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
           >
-            <Ionicons name="arrow-back" size={24} color="#333" />
+            <Ionicons 
+              name="swap-horizontal" 
+              size={20} 
+              color={
+                (gameData?.swapMasterItems || 0) <= 0 ? '#ccc' :
+                itemMode === 'swapMaster' ? 'white' : '#666'
+              } 
+            />
+            <Text style={[
+              styles.toolButtonText,
+              itemMode === 'swapMaster' && styles.toolButtonTextActive,
+              (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonTextDisabled
+            ]}>
+              Change
+            </Text>
+            <Text style={[
+              styles.toolButtonCount,
+              itemMode === 'swapMaster' && styles.toolButtonCountActive,
+              (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonCountDisabled
+            ]}>
+              {gameData?.swapMasterItems || 0}
+            </Text>
           </TouchableOpacity>
           
-          <View style={styles.headerCenter}>
-            {/* 进度条容器 */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-              </View>
-              {/* 角色图标 */}
-              <View style={styles.characterIcon}>
-                <Text style={styles.characterEmoji}>🤗</Text>
-              </View>
-            </View>
-          </View>
-          
-          <View style={styles.headerRight}>
-            {/* 蓝色书本图标 */}
-            <View style={styles.bookIcon}>
-              <Ionicons name="book" size={24} color="#2196F3" />
-            </View>
-            {/* 关卡名称显示区 */}
-            {displayLevelName && (
-              <Text style={styles.levelNameText} numberOfLines={1}>
-                {displayLevelName}
-              </Text>
-            )}
-          </View>
+          <TouchableOpacity 
+            style={[
+              styles.bottomToolButton,
+              itemMode === 'fractalSplit' && styles.toolButtonActive,
+              (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
+            ]}
+            onPress={handleUseFractalSplit}
+            disabled={(gameData?.splitItems || 0) <= 0}
+            activeOpacity={0.7}
+            hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+          >
+            <Ionicons 
+              name="cut" 
+              size={20} 
+              color={
+                (gameData?.splitItems || 0) <= 0 ? '#ccc' :
+                itemMode === 'fractalSplit' ? 'white' : '#666'
+              } 
+            />
+            <Text style={[
+              styles.toolButtonText,
+              itemMode === 'fractalSplit' && styles.toolButtonTextActive,
+              (gameData?.splitItems || 0) <= 0 && styles.toolButtonTextDisabled
+            ]}>
+              Split
+            </Text>
+            <Text style={[
+              styles.toolButtonCount,
+              itemMode === 'fractalSplit' && styles.toolButtonCountActive,
+              (gameData?.splitItems || 0) <= 0 && styles.toolButtonCountDisabled
+            ]}>
+              {gameData?.splitItems || 0}
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Game Board */}
-        <GameBoard
-          key={boardKey}
-          tiles={board.tiles}
-          width={board.width}
-          height={board.height}
-          onTilesClear={handleTilesClear}
-          disabled={false}
-          itemMode={itemMode}
-          onTileClick={handleTileClick}
-          selectedSwapTile={selectedSwapTile}
-          swapAnimations={swapAnimations}
-          fractalAnimations={fractalAnimations}
-          settings={settings}
-          isChallenge={false}
-          layoutConfig={board.layoutConfig}
-        />
-      </SafeAreaView>
-
-      {/* Bottom Toolbar - 固定在屏幕最底部 */}
-      <View style={styles.bottomToolbar}>
-        <TouchableOpacity 
-          style={[
-            styles.bottomToolButton,
-            itemMode === 'swapMaster' && styles.toolButtonActive,
-            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
-          ]}
-          onPress={handleUseSwapMaster}
-          disabled={(gameData?.swapMasterItems || 0) <= 0}
-          activeOpacity={0.7}
-          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
-        >
-          <Ionicons 
-            name="swap-horizontal" 
-            size={20} 
-            color={
-              (gameData?.swapMasterItems || 0) <= 0 ? '#ccc' :
-              itemMode === 'swapMaster' ? 'white' : '#666'
-            } 
-          />
-          <Text style={[
-            styles.toolButtonText,
-            itemMode === 'swapMaster' && styles.toolButtonTextActive,
-            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonTextDisabled
-          ]}>
-            Change
-          </Text>
-          <Text style={[
-            styles.toolButtonCount,
-            itemMode === 'swapMaster' && styles.toolButtonCountActive,
-            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonCountDisabled
-          ]}>
-            {gameData?.swapMasterItems || 0}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[
-            styles.bottomToolButton,
-            itemMode === 'fractalSplit' && styles.toolButtonActive,
-            (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
-          ]}
-          onPress={handleUseFractalSplit}
-          disabled={(gameData?.splitItems || 0) <= 0}
-          activeOpacity={0.7}
-          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
-        >
-          <Ionicons 
-            name="cut" 
-            size={20} 
-            color={
-              (gameData?.splitItems || 0) <= 0 ? '#ccc' :
-              itemMode === 'fractalSplit' ? 'white' : '#666'
-            } 
-          />
-          <Text style={[
-            styles.toolButtonText,
-            itemMode === 'fractalSplit' && styles.toolButtonTextActive,
-            (gameData?.splitItems || 0) <= 0 && styles.toolButtonTextDisabled
-          ]}>
-            Split
-          </Text>
-          <Text style={[
-            styles.toolButtonCount,
-            itemMode === 'fractalSplit' && styles.toolButtonCountActive,
-            (gameData?.splitItems || 0) <= 0 && styles.toolButtonCountDisabled
-          ]}>
-            {gameData?.splitItems || 0}
-          </Text>
-        </TouchableOpacity>
       </View>
-    </View>
 
-    {/* Completion Modal */}
-    <Modal 
+      {/* Completion Modal */}
+      <Modal 
         visible={showCompletionModal} 
         transparent 
         animationType="fade"
@@ -449,9 +450,11 @@ export default function LevelDetailScreen() {
           </View>
         </View>
       </Modal>
+  );
+}
 
-    {/* Rescue Modal */}
-    <RescueModal
+      {/* Rescue Modal */}
+      <RescueModal
         visible={showRescueModal}
         onContinue={() => {
           setShowRescueModal(false);
@@ -464,10 +467,7 @@ export default function LevelDetailScreen() {
           handleBackPress();
         }}
       />
-    </View>
-  );
-}
-
+    </>
 const styles = StyleSheet.create({
   container: {
     flex: 1,

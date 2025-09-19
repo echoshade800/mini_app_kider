@@ -141,8 +141,6 @@ export default function ChallengeScreen() {
           tiles: newTiles
         }));
         
-        // 重置校准计数（挑战模式消除成功后）
-        setReshuffleCount(0);
       }
     }
   };

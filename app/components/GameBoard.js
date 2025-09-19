@@ -373,26 +373,11 @@ const GameBoard = ({
           // 清理动画状态
           setTimeout(() => {
             setCalibrationAnimations(new Map());
-            
-            // 检查新排列是否有解
-            const hasValidMovesAfterShuffle = hasValidCombinations(newTilesData, width, height);
-            
-            if (hasValidMovesAfterShuffle) {
-              console.log('Calibration successful, valid combinations found');
-              setCalibrationAttempts(0);
-            } else {
-              console.log('Calibration failed, trying again');
-              // 继续尝试重排（如果还有次数）
-              setTimeout(() => {
-                checkForValidCombinations();
-              }, 500);
-            }
-            
             resolve();
           }, 200);
         });
       } else {
-        console.log('No animations needed');
+        console.log('📝 No animations needed');
         // 没有动画需要执行，直接更新数据
         if (onTilesClear) {
           onTilesClear([], newTilesData);

@@ -472,6 +472,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
           }
         }
       }
+      
+      // 应用大数字不相邻规则
+      applyLargeNumberSeparation(remainingTiles, availablePositions, width, height, tiles);
     }
   }
   

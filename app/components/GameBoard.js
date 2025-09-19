@@ -232,21 +232,35 @@ const GameBoard = ({
       
       if (!isInsideBoard(pageX, pageY)) return;
       
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
-
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
-
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
-
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
-
-      const startCol = Math.floor(relativeX / cellWidth);
-      const startRow = Math.floor(relativeY / cellHeight);
+      // 🎯 统一坐标系：基于棋盘内容区的绝对定位
+      const { boardLeft, boardTop, woodFrameWidth, boardPadding } = layoutConfig;
       
-      if (startRow >= 0 && startRow < height && startCol >= 0 && startCol < width) {
+      // 内容区绝对位置（扣除木框和内边距）
+      const innerLeft = boardLeft + woodFrameWidth + boardPadding;
+      const innerTop = boardTop + woodFrameWidth + boardPadding;
+      
+      // 触摸点相对于内容区的坐标
+      const innerX = pageX - innerLeft;
+      const innerY = pageY - innerTop;
+      
+      // 通过布局引擎反推行列（避免直接除法的累积误差）
+      let startRow = -1, startCol = -1;
+      
+      for (let r = 0; r < height; r++) {
+        for (let c = 0; c < width; c++) {
+          const pos = layoutConfig.getTilePosition(r, c);
+          if (pos && 
+              innerX >= pos.x && innerX < pos.x + pos.width &&
+              innerY >= pos.y && innerY < pos.y + pos.height) {
+            startRow = r;
+            startCol = c;
+            break;
+          }
+        }
+        if (startRow !== -1) break;
+      }
+      
+      if (startRow !== -1 && startCol !== -1) {
         setSelection({
           startRow,
           startCol,
@@ -266,21 +280,34 @@ const GameBoard = ({
       if (!selection) return;
       
       const { pageX, pageY } = evt.nativeEvent;
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
-
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
-
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
-
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
-
-      const endCol = Math.floor(relativeX / cellWidth);
-      const endRow = Math.floor(relativeY / cellHeight);
+      const { boardLeft, boardTop, woodFrameWidth, boardPadding } = layoutConfig;
       
-      if (endRow >= 0 && endRow < height && endCol >= 0 && endCol < width) {
+      // 内容区绝对位置
+      const innerLeft = boardLeft + woodFrameWidth + boardPadding;
+      const innerTop = boardTop + woodFrameWidth + boardPadding;
+      
+      // 触摸点相对于内容区的坐标
+      const innerX = pageX - innerLeft;
+      const innerY = pageY - innerTop;
+      
+      // 通过布局引擎反推行列
+      let endRow = -1, endCol = -1;
+      
+      for (let r = 0; r < height; r++) {
+        for (let c = 0; c < width; c++) {
+          const pos = layoutConfig.getTilePosition(r, c);
+          if (pos && 
+              innerX >= pos.x && innerX < pos.x + pos.width &&
+              innerY >= pos.y && innerY < pos.y + pos.height) {
+            endRow = r;
+            endCol = c;
+            break;
+          }
+        }
+        if (endRow !== -1) break;
+      }
+      
+      if (endRow !== -1 && endCol !== -1) {
         setSelection(prev => ({
           ...prev,
           endRow,
@@ -638,6 +665,23 @@ const GameBoard = ({
             </View>
           </View>
         </View>
+        
+        {/* 🐛 Debug: 显示内容区边界（开发时可启用） */}
+        {__DEV__ && false && (
+          <View
+            style={{
+              position: 'absolute',
+              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
+              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
+              borderWidth: 1,
+              borderColor: 'red',
+              borderStyle: 'dashed',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
       </View>
     </View>
   );

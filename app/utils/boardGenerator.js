@@ -22,29 +22,67 @@ function seededRandom(seed) {
 // 根据关卡获取数字方块数量 - 修复后的版本
 function getTileCount(level, isChallenge = false) {
   if (isChallenge) {
-    // 挑战模式：固定合理数量
+    // 挑战模式：固定矩形数量 8x10 = 80
     return 80;
   }
   
-  // 关卡模式：确保数量合理且渐进增长
+  // 关卡模式：确保数量能组成完美矩形
   if (level >= 1 && level <= 10) {
-    return Math.floor(8 + level * 1.2); // 9-20个方块
+    // 1-10关：小矩形，方块尺寸较大
+    const rectangleSizes = [12, 15, 16, 20, 20, 24, 24, 25, 30, 30]; // 3x4, 3x5, 4x4, 4x5, 4x5, 4x6, 4x6, 5x5, 5x6, 5x6
+    return rectangleSizes[level - 1];
   }
   if (level >= 11 && level <= 20) {
-    return Math.floor(20 + (level - 10) * 2); // 22-40个方块
+    // 11-20关：中等矩形
+    const rectangleSizes = [35, 36, 40, 42, 45, 48, 49, 54, 56, 60]; // 5x7, 6x6, 5x8, 6x7, 5x9, 6x8, 7x7, 6x9, 7x8, 6x10
+    return rectangleSizes[level - 11];
   }
   if (level >= 21 && level <= 30) {
-    return Math.floor(40 + (level - 20) * 2.5); // 42-65个方块
+    // 21-30关：较大矩形
+    const rectangleSizes = [63, 64, 70, 72, 77, 80, 81, 88, 90, 96]; // 7x9, 8x8, 7x10, 8x9, 7x11, 8x10, 9x9, 8x11, 9x10, 8x12
+    return rectangleSizes[level - 21];
   }
   if (level >= 31 && level <= 50) {
-    return Math.floor(65 + (level - 30) * 1.5); // 67-95个方块
+    // 31-50关：大矩形
+    const rectangleSizes = [
+      99, 100, 104, 108, 110, 112, 117, 120, 121, 126, // 31-40关：9x11, 10x10, 8x13, 9x12, 10x11, 8x14, 9x13, 10x12, 11x11, 9x14
+      130, 132, 135, 140, 143, 144, 150, 154, 156, 160  // 41-50关：10x13, 11x12, 9x15, 10x14, 11x13, 12x12, 10x15, 11x14, 12x13, 10x16
+    ];
+    return rectangleSizes[level - 31];
   }
   if (level >= 51 && level <= 100) {
-    return Math.floor(95 + (level - 50) * 0.8); // 96-135个方块
+    // 51-100关：超大矩形，但控制在合理范围
+    const baseSize = 160;
+    const increment = Math.floor((level - 50) / 5) * 12; // 每5关增加12个方块
+    const targetSize = baseSize + increment;
+    
+    // 确保是矩形数量：找到最接近的矩形
+    return findNearestRectangleSize(targetSize);
   }
   
-  // 100关以后缓慢增长
-  return Math.min(150, Math.floor(135 + (level - 100) * 0.3));
+  // 100关以后：固定最大矩形 12x16 = 192
+  return 192;
+}
+
+// 找到最接近目标数量的矩形尺寸
+function findNearestRectangleSize(target) {
+  let bestSize = target;
+  let minDiff = Infinity;
+  
+  // 尝试不同的矩形比例
+  for (let width = 8; width <= 16; width++) {
+    for (let height = 8; height <= 16; height++) {
+      const size = width * height;
+      const diff = Math.abs(size - target);
+      
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestSize = size;
+      }
+    }
+  }
+  
+  return bestSize;
 }
 
 // Get number distribution strategy based on level

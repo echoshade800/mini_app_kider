@@ -22,6 +22,26 @@ import { STAGE_NAMES } from '../utils/stageNames';
 import GameBoard from '../components/GameBoard';
 import RescueModal from '../components/RescueModal';
 
+// 提取关卡名称（去掉Grade前缀部分）
+function extractLevelName(stageName) {
+  if (!stageName) return '';
+  
+  // 如果包含破折号，取破折号后的部分
+  const dashIndex = stageName.indexOf('–');
+  if (dashIndex !== -1) {
+    return stageName.substring(dashIndex + 1).trim();
+  }
+  
+  // 如果包含普通破折号
+  const hyphenIndex = stageName.indexOf('-');
+  if (hyphenIndex !== -1) {
+    return stageName.substring(hyphenIndex + 1).trim();
+  }
+  
+  // 否则返回原名称
+  return stageName;
+}
+
 export default function LevelDetailScreen() {
   const { id } = useLocalSearchParams();
   const level = parseInt(id);
@@ -188,6 +208,7 @@ export default function LevelDetailScreen() {
   };
 
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
+  const displayLevelName = extractLevelName(stageName);
 
   if (!board) {
     return (
@@ -211,12 +232,29 @@ export default function LevelDetailScreen() {
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>
-          <Text style={styles.levelTitle}>Level {level}</Text>
-          <Text style={styles.stageName} numberOfLines={1}>{stageName}</Text>
+          {/* 进度条容器 */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: '70%' }]} />
+            </View>
+            {/* 角色图标 */}
+            <View style={styles.characterIcon}>
+              <Text style={styles.characterEmoji}>🤗</Text>
+            </View>
+          </View>
         </View>
         
         <View style={styles.headerRight}>
-          <Text style={styles.targetText}>Target: 10</Text>
+          {/* 蓝色书本图标 */}
+          <View style={styles.bookIcon}>
+            <Ionicons name="book" size={24} color="#2196F3" />
+          </View>
+          {/* 关卡名称显示区 */}
+          {displayLevelName && (
+            <Text style={styles.levelNameText} numberOfLines={1}>
+              {displayLevelName}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -398,28 +436,56 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
+    backgroundColor: '#FFD700',
+    borderRadius: 8,
   },
   headerCenter: {
     flex: 1,
-    alignItems: 'center',
     marginHorizontal: 16,
+    justifyContent: 'center',
   },
-  levelTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
   },
-  stageName: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
+  progressBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 4,
+  },
+  characterIcon: {
+    position: 'absolute',
+    right: -12,
+    top: -8,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  characterEmoji: {
+    fontSize: 20,
   },
   headerRight: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 120,
   },
-  targetText: {
+  bookIcon: {
+    marginRight: 8,
+  },
+  levelNameText: {
     fontSize: 14,
-    color: '#666',
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
   },
   bottomToolbar: {
     flexDirection: 'row',

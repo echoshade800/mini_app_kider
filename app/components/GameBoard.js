@@ -588,24 +588,31 @@ const GameBoard = ({
     if (selectedTiles.length === 0) return null;
     
     const { startRow, startCol, endRow, endCol } = selection;
+    const minRow = Math.min(startRow, endRow);
     const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
     const maxCol = Math.max(startCol, endCol);
+    
+    // 计算选择框的中心位置
+    const centerRow = (minRow + maxRow) / 2;
+    const centerCol = (minCol + maxCol) / 2;
     
     const { tileSize, tileGap } = layoutConfig;
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
 
-    const left = maxCol * cellWidth + tileSize;
-    const top = maxRow * cellHeight + tileSize;
+    // 计算中心位置的坐标
+    const centerX = centerCol * cellWidth + tileSize / 2;
+    const centerY = centerRow * cellHeight + tileSize / 2;
     
     return {
       sum,
       isSuccess: sum === 10,
       style: {
         position: 'absolute',
-        left: left - 30,
-        top: top - 30,
-        width: 60,
+        left: centerX - 25,
+        top: centerY - 20,
+        width: 50,
         height: 40,
         alignItems: 'center',
         justifyContent: 'center',
@@ -618,7 +625,7 @@ const GameBoard = ({
         shadowOpacity: 0.3,
         shadowRadius: 4,
         elevation: 6,
-        transform: [{ rotate: '-2deg' }],
+        transform: [{ rotate: '0deg' }],
       }
     };
   };
@@ -789,7 +796,7 @@ const GameBoard = ({
               <View style={selectionSum.style}>
                 <Text style={[
                   styles.sumText,
-                  { color: selectionSum.isSuccess ? '#333' : 'white' }
+                  { color: '#000' }
                 ]}>
                   {selectionSum.sum}
                 </Text>
@@ -891,8 +898,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   sumText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
+    color: '#000',
     textAlign: 'center',
   },
   explosion: {

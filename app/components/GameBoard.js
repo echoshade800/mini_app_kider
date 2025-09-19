@@ -240,9 +240,13 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
       return null;
     }
     
-    // 计算方块位置（相对于数字方块矩形左上角）
-    const x = col * (tileSize + gap);
-    const y = row * (tileSize + gap);
+    // 计算数字方块矩形在内容区中的居中偏移
+    const centerOffsetX = (contentWidth - tilesRectWidth) / 2;
+    const centerOffsetY = (contentHeight - tilesRectHeight) / 2;
+    
+    // 计算方块位置（相对于内容区左上角，加上居中偏移）
+    const x = centerOffsetX + col * (tileSize + gap);
+    const y = centerOffsetY + row * (tileSize + gap);
     
     return {
       x,

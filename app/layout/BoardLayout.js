@@ -294,8 +294,8 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
   // 🎯 坐标系方法：以棋盘中心为原点(0,0)建立坐标系
   
   // 第一步：确定坐标系原点（棋盘中心点）
-  const boardCenterX = contentWidth / 2;
-  const boardCenterY = contentHeight / 2;
+  const boardCenterX = contentWidth / 2;  // 内容区中心X
+  const boardCenterY = contentHeight / 2; // 内容区中心Y
   
   console.log('🎯 坐标系建立:');
   console.log(`   内容区尺寸: ${contentWidth} × ${contentHeight}px`);
@@ -396,7 +396,7 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
     // 1. 获取方块在坐标系中的坐标
     const { coordX, coordY } = getCoordinatePosition(row, col);
     
-    // 2. 转换为屏幕坐标（坐标系坐标 + 原点位置 - 方块中心偏移）
+    // 2. 转换为内容区内的相对坐标（坐标系坐标 + 原点位置 - 方块中心偏移）
     const x = boardCenterX + coordX - tileSize / 2;
     const y = boardCenterY + coordY - tileSize / 2;
     
@@ -404,7 +404,7 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
     if ((row === 0 && col === 0) || (row === rows - 1 && col === cols - 1)) {
       console.log(`📍 方块 [${row},${col}] 坐标转换:`);
       console.log(`   坐标系坐标: (${coordX.toFixed(2)}, ${coordY.toFixed(2)})`);
-      console.log(`   最终位置: (${x.toFixed(2)}, ${y.toFixed(2)})px`);
+      console.log(`   内容区相对位置: (${x.toFixed(2)}, ${y.toFixed(2)})px`);
       console.log(`   计算过程: 原点(${boardCenterX}, ${boardCenterY}) + 坐标系偏移(${coordX.toFixed(2)}, ${coordY.toFixed(2)}) - 方块中心偏移(${tileSize/2}, ${tileSize/2})`);
     }
     
@@ -412,7 +412,7 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
     if (Math.abs(row - centerRow) < 0.01 && Math.abs(col - centerCol) < 0.01) {
       console.log(`🎯 中心方块 [${row},${col}] 验证:`);
       console.log(`   坐标系坐标: (${coordX.toFixed(4)}, ${coordY.toFixed(4)})`);
-      console.log(`   屏幕位置: (${x.toFixed(2)}, ${y.toFixed(2)})`);
+      console.log(`   内容区位置: (${x.toFixed(2)}, ${y.toFixed(2)})`);
       console.log(`   应该在原点附近: (${boardCenterX.toFixed(2)}, ${boardCenterY.toFixed(2)})`);
       console.log(`   中心方块中心点: (${(x + tileSize/2).toFixed(2)}, ${(y + tileSize/2).toFixed(2)})`);
       console.log(`   与原点偏差: (${Math.abs(x + tileSize/2 - boardCenterX).toFixed(4)}, ${Math.abs(y + tileSize/2 - boardCenterY).toFixed(4)})`);

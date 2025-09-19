@@ -74,12 +74,39 @@ const GameBoard = ({
       const col = i % width;
       const tilePos = layoutConfig.getTilePosition(row, col);
       if (tilePos && (row === 0 || row === height - 1) && (col === 0 || col === width - 1)) {
-        console.log(`   方块[${row},${col}](值=${tiles[i]}): 位置(${tilePos.x}, ${tilePos.y}), 尺寸${tilePos.width}×${tilePos.height}`);
+        console.log(`   方块[${row},${col}](值=${tiles[i]}): 内容区相对位置(${tilePos.x}, ${tilePos.y}), 尺寸${tilePos.width}×${tilePos.height}`);
+        
+        // 🔍 关键调试：计算方块在屏幕上的绝对位置
+        const absoluteX = layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding + tilePos.x;
+        const absoluteY = layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding + tilePos.y;
+        console.log(`   方块[${row},${col}] 屏幕绝对位置: (${absoluteX}, ${absoluteY})`);
+        
+        // 🔍 验证方块是否在棋盘中心区域
+        const boardAbsoluteCenterX = layoutConfig.boardLeft + layoutConfig.boardWidth / 2;
+        const boardAbsoluteCenterY = layoutConfig.boardTop + layoutConfig.boardHeight / 2;
+        const tileCenterX = absoluteX + tilePos.width / 2;
+        const tileCenterY = absoluteY + tilePos.height / 2;
+        const distanceFromBoardCenter = Math.sqrt(
+          Math.pow(tileCenterX - boardAbsoluteCenterX, 2) + 
+          Math.pow(tileCenterY - boardAbsoluteCenterY, 2)
+        );
+        console.log(`   方块[${row},${col}] 距离棋盘中心: ${distanceFromBoardCenter.toFixed(2)}px`);
       }
       renderedTileCount++;
     }
   }
   console.log(`   总共渲染方块数: ${renderedTileCount}`);
+  
+  // 🔍 关键调试：验证数字方块矩形是否居中
+  console.log('🔍 数字方块矩形居中验证:');
+  const contentAreaAbsoluteX = layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding;
+  const contentAreaAbsoluteY = layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding;
+  const contentAreaCenterX = contentAreaAbsoluteX + layoutConfig.contentWidth / 2 - layoutConfig.boardPadding;
+  const contentAreaCenterY = contentAreaAbsoluteY + layoutConfig.contentHeight / 2 - layoutConfig.boardPadding;
+  
+  console.log(`   内容区绝对中心: (${contentAreaCenterX}, ${contentAreaCenterY})`);
+  console.log(`   棋盘绝对中心: (${layoutConfig.boardLeft + layoutConfig.boardWidth / 2}, ${layoutConfig.boardTop + layoutConfig.boardHeight / 2})`);
+  
   console.log('🔍 ========================');
 
   const initTileScale = (index) => {

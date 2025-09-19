@@ -280,21 +280,6 @@ const Board = ({
       }
     },
 
-    onPanResponderRelease: () => {
-      if (selection && !disabled) {
-        handleSelectionComplete();
-      }
-      
-      hoveredTiles.forEach(index => {
-        scaleTile(index, 1);
-      });
-      setHoveredTiles(new Set());
-    },
-  });
-
-  const renderTile = (value, row, col) => {
-    const index = row * width + col;
-    
     // 空位不渲染任何内容
     if (value === 0) {
       return (
@@ -309,6 +294,62 @@ const Board = ({
           ]}
         />
       );
+    }
+
+    const tileScale = initTileScale(index);
+    const isSelected = selectedSwapTile && selectedSwapTile.index === index;
+    const isInSelection = hoveredTiles.has(index);
+    
+    let cellStyle = [
+      styles.cell,
+      styles.tileCell,
+      {
+        width: cellSize,
+        height: cellSize,
+      }
+    ];
+    
+    if (isSelected && itemMode) {
+      if (itemMode === 'swapMaster') {
+        cellStyle.push(styles.tileSwapSelected);
+      } else if (itemMode === 'fractalSplit') {
+        cellStyle.push(styles.tileFractalSelected);
+      }
+    }
+
+    return (
+      <Animated.View
+        key={`${row}-${col}`}
+        style={[
+          cellStyle,
+          {
+            transform: [{ scale: tileScale }],
+          }
+        ]}
+        onStartShouldSetResponder={itemMode ? () => true : () => false}
+        onResponderGrant={itemMode ? () => {
+          console.log('🎯 Tile touch granted:', { row, col, value, itemMode });
+          handleTilePress(row, col, value);
+        } : undefined}
+        pointerEvents={itemMode ? "auto" : "box-none"}
+      >
+        <Text 
+          style={[
+            styles.tileText,
+            { 
+              fontSize: Math.max(12, fontSize),
+              fontWeight: isInSelection ? 'bold' : 'normal',
+            }
+          ]}
+          allowFontScaling={false}
+          maxFontSizeMultiplier={1}
+          includeFontPadding={false}
+        >
+          {value}
+        </Text>
+      </Animated.View>
+    );
+  };
     }
 
     const tileScale = initTileScale(index);

@@ -55,6 +55,54 @@ const EFFECTIVE_AREA = {
 };
 
 /**
+ * 数字方块矩形居中校准函数
+ * 检查数字方块矩形与屏幕左右边缘的距离，如果不相等则调整位置
+ * @param {Object} layout - 原始布局配置
+ * @returns {Object} 校准后的布局配置
+ */
+function calibrateTileRectangleCenter(layout) {
+  const gameArea = getEffectiveGameArea();
+  
+  // 计算数字方块矩形的实际屏幕位置
+  const tilesRectLeft = layout.boardLeft + WOOD_FRAME_WIDTH + BOARD_PADDING + 
+    (layout.contentWidth - 2 * BOARD_PADDING - layout.tilesRectWidth) / 2;
+  const tilesRectRight = tilesRectLeft + layout.tilesRectWidth;
+  
+  // 计算与屏幕左右边缘的距离
+  const leftDistance = tilesRectLeft - 0; // 距离屏幕左边缘
+  const rightDistance = gameArea.width - tilesRectRight; // 距离屏幕右边缘
+  
+  console.log('🎯 数字方块矩形居中校准:');
+  console.log(`   矩形左边距: ${tilesRectLeft.toFixed(2)}px`);
+  console.log(`   矩形右边距: ${rightDistance.toFixed(2)}px`);
+  console.log(`   左右距离差: ${Math.abs(leftDistance - rightDistance).toFixed(2)}px`);
+  
+  // 如果左右距离差超过1px，则进行校准
+  const distanceDiff = Math.abs(leftDistance - rightDistance);
+  if (distanceDiff > 1) {
+    // 计算需要调整的偏移量
+    const adjustment = (leftDistance - rightDistance) / 2;
+    const newBoardLeft = layout.boardLeft - adjustment;
+    
+    console.log(`   需要校准，调整偏移: ${adjustment.toFixed(2)}px`);
+    console.log(`   校准后棋盘左边距: ${newBoardLeft.toFixed(2)}px`);
+    
+    return {
+      ...layout,
+      boardLeft: newBoardLeft,
+      calibrated: true,
+      calibrationOffset: adjustment
+    };
+  }
+  
+  console.log('   ✅ 数字方块矩形已居中，无需校准');
+  return {
+    ...layout,
+    calibrated: false,
+    calibrationOffset: 0
+  };
+
+/**
  * 获取有效游戏区域尺寸
  */
 function getEffectiveGameArea() {
@@ -297,9 +345,11 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
  * @param {number} contentHeight - 棋盘内容区高度
  * @param {number} gap - 间距
  * @param {number} padding - 内边距
+ * @param {number} boardLeft - 棋盘左边距（可选，用于校准）
+ * @param {number} boardTop - 棋盘顶边距（可选，用于校准）
  * @returns {Function} 位置计算函数
  */
-export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING) {
+export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING, boardLeft = null, boardTop = null) {
   return function getTilePosition(row, col) {
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
       return null;
@@ -322,8 +372,14 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
     const relativeY = row * (tileSize + gap);
     
     // 🎯 最终位置：数字方块矩形起始位置 + 方块相对位置
-    const x = tileRectStartX + relativeX;
-    const y = tileRectStartY + relativeY;
+    let x = tileRectStartX + relativeX;
+    let y = tileRectStartY + relativeY;
+    
+    // 🎯 如果提供了校准后的棋盘位置，则加上偏移量
+    if (boardLeft !== null && boardTop !== null) {
+      x += boardLeft + WOOD_FRAME_WIDTH + padding;
+      y += boardTop + WOOD_FRAME_WIDTH + padding;
+    }
     
     return {
       x,
@@ -353,9 +409,27 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
     layout.contentHeight
   );
   
+  // 🎯 数字方块矩形居中校准
+  const calibratedLayout = calibrateTileRectangleCenter(layout);
+  
+  // 重新计算方块位置函数（基于校准后的位置）
+  const calibratedGetTilePosition = layoutTiles(
+    calibratedLayout.rows, 
+    calibratedLayout.cols, 
+    calibratedLayout.tileSize, 
+    calibratedLayout.tilesRectWidth, 
+    calibratedLayout.tilesRectHeight, 
+    calibratedLayout.contentWidth, 
+    calibratedLayout.contentHeight,
+    TILE_GAP,
+    BOARD_PADDING,
+    calibratedLayout.boardLeft, // 传入校准后的左边距
+    calibratedLayout.boardTop   // 传入校准后的顶边距
+  );
+
   return {
-    ...layout,
-    getTilePosition,
+    ...calibratedLayout,
+    getTilePosition: calibratedGetTilePosition,
     // 布局常量
     tileGap: TILE_GAP,
     boardPadding: BOARD_PADDING,

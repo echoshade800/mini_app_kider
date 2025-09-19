@@ -17,9 +17,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback } from 'react';
-import { useGameStore } from '../store/gameStore';
-import { generateBoard } from '../utils/boardGenerator';
-import { STAGE_NAMES } from '../utils/stageNames';
+import { useGameStore } from '../lib/gameStore';
+import { generateBoard } from '../lib/boardGenerator';
+import { STAGE_NAMES } from '../lib/stageNames';
 import GameBoard from '../components/GameBoard';
 import RescueModal from '../components/RescueModal';
 

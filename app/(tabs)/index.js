@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import StorageUtils from '../utils/StorageUtils';
-import { STAGE_NAMES } from '../utils/stageNames';
+import StorageUtils from '../lib/StorageUtils';
+import { STAGE_NAMES } from '../lib/stageNames';
 
 const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/20250917-173743.jpeg';
 

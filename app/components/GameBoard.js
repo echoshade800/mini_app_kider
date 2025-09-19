@@ -14,7 +14,7 @@ import {
   PixelRatio,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { hasValidCombinations } from '../utils/gameLogic';
+import { hasValidCombinations } from '../lib/gameLogic';
 import RescueModal from './RescueModal';
 import { computeLayout } from '../layout/layoutEngine';
 

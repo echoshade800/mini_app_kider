@@ -10,7 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text } from 'react-native';
-import { useGameStore } from './store/gameStore';
+import { useGameStore } from './lib/gameStore';
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();

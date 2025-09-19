@@ -16,8 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useGameStore } from '../store/gameStore';
-import { STAGE_NAMES, STAGE_GROUPS, getStageGroup } from '../utils/stageNames';
+import { useGameStore } from '../lib/gameStore';
+import { STAGE_NAMES, STAGE_GROUPS, getStageGroup } from '../lib/stageNames';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All Levels', range: [1, 200] },

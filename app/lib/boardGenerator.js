@@ -59,8 +59,8 @@ function getNumberDistribution(level) {
   // 前5关：极简分布，主要是互补数字
   if (level <= 5) {
     return {
-      smallNumbers: 0.8,  // 80% 1-3的比例，主要是1,2,3
-      mediumNumbers: 0.2, // 20% 4-6的比例，主要是4,5,6  
+      smallNumbers: 0.9,  // 90% 1-3的比例，主要是1,2,3
+      mediumNumbers: 0.1, // 10% 4-6的比例，主要是4,5,6  
       largeNumbers: 0.0   // 0% 7-9的比例，避免复杂组合
     };
   }
@@ -369,9 +369,23 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
         console.log(`🎯 Level ${level}: 配对总和=${currentSum}, 剩余总和=${remainingTiles.reduce((sum, val) => sum + val, 0)}, 目标总和=${targetTotalSum}`);
       } else {
         // 如果目标剩余总和不合理，使用简单填充
-        console.warn(`⚠️ Level ${level}: 目标剩余总和不合理 (${targetRemainingSum}), 使用随机填充`);
+        console.warn(`⚠️ Level ${level}: 目标剩余总和不合理 (${targetRemainingSum}), 使用备用方案`);
+        
+        // 备用方案：先全部填1，然后调整到10的倍数
         for (let i = 0; i < remainingTiles.length; i++) {
-          remainingTiles[i] = Math.floor(random() * 6) + 1; // 1-6
+          remainingTiles[i] = 1;
+        }
+        
+        const currentTotal = currentSum + remainingTiles.length;
+        const targetTotal = Math.ceil(currentTotal / 10) * 10;
+        let needed = targetTotal - currentTotal;
+        
+        // 在剩余位置分配需要的数值
+        for (let i = remainingTiles.length - 1; i >= 0 && needed > 0; i--) {
+          const maxAdd = level <= 5 ? 2 : 5; // 前5关最多加到3，其他关最多加到6
+          const canAdd = Math.min(maxAdd, needed);
+          remainingTiles[i] += canAdd;
+          needed -= canAdd;
         }
       }
       

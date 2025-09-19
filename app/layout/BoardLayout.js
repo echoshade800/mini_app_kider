@@ -305,13 +305,25 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
       return null;
     }
     
-    // 计算数字方块矩形在内容区中的居中偏移
-    const offsetX = (contentWidth - tilesRectWidth) / 2;
-    const offsetY = (contentHeight - tilesRectHeight) / 2;
+    // 🎯 统一中心点计算：内容区的几何中心
+    const contentCenterX = contentWidth / 2;
+    const contentCenterY = contentHeight / 2;
     
-    // 计算方块位置（相对于内容区左上角）
-    const x = col * (tileSize + gap);
-    const y = row * (tileSize + gap);
+    // 🎯 数字方块矩形的几何中心
+    const tileRectCenterX = tilesRectWidth / 2;
+    const tileRectCenterY = tilesRectHeight / 2;
+    
+    // 🎯 计算数字方块矩形左上角位置，使其中心与内容区中心重合
+    const tileRectStartX = contentCenterX - tileRectCenterX;
+    const tileRectStartY = contentCenterY - tileRectCenterY;
+    
+    // 🎯 计算单个方块位置（相对于数字方块矩形左上角）
+    const relativeX = col * (tileSize + gap);
+    const relativeY = row * (tileSize + gap);
+    
+    // 🎯 最终位置：数字方块矩形起始位置 + 方块相对位置
+    const x = tileRectStartX + relativeX;
+    const y = tileRectStartY + relativeY;
     
     return {
       x,

@@ -310,22 +310,26 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   // Calculate current sum from placed pairs
   let currentSum = 0;
-  for (let i = 0; i < actualTileCount; i++) {
+  for (let i = 0; i < finalTileCount; i++) {
     if (numberTiles[i] > 0) {
       currentSum += numberTiles[i];
     }
   }
   
-  // Calculate target sum to make total sum a multiple of 10
+  // Generate remaining tiles to achieve target sum (multiple of 10)
   const remainingTilesToPlace = Math.min(remainingCount, availablePositions.length);
-  let targetRemainingSum = 0;
+  const remainingTiles = [];
+  for (let i = 0; i < remainingTilesToPlace; i++) {
+    remainingTiles.push(0); // Placeholder
+  }
   
-  if (remainingTilesToPlace > 0) {
+  // Fill remaining tiles to achieve target sum (multiple of 10)
+  if (remainingTiles.length > 0) {
     // 前几关：优先确保总和是10的倍数，便于完全消除
     if (level <= 10) {
-      // 简单策略：直接计算需要的总和
-      const minPossibleSum = currentSum + remainingTilesToPlace; // All 1s
-      const maxPossibleSum = currentSum + remainingTilesToPlace * 6; // 限制最大为6，避免过大数字
+      // 计算需要的剩余总和使整体是10的倍数
+      const minPossibleSum = currentSum + remainingTiles.length; // All 1s
+      const maxPossibleSum = currentSum + remainingTiles.length * 6; // 限制最大为6
       
       // 找到范围内最接近的10的倍数
       let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
@@ -333,32 +337,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
         targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
       }
       
-      targetRemainingSum = targetTotalSum - currentSum;
-    } else {
-      // 后续关卡：使用原有逻辑
-      const minPossibleSum = currentSum + remainingTilesToPlace; // All 1s
-      const maxPossibleSum = currentSum + remainingTilesToPlace * 9; // All 9s
+      const targetRemainingSum = targetTotalSum - currentSum;
       
-      // Find the closest multiple of 10 within range
-      let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
-      if (targetTotalSum > maxPossibleSum) {
-        targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
-      }
-      
-      targetRemainingSum = targetTotalSum - currentSum;
-    }
-  }
-  
-  // Generate remaining tiles to achieve target sum
-  const remainingTiles = [];
-  for (let i = 0; i < Math.min(remainingCount, availablePositions.length); i++) {
-    remainingTiles.push(0); // Placeholder
-  }
-  
-  // Fill remaining tiles to achieve target sum
-  if (remainingTiles.length > 0) {
-    if (level <= 10) {
-      // 前10关：使用简单数字，主要是1-6
+      // 使用平均值填充
       const avgValue = Math.max(1, Math.min(6, Math.round(targetRemainingSum / remainingTiles.length)));
       
       for (let i = 0; i < remainingTiles.length; i++) {
@@ -372,7 +353,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
       let attempts = 0;
       while (difference !== 0 && attempts < 50) {
         for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
-          if (difference > 0 && remainingTiles[i] < 6) { // 限制最大为6
+          if (difference > 0 && remainingTiles[i] < 6) {
             remainingTiles[i]++;
             difference--;
           } else if (difference < 0 && remainingTiles[i] > 1) {
@@ -383,23 +364,6 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
         attempts++;
       }
       
-      // 添加少量随机性，但保持总和
-      for (let i = 0; i < remainingTiles.length - 1; i++) {
-        if (random() < 0.2) { // 20%概率进行调整
-          const maxIncrease = Math.min(6 - remainingTiles[i], remainingTiles[i + 1] - 1);
-          const maxDecrease = Math.min(remainingTiles[i] - 1, 6 - remainingTiles[i + 1]);
-          
-          if (maxIncrease > 0 && random() < 0.5) {
-            const change = Math.floor(random() * maxIncrease) + 1;
-            remainingTiles[i] += change;
-            remainingTiles[i + 1] -= change;
-          } else if (maxDecrease > 0) {
-            const change = Math.floor(random() * maxDecrease) + 1;
-            remainingTiles[i] -= change;
-            remainingTiles[i + 1] += change;
-          }
-        }
-      }
     } else if (isChallenge) {
       // 挑战模式使用特殊的数字生成策略
       // 根据分布比例生成数字
@@ -425,9 +389,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
       }
       
       // 调整总和为10的倍数
-      let currentSum = remainingTiles.reduce((sum, val) => sum + val, 0) + currentSum;
-      let targetSum = Math.ceil(currentSum / 10) * 10;
-      let difference = targetSum - currentSum;
+      let currentTotalSum = remainingTiles.reduce((sum, val) => sum + val, 0) + currentSum;
+      let targetSum = Math.ceil(currentTotalSum / 10) * 10;
+      let difference = targetSum - currentTotalSum;
       
       // 微调数字以达到目标总和
       let attempts = 0;
@@ -443,8 +407,20 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
         }
         attempts++;
       }
+      
     } else {
-      // 关卡模式保持原有逻辑
+      // 关卡模式：确保总和是10的倍数
+      const minPossibleSum = currentSum + remainingTiles.length; // All 1s
+      const maxPossibleSum = currentSum + remainingTiles.length * 9; // All 9s
+      
+      // Find the closest multiple of 10 within range
+      let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
+      if (targetTotalSum > maxPossibleSum) {
+        targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
+      }
+      
+      const targetRemainingSum = targetTotalSum - currentSum;
+      
       // Start with average distribution
       const avgValue = Math.max(1, Math.min(9, Math.round(targetRemainingSum / remainingTiles.length)));
       
@@ -511,9 +487,11 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   }
   
   // Verify the sum is a multiple of 10 (for debugging)
-  const finalSum = numberTiles.reduce((sum, val) => sum + val, 0);
+  const finalSum = numberTiles.filter(val => val > 0).reduce((sum, val) => sum + val, 0);
   if (finalSum % 10 !== 0) {
     console.warn(`Number tiles sum ${finalSum} is not a multiple of 10 for level ${level}`);
+  } else {
+    console.log(`✅ Level ${level}: Total sum = ${finalSum} (${finalSum/10} × 10)`);
   }
     
   

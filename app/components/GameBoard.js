@@ -150,7 +150,7 @@ const GameBoard = ({
       const centerRow = (startRow + endRow) / 2;
       const centerCol = (startCol + endCol) / 2;
 
-      const centerTilePos = layoutConfig.getTilePosition(Math.floor(centerRow), Math.floor(centerCol));
+      const centerTilePos = getTilePosition(Math.floor(centerRow), Math.floor(centerCol));
       if (centerTilePos) {
         const explosionX = centerTilePos.x + centerTilePos.width / 2;
         const explosionY = centerTilePos.y + centerTilePos.height / 2;
@@ -223,6 +223,7 @@ const GameBoard = ({
     onStartShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
       const { pageX, pageY } = evt.nativeEvent;
+      console.log('🎯 Touch Start:', { pageX, pageY, itemMode });
       return !disabled && isInsideBoard(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
@@ -234,6 +235,16 @@ const GameBoard = ({
     onPanResponderGrant: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
       
+      console.log('🎯 Pan Grant - Touch Position:', { pageX, pageY });
+      console.log('🎯 Layout Config:', {
+        boardLeft: layoutConfig.boardLeft,
+        boardTop: layoutConfig.boardTop,
+        boardWidth: layoutConfig.boardWidth,
+        boardHeight: layoutConfig.boardHeight,
+        woodFrameWidth: layoutConfig.woodFrameWidth,
+        tilesRectLeft: layoutConfig.tilesRectLeft,
+        tilesRectTop: layoutConfig.tilesRectTop
+      });
       if (!isInsideBoard(pageX, pageY)) return;
       
       const { boardLeft, boardTop, woodFrameWidth, tilesRectLeft, tilesRectTop, tileSize, tileGap } = layoutConfig;
@@ -242,6 +253,7 @@ const GameBoard = ({
       const tilesRectAbsLeft = boardLeft + woodFrameWidth + tilesRectLeft;
       const tilesRectAbsTop = boardTop + woodFrameWidth + tilesRectTop;
 
+      console.log('🎯 Tiles Rect Absolute Position:', { tilesRectAbsLeft, tilesRectAbsTop });
       const relativeX = pageX - tilesRectAbsLeft;
       const relativeY = pageY - tilesRectAbsTop;
 
@@ -279,6 +291,7 @@ const GameBoard = ({
       const relativeX = pageX - tilesRectAbsLeft;
       const relativeY = pageY - tilesRectAbsTop;
 
+      console.log('🎯 Relative Position:', { relativeX, relativeY });
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
 
@@ -297,6 +310,7 @@ const GameBoard = ({
           startRow: selection.startRow,
           startCol: selection.startCol,
           endRow,
+      console.log('🎯 Pan Move - Grid Position:', { endRow, endCol });
           endCol,
         });
         
@@ -306,8 +320,22 @@ const GameBoard = ({
         // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
         const sum = currentSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
         const targetScale = sum === 10 ? 1.1 : 1.05;
+      console.log('🎯 Calculated Grid Position:', { startRow, startCol, cellWidth, cellHeight });
+      console.log('🎯 Grid Bounds Check:', { 
+        startRow, 
+        startCol, 
+        height, 
+        width,
+        inBounds: startRow >= 0 && startRow < height && startCol >= 0 && startCol < width 
+        console.log('🎯 Selected Tiles:', currentSelectedTiles.map(t => ({ row: t.row, col: t.col, value: t.value })));
+      });
         
         currentSelectedTiles.forEach(tile => {
+        const tileIndex = startRow * width + startCol;
+        const tileValue = tiles[tileIndex];
+        console.log('🎯 Selected Tile:', { startRow, startCol, tileIndex, tileValue });
+        console.log('🎯 Selection Sum:', sum);
+        
           if (!hoveredTiles.has(tile.index)) {
             scaleTile(tile.index, targetScale);
           }
@@ -320,10 +348,13 @@ const GameBoard = ({
         });
         
         setHoveredTiles(newHoveredSet);
+      } else {
+        console.log('❌ Touch outside grid bounds');
       }
     },
 
     onPanResponderRelease: () => {
+      console.log('🎯 Pan Release');
       if (selection && !disabled) {
         handleSelectionComplete();
       }
@@ -384,6 +415,7 @@ const GameBoard = ({
     const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileGap;
     const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileGap;
     
+    console.log('🎯 Selection Style:', { left, top, selectionWidth, selectionHeight });
     const selectedTiles = getSelectedTiles();
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
@@ -469,6 +501,18 @@ const GameBoard = ({
     const tilePos = getTilePosition(row, col);
     if (!tilePos) return null;
 
+    // 调试日志：方块位置信息
+    if (row === 0 && col === 0) {
+      console.log('🎯 First Tile Position Debug:', {
+        row, col, index, value,
+        tilePos,
+        boardLeft: layoutConfig.boardLeft,
+        boardTop: layoutConfig.boardTop,
+        woodFrameWidth: layoutConfig.woodFrameWidth,
+        finalX: layoutConfig.boardLeft + layoutConfig.woodFrameWidth + tilePos.x,
+        finalY: layoutConfig.boardTop + layoutConfig.woodFrameWidth + tilePos.y
+      });
+    }
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
     
@@ -562,6 +606,9 @@ const GameBoard = ({
   console.log('🎮 GameBoard 渲染信息:');
   console.log(`   棋盘位置: (${layoutConfig.boardLeft}, ${layoutConfig.boardTop})`);
   console.log(`   棋盘尺寸: ${layoutConfig.boardWidth}x${layoutConfig.boardHeight}`);
+  console.log(`   数字方块矩形位置: (${layoutConfig.tilesRectLeft}, ${layoutConfig.tilesRectTop})`);
+  console.log(`   数字方块矩形尺寸: ${layoutConfig.tilesRectWidth}x${layoutConfig.tilesRectHeight}`);
+  console.log(`   方块网格: ${layoutConfig.rows}行 x ${layoutConfig.cols}列`);
 
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();

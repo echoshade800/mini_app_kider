@@ -99,6 +99,18 @@ export default function LevelDetailScreen() {
 
       // 成功消除后重置重排计数
       setReshuffleCount(0);
+      
+      // 成功消除后检查是否还有可消除组合
+      setTimeout(() => {
+        const { hasValidCombinations } = require('../utils/gameLogic');
+        const hasValidMoves = hasValidCombinations(newTiles, board.width, board.height);
+        
+        if (!hasValidMoves) {
+          console.log('检测到无可消除组合，开始校准...');
+          // 这里可以触发校准逻辑或显示救援弹窗
+          setShowRescueModal(true);
+        }
+      }, 500);
     }
   };
 

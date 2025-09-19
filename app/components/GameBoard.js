@@ -194,10 +194,6 @@ const GameBoard = ({
         setSelection(null);
         onTilesClear(tilePositions);
         
-        // 消除成功后检查是否还有可消除组合
-        setTimeout(() => {
-          checkForValidCombinations();
-        }, 500);
       });
 
     } else if (selectedTiles.length > 0) {
@@ -360,11 +356,6 @@ const GameBoard = ({
           checkForValidCombinations(newTiles, board.width, board.height);
         }, 500);
 
-        // Update hovered tiles with scaling effect
-        const newSelection = { ...selection, endRow, endCol };
-        const newSelectedTiles = getSelectedTilesForSelection(newSelection);
-        const newHoveredSet = new Set(newSelectedTiles.map(tile => tile.index));
-        
         // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
         const sum = newSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
         const targetScale = sum === 10 ? 1.1 : 1.05;

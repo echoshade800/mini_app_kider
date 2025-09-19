@@ -45,24 +45,12 @@ const GameBoard = ({
 
   // 如果没有布局配置，显示加载状态
   if (!layoutConfig) {
-    console.log('⚠️  GameBoard: 缺少布局配置');
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
       </View>
     );
   }
-  
-  // 🎯 调试信息：GameBoard 渲染参数
-  console.log('🎮 GameBoard 渲染信息:');
-  console.log(`   方块数组长度: ${tiles.length}`);
-  console.log(`   棋盘尺寸: ${width} × ${height}`);
-  console.log(`   非零方块数: ${tiles.filter(t => t > 0).length}`);
-  console.log(`   布局配置存在: ${!!layoutConfig}`);
-  console.log(`   有效游戏区域: ${layoutConfig.gameArea.width} × ${layoutConfig.gameArea.height}px`);
-  console.log(`   有效游戏区域位置: (${layoutConfig.gameArea.left}, ${layoutConfig.gameArea.top})`);
-  console.log('🎮 ========================');
-  
 
   const initTileScale = (index) => {
     if (!tileScales.has(index)) {
@@ -244,13 +232,13 @@ const GameBoard = ({
       
       if (!isInsideBoard(pageX, pageY)) return;
       
-      const { gameArea, tileSize, tileGap } = layoutConfig;
+      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
 
-      const gameAreaLeft = gameArea.left;
-      const gameAreaTop = gameArea.top;
+      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
+      const contentTop = boardTop + woodFrameWidth + boardPadding;
 
-      const relativeX = pageX - gameAreaLeft;
-      const relativeY = pageY - gameAreaTop;
+      const relativeX = pageX - contentLeft;
+      const relativeY = pageY - contentTop;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -278,13 +266,13 @@ const GameBoard = ({
       if (!selection) return;
       
       const { pageX, pageY } = evt.nativeEvent;
-      const { gameArea, tileSize, tileGap } = layoutConfig;
+      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
 
-      const gameAreaLeft = gameArea.left;
-      const gameAreaTop = gameArea.top;
+      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
+      const contentTop = boardTop + woodFrameWidth + boardPadding;
 
-      const relativeX = pageX - gameAreaLeft;
-      const relativeY = pageY - gameAreaTop;
+      const relativeX = pageX - contentLeft;
+      const relativeY = pageY - contentTop;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -585,23 +573,23 @@ const GameBoard = ({
           ]}
           pointerEvents="auto"
         >
-          {/* 数字方块游戏区域 */}
+          {/* 数字方块内容区 */}
           <View
             {...panResponder.panHandlers}
             style={{
               position: 'absolute',
-              left: layoutConfig.gameArea.left - layoutConfig.boardLeft,
-              top: layoutConfig.gameArea.top - layoutConfig.boardTop,
-              width: layoutConfig.gameArea.width,
-              height: layoutConfig.gameArea.height,
+              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
+              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
             }}
             pointerEvents={itemMode ? "auto" : "auto"}
           >
-            {/* 🎯 数字方块容器 - 以有效游戏区域中心为坐标原点 */}
+            {/* 🎯 数字方块容器 - 使用统一中心点精确定位 */}
             <View
               style={{
-                width: layoutConfig.gameArea.width,
-                height: layoutConfig.gameArea.height,
+                width: '100%',
+                height: '100%',
                 position: 'relative',
               }}
             >

@@ -472,9 +472,6 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
           }
         }
       }
-      
-      // 应用大数字不相邻规则
-      applyLargeNumberSeparation(remainingTiles, availablePositions, width, height, tiles);
     }
   }
   
@@ -482,6 +479,79 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   for (let i = 0; i < remainingTiles.length; i++) {
     const pos = availablePositions[i];
     numberTiles[pos] = remainingTiles[i];
+  }
+  
+  // 应用大数字不相邻规则
+  function applyLargeNumberSeparation(remainingTiles, availablePositions, width, height, tiles) {
+    // 创建临时棋盘来模拟放置
+    const tempTiles = [...tiles];
+    
+    // 先将所有剩余方块放到临时棋盘上
+    for (let i = 0; i < remainingTiles.length; i++) {
+      const pos = availablePositions[i];
+      tempTiles[pos] = remainingTiles[i];
+    }
+    
+    // 找出所有大数字的位置
+    const largeNumberPositions = [];
+    for (let i = 0; i < remainingTiles.length; i++) {
+      const value = remainingTiles[i];
+      if (value >= 7) { // 大数字：7、8、9
+        largeNumberPositions.push({
+          index: i,
+          position: availablePositions[i],
+          value: value
+        });
+      }
+    }
+    
+    // 尝试重新排列大数字，避免相同数字相邻
+    let maxAttempts = 50;
+    let improved = true;
+    
+    while (improved && maxAttempts > 0) {
+      improved = false;
+      maxAttempts--;
+      
+      for (let i = 0; i < largeNumberPositions.length; i++) {
+        const current = largeNumberPositions[i];
+        const currentPos = current.position;
+        
+        // 检查当前位置是否与相同数字相邻
+        if (hasAdjacentSameNumber(tempTiles, width, height, currentPos, current.value)) {
+          // 尝试与其他大数字交换位置
+          for (let j = i + 1; j < largeNumberPositions.length; j++) {
+            const other = largeNumberPositions[j];
+            const otherPos = other.position;
+            
+            // 模拟交换
+            tempTiles[currentPos] = other.value;
+            tempTiles[otherPos] = current.value;
+            
+            // 检查交换后是否改善了情况
+            const currentImproved = !hasAdjacentSameNumber(tempTiles, width, height, currentPos, other.value);
+            const otherImproved = !hasAdjacentSameNumber(tempTiles, width, height, otherPos, current.value);
+            
+            if (currentImproved || otherImproved) {
+              // 交换成功，更新数组
+              remainingTiles[current.index] = other.value;
+              remainingTiles[other.index] = current.value;
+              
+              // 更新位置记录
+              current.value = other.value;
+              other.value = remainingTiles[other.index];
+              
+              improved = true;
+              break;
+            } else {
+              // 撤销交换
+              tempTiles[currentPos] = current.value;
+              tempTiles[otherPos] = other.value;
+            }
+          }
+        }
+      }
+    }
   }
   
   // 将数字方块矩形放置到棋盘的居中位置

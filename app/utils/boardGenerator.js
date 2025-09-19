@@ -574,6 +574,24 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   } else {
     console.log(`✅ Level ${level}: Total sum = ${finalSum} (${finalSum/10} × 10)`);
   }
+  
+  // 🎯 调试命令：计算并记录棋盘格尺寸数据
+  if (layoutConfig) {
+    const { rows, cols, boardWidth, boardHeight, tileSize, tilesRectWidth, tilesRectHeight } = layoutConfig;
+    const modeText = isChallenge ? '挑战模式' : `关卡${level}`;
+    console.log(`📏 ${modeText}棋盘格尺寸数据:`);
+    console.log(`   棋盘格行数: ${rows}`);
+    console.log(`   棋盘格列数: ${cols}`);
+    console.log(`   棋盘总宽度: ${boardWidth}px`);
+    console.log(`   棋盘总高度: ${boardHeight}px`);
+    console.log(`   单个方块尺寸: ${tileSize}px`);
+    console.log(`   数字方块矩形宽度: ${tilesRectWidth}px`);
+    console.log(`   数字方块矩形高度: ${tilesRectHeight}px`);
+    console.log(`   棋盘格总数: ${rows * cols}`);
+    console.log(`   实际数字方块数: ${tiles.filter(t => t > 0).length}`);
+    console.log(`   填充率: ${(tiles.filter(t => t > 0).length / (rows * cols) * 100).toFixed(1)}%`);
+    console.log('📏 ========================');
+  }
     
   
   return {

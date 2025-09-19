@@ -50,8 +50,8 @@ const WOOD_FRAME_WIDTH = 8; // 木框厚度
 
 // 有效游戏区域配置
 const EFFECTIVE_AREA = {
-  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+  TOP_RESERVED: 80,      // 顶部保留区域（HUD）
+  BOTTOM_RESERVED: 80,   // 底部保留区域（道具栏）
 };
 
 /**
@@ -61,9 +61,27 @@ function getEffectiveGameArea() {
   const effectiveHeight = screenHeight - EFFECTIVE_AREA.TOP_RESERVED - EFFECTIVE_AREA.BOTTOM_RESERVED;
   const effectiveWidth = screenWidth;
   
+  // 🔍 调试：有效游戏区域计算
+  console.log('🔍 有效游戏区域计算:');
+  console.log(`   屏幕尺寸: ${screenWidth} × ${screenHeight}px`);
+  console.log(`   顶部保留: ${EFFECTIVE_AREA.TOP_RESERVED}px`);
+  console.log(`   底部保留: ${EFFECTIVE_AREA.BOTTOM_RESERVED}px`);
+  console.log(`   有效高度: ${effectiveHeight}px`);
+  console.log(`   有效宽度: ${effectiveWidth}px`);
+  
+  // 确保有效区域不会是负数
+  const safeHeight = Math.max(effectiveHeight, 200); // 最小200px高度
+  const safeWidth = Math.max(effectiveWidth, 200);   // 最小200px宽度
+  
+  if (effectiveHeight !== safeHeight || effectiveWidth !== safeWidth) {
+    console.log('⚠️  有效区域调整:');
+    console.log(`   调整前: ${effectiveWidth} × ${effectiveHeight}px`);
+    console.log(`   调整后: ${safeWidth} × ${safeHeight}px`);
+  }
+  
   return {
-    width: effectiveWidth,
-    height: effectiveHeight,
+    width: safeWidth,
+    height: safeHeight,
     top: EFFECTIVE_AREA.TOP_RESERVED,
     left: 0,
   };
@@ -288,42 +306,141 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
 
 /**
  * 计算每个方块的位置
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} tileSize - 方块尺寸
- * @param {number} tilesRectWidth - 数字方块矩形宽度
- * @param {number} tilesRectHeight - 数字方块矩形高度
- * @param {number} contentWidth - 棋盘内容区宽度
- * @param {number} contentHeight - 棋盘内容区高度
- * @param {number} gap - 间距
- * @param {number} padding - 内边距
- * @returns {Function} 位置计算函数
+ * 使用坐标系方法：以有效游戏区域中心为原点(0,0)，数字方块矩形居中在坐标轴上
  */
-export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING) {
+export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, gameArea, gap = TILE_GAP) {
+  // 🎯 坐标系方法：以有效游戏区域中心为原点(0,0)建立坐标系
+  
+  // 🔍 关键调试：验证传入的参数
+  console.log('🔍 layoutTiles 函数参数验证:');
+  console.log(`   数字方块矩形尺寸: ${tilesRectWidth} × ${tilesRectHeight}px`);
+  console.log(`   有效游戏区域: ${gameArea.width} × ${gameArea.height}px`);
+  console.log(`   有效游戏区域位置: (${gameArea.left}, ${gameArea.top})`);
+  
+  // 第一步：确定坐标系原点（有效游戏区域中心点）
+  const gameAreaCenterX = gameArea.width / 2;   // 有效游戏区域中心X
+  const gameAreaCenterY = gameArea.height / 2;  // 有效游戏区域中心Y
+  
+  console.log('🎯 坐标系建立:');
+  console.log(`   有效游戏区域尺寸: ${gameArea.width} × ${gameArea.height}px`);
+  console.log(`   坐标系原点（游戏区域中心）: (${gameAreaCenterX.toFixed(2)}, ${gameAreaCenterY.toFixed(2)})`);
+  
+  // 第二步：计算数字方块矩形的实际尺寸
+  const actualTilesRectWidth = cols * tileSize + (cols - 1) * gap;
+  const actualTilesRectHeight = rows * tileSize + (rows - 1) * gap;
+  
+  console.log(`   数字方块矩形尺寸: ${actualTilesRectWidth} × ${actualTilesRectHeight}px`);
+  console.log(`   棋盘格规格: ${rows}行 × ${cols}列，方块尺寸: ${tileSize}px`);
+  
+  // 🔍 调试：对比传入参数与实际计算
+  console.log('🔍 参数对比分析:');
+  console.log(`   传入的tilesRectWidth: ${tilesRectWidth}px`);
+  console.log(`   实际计算的宽度: ${actualTilesRectWidth}px`);
+  console.log(`   宽度差异: ${Math.abs(tilesRectWidth - actualTilesRectWidth).toFixed(2)}px`);
+  console.log(`   传入的tilesRectHeight: ${tilesRectHeight}px`);
+  console.log(`   实际计算的高度: ${actualTilesRectHeight}px`);
+  console.log(`   高度差异: ${Math.abs(tilesRectHeight - actualTilesRectHeight).toFixed(2)}px`);
+  
+  // 第三步：在坐标系中定义数字方块矩形的边界
+  // 数字方块矩形在坐标系中的范围：从负半宽到正半宽
+  const rectHalfWidth = actualTilesRectWidth / 2;
+  const rectHalfHeight = actualTilesRectHeight / 2;
+  
+  console.log('📐 坐标系中的数字方块矩形:');
+  console.log(`   X轴范围: [-${rectHalfWidth.toFixed(2)}, +${rectHalfWidth.toFixed(2)}]`);
+  console.log(`   Y轴范围: [-${rectHalfHeight.toFixed(2)}, +${rectHalfHeight.toFixed(2)}]`);
+  
+  // 🔍 调试：计算数字方块矩形在有效游戏区域中的位置
+  const rectStartX = gameAreaCenterX - rectHalfWidth;
+  const rectStartY = gameAreaCenterY - rectHalfHeight;
+  console.log('🔍 数字方块矩形在游戏区域中的位置:');
+  console.log(`   矩形左上角: (${rectStartX.toFixed(2)}, ${rectStartY.toFixed(2)})`);
+  console.log(`   矩形右下角: (${(rectStartX + actualTilesRectWidth).toFixed(2)}, ${(rectStartY + actualTilesRectHeight).toFixed(2)})`);
+  
+  // 🔍 调试：计算在游戏区域中的留白分布
+  const leftMargin = rectStartX;
+  const rightMargin = gameArea.width - (rectStartX + actualTilesRectWidth);
+  const topMargin = rectStartY;
+  const bottomMargin = gameArea.height - (rectStartY + actualTilesRectHeight);
+  
+  console.log('🔍 游戏区域留白分布:');
+  console.log(`   左边距: ${leftMargin.toFixed(2)}px`);
+  console.log(`   右边距: ${rightMargin.toFixed(2)}px`);
+  console.log(`   上边距: ${topMargin.toFixed(2)}px`);
+  console.log(`   下边距: ${bottomMargin.toFixed(2)}px`);
+  console.log(`   水平对称性: ${Math.abs(leftMargin - rightMargin).toFixed(4)}px 差异`);
+  console.log(`   垂直对称性: ${Math.abs(topMargin - bottomMargin).toFixed(4)}px 差异`);
+  
+  // 第四步：计算每个方块在坐标系中的位置
+  // 方块索引到坐标系坐标的映射
+  function getCoordinatePosition(row, col) {
+    // 计算方块在矩形中的相对位置（从左上角开始）
+    const relativeX = col * (tileSize + gap);
+    const relativeY = row * (tileSize + gap);
+    
+    // 转换为坐标系坐标（以矩形中心为基准）
+    const coordX = relativeX - rectHalfWidth + tileSize / 2;
+    const coordY = relativeY - rectHalfHeight + tileSize / 2;
+    
+    return { coordX, coordY };
+  }
+  
+  // 验证中心方块是否在坐标系原点
+  const centerRow = (rows - 1) / 2;
+  const centerCol = (cols - 1) / 2;
+  const centerCoord = getCoordinatePosition(centerRow, centerCol);
+  
+  console.log('🎯 坐标系验证:');
+  console.log(`   矩形中心方块位置: [${centerRow}, ${centerCol}]`);
+  console.log(`   在坐标系中的坐标: (${centerCoord.coordX.toFixed(4)}, ${centerCoord.coordY.toFixed(4)})`);
+  
+  if (Math.abs(centerCoord.coordX) < 0.01 && Math.abs(centerCoord.coordY) < 0.01) {
+    console.log('   ✅ 数字方块矩形完美居中在坐标系原点！');
+  } else {
+    console.log('   ❌ 数字方块矩形未居中，需要调整');
+  }
+  
+  // 验证边界对称性
+  const leftBoundary = -rectHalfWidth;
+  const rightBoundary = +rectHalfWidth;
+  const topBoundary = -rectHalfHeight;
+  const bottomBoundary = +rectHalfHeight;
+  
+  console.log('📏 坐标系边界对称性:');
+  console.log(`   X轴对称性: ${Math.abs(Math.abs(leftBoundary) - Math.abs(rightBoundary)).toFixed(4)}px 差异`);
+  console.log(`   Y轴对称性: ${Math.abs(Math.abs(topBoundary) - Math.abs(bottomBoundary)).toFixed(4)}px 差异`);
+  
+  // 返回位置计算函数
   return function getTilePosition(row, col) {
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
       return null;
     }
     
-    // 🎯 统一中心点计算：内容区的几何中心
-    const contentCenterX = contentWidth / 2;
-    const contentCenterY = contentHeight / 2;
+    // 🎯 坐标系方法：
+    // 1. 获取方块在坐标系中的坐标
+    const { coordX, coordY } = getCoordinatePosition(row, col);
     
-    // 🎯 数字方块矩形的几何中心
-    const tileRectCenterX = tilesRectWidth / 2;
-    const tileRectCenterY = tilesRectHeight / 2;
+    // 2. 转换为有效游戏区域内的相对坐标（坐标系坐标 + 原点位置 - 方块中心偏移）
+    const x = gameAreaCenterX + coordX - tileSize / 2;
+    const y = gameAreaCenterY + coordY - tileSize / 2;
     
-    // 🎯 计算数字方块矩形左上角位置，使其中心与内容区中心重合
-    const tileRectStartX = contentCenterX - tileRectCenterX;
-    const tileRectStartY = contentCenterY - tileRectCenterY;
+    // 调试信息：关键方块的坐标转换过程
+    if ((row === 0 && col === 0) || (row === rows - 1 && col === cols - 1)) {
+      console.log(`📍 方块 [${row},${col}] 坐标转换:`);
+      console.log(`   坐标系坐标: (${coordX.toFixed(2)}, ${coordY.toFixed(2)})`);
+      console.log(`   游戏区域相对位置: (${x.toFixed(2)}, ${y.toFixed(2)})px`);
+      console.log(`   计算过程: 原点(${gameAreaCenterX}, ${gameAreaCenterY}) + 坐标系偏移(${coordX.toFixed(2)}, ${coordY.toFixed(2)}) - 方块中心偏移(${tileSize/2}, ${tileSize/2})`);
+    }
     
-    // 🎯 计算单个方块位置（相对于数字方块矩形左上角）
-    const relativeX = col * (tileSize + gap);
-    const relativeY = row * (tileSize + gap);
-    
-    // 🎯 最终位置：数字方块矩形起始位置 + 方块相对位置
-    const x = tileRectStartX + relativeX;
-    const y = tileRectStartY + relativeY;
+    // 特别验证中心方块
+    if (Math.abs(row - centerRow) < 0.01 && Math.abs(col - centerCol) < 0.01) {
+      console.log(`🎯 中心方块 [${row},${col}] 验证:`);
+      console.log(`   坐标系坐标: (${coordX.toFixed(4)}, ${coordY.toFixed(4)})`);
+      console.log(`   游戏区域位置: (${x.toFixed(2)}, ${y.toFixed(2)})`);
+      console.log(`   应该在原点附近: (${gameAreaCenterX.toFixed(2)}, ${gameAreaCenterY.toFixed(2)})`);
+      console.log(`   中心方块中心点: (${(x + tileSize/2).toFixed(2)}, ${(y + tileSize/2).toFixed(2)})`);
+      console.log(`   与原点偏差: (${Math.abs(x + tileSize/2 - gameAreaCenterX).toFixed(4)}, ${Math.abs(y + tileSize/2 - gameAreaCenterY).toFixed(4)})`);
+    }
     
     return {
       x,
@@ -349,9 +466,21 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
     layout.tileSize, 
     layout.tilesRectWidth, 
     layout.tilesRectHeight, 
-    layout.contentWidth, 
-    layout.contentHeight
+    layout.gameArea
   );
+  
+  // 🎯 调试信息：最终布局配置
+  console.log('🏗️  最终布局配置:');
+  console.log(`   数字方块数量: ${N}`);
+  console.log(`   关卡等级: ${level || '未指定'}`);
+  console.log(`   目标宽高比: ${targetAspect || '自动'}`);
+  console.log(`   最终行列数: ${layout.rows} × ${layout.cols}`);
+  console.log(`   方块尺寸: ${layout.tileSize}px`);
+  console.log(`   棋盘总尺寸: ${layout.boardWidth} × ${layout.boardHeight}px`);
+  console.log(`   棋盘位置: (${layout.boardLeft}, ${layout.boardTop})`);
+  console.log(`   有效游戏区域: ${layout.gameArea.width} × ${layout.gameArea.height}px`);
+  console.log(`   布局有效性: ${layout.isValid ? '✅ 有效' : '❌ 无效'}`);
+  console.log('🏗️  ========================');
   
   return {
     ...layout,

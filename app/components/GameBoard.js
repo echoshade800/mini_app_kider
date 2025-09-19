@@ -725,7 +725,7 @@ const GameBoard = ({
           justifyContent: 'center',
         }}
         onTouchStart={handleTileTouch}
-        pointerEvents="box-none"
+        pointerEvents={itemMode ? "auto" : "box-none"}
       >
         <Animated.View
           style={[
@@ -755,7 +755,7 @@ const GameBoard = ({
   const selectionSum = getSelectionSum();
 
   return (
-    <View style={styles.fullScreenContainer} {...panResponder.panHandlers}>
+    <View style={styles.fullScreenContainer}>
       <View style={styles.container}>
         <View 
           style={[
@@ -771,6 +771,7 @@ const GameBoard = ({
         >
           {/* 数字方块内容区 */}
           <View
+            {...panResponder.panHandlers}
             style={{
               position: 'absolute',
               left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,

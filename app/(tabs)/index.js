@@ -105,12 +105,6 @@ export default function Home() {
         </View>
       </View>
 
-      {/* 新手引导弹窗 */}
-      <Modal 
-        visible={showGuide} 
-        transparent 
-        animationType="fade" 
-        onRequestClose={() => setShowGuide(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.guideModal}>
@@ -204,35 +198,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   // 中间信息框
-  centerInfoBox: {
-    alignSelf: 'center',
-    backgroundColor: 'rgba(255, 248, 220, 0.95)',
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 30,
-    borderWidth: 3,
-    borderColor: '#D2691E',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    minWidth: 280,
-    alignItems: 'center',
-  },
-  centerLevelName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#8B4513',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  centerIqText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#5A3E12',
-    textAlign: 'center',
-  },
   // 底部按钮栏
   bottomButtonBar: {
     flexDirection: 'row',
@@ -243,13 +208,13 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   mainButton: {
-    minWidth: 140,
-    height: 64,
-    borderRadius: 32,
+    minWidth: 180,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#FF8C42',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 28,
+    paddingHorizontal: 36,
     borderWidth: 3,
     borderColor: '#E67E22',
     shadowColor: '#000',
@@ -264,7 +229,7 @@ const styles = StyleSheet.create({
   },
   mainButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 1, height: 1 },

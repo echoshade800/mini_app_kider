@@ -518,6 +518,8 @@ const GameBoard = ({
 
   // Handle tile click in item mode
   const handleTilePress = (row, col, value) => {
+    console.log('Tile pressed:', { row, col, value, itemMode });
+    
     if (!itemMode || disabled) return;
     
     if (onTileClick) {

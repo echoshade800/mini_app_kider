@@ -130,6 +130,8 @@ export default function LevelDetailScreen() {
   };
 
   const handleTileClick = (row, col, value) => {
+    console.log('handleTileClick called:', { row, col, value, itemMode });
+    
     if (!itemMode || !board || value === 0) return;
 
     const index = row * board.width + col;
@@ -137,12 +139,15 @@ export default function LevelDetailScreen() {
     if (itemMode === 'swapMaster') {
       if (!selectedSwapTile) {
         // Select first tile
+        console.log('Selecting first tile for swap:', { row, col, value, index });
         setSelectedSwapTile({ row, col, value, index });
       } else if (selectedSwapTile.index === index) {
         // Deselect same tile
+        console.log('Deselecting tile');
         setSelectedSwapTile(null);
       } else {
         // Swap tiles
+        console.log('Swapping tiles:', selectedSwapTile, 'with', { row, col, value, index });
         const newTiles = [...board.tiles];
         newTiles[selectedSwapTile.index] = value;
         newTiles[index] = selectedSwapTile.value;
@@ -157,6 +162,7 @@ export default function LevelDetailScreen() {
       }
     } else if (itemMode === 'fractalSplit') {
       // Split the selected tile into two tiles with value 1 and (value-1)
+      console.log('Attempting to split tile:', { row, col, value });
       if (value > 1) {
         const newTiles = [...board.tiles];
         
@@ -171,6 +177,7 @@ export default function LevelDetailScreen() {
         
         if (emptyIndex !== -1) {
           // Split: original tile becomes 1, new tile gets (value-1)
+          console.log('Splitting tile: original becomes 1, new tile gets', value - 1, 'at index', emptyIndex);
           newTiles[index] = 1;
           newTiles[emptyIndex] = value - 1;
           
@@ -195,6 +202,7 @@ export default function LevelDetailScreen() {
       return;
     }
     
+    console.log('SwapMaster button clicked, current mode:', itemMode);
     setItemMode(itemMode === 'swapMaster' ? null : 'swapMaster');
     setSelectedSwapTile(null);
   };
@@ -205,6 +213,7 @@ export default function LevelDetailScreen() {
       return;
     }
     
+    console.log('FractalSplit button clicked, current mode:', itemMode);
     setItemMode(itemMode === 'fractalSplit' ? null : 'fractalSplit');
     setSelectedSwapTile(null);
   };
@@ -273,6 +282,7 @@ export default function LevelDetailScreen() {
           onPress={handleUseSwapMaster}
           disabled={(gameData?.swapMasterItems || 0) <= 0}
           activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons 
             name="swap-horizontal" 
@@ -307,6 +317,7 @@ export default function LevelDetailScreen() {
           onPress={handleUseFractalSplit}
           disabled={(gameData?.splitItems || 0) <= 0}
           activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons 
             name="cut" 

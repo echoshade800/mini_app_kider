@@ -418,6 +418,19 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
     layout.contentHeight
   );
   
+  // 🎯 调试信息：最终布局配置
+  console.log('🏗️  最终布局配置:');
+  console.log(`   数字方块数量: ${N}`);
+  console.log(`   关卡等级: ${level || '未指定'}`);
+  console.log(`   目标宽高比: ${targetAspect || '自动'}`);
+  console.log(`   最终行列数: ${layout.rows} × ${layout.cols}`);
+  console.log(`   方块尺寸: ${layout.tileSize}px`);
+  console.log(`   棋盘总尺寸: ${layout.boardWidth} × ${layout.boardHeight}px`);
+  console.log(`   棋盘位置: (${layout.boardLeft}, ${layout.boardTop})`);
+  console.log(`   有效游戏区域: ${layout.gameArea.width} × ${layout.gameArea.height}px`);
+  console.log(`   布局有效性: ${layout.isValid ? '✅ 有效' : '❌ 无效'}`);
+  console.log('🏗️  ========================');
+  
   return {
     ...layout,
     getTilePosition,

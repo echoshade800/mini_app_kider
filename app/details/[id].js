@@ -77,7 +77,6 @@ export default function LevelDetailScreen() {
       setTotalTiles(initialTileCount);
       setClearedTiles(0);
       setProgress(0);
-      console.log(`📊 进度条初始化: 总方块=${initialTileCount}, 已清除=0, 进度=0%`);
       
       // 重置游戏状态
       setItemMode(null);
@@ -115,8 +114,6 @@ export default function LevelDetailScreen() {
       const newProgress = Math.min(newClearedCount / totalTiles, 1);
       setProgress(newProgress);
       
-      console.log(`📊 进度更新: 清除${clearedPositions.length}个方块, 总计${newClearedCount}/${totalTiles}, 进度=${(newProgress * 100).toFixed(1)}%`);
-      
       // 更新棋盘：将被清除的方块设为0（空位）
       const newTiles = [...board.tiles];
       clearedPositions.forEach(pos => {
@@ -130,7 +127,6 @@ export default function LevelDetailScreen() {
       if (remainingTiles === 0) {
         // 确保进度条达到100%
         setProgress(1);
-        console.log(`🎉 关卡完成! 进度条达到100%`);
         
         // 关卡完成！显示完成弹窗
         setShowCompletionModal(true);
@@ -200,8 +196,6 @@ export default function LevelDetailScreen() {
         // 重新计算进度（保持已清除数量不变）
         const newProgress = Math.min(clearedTiles / newTotalTiles, 1);
         setProgress(newProgress);
-        
-        console.log(`🔄 Split道具使用: 总方块数增加到${newTotalTiles}, 进度调整为${(newProgress * 100).toFixed(1)}%`);
         
         setBoard(prev => ({ ...prev, tiles: newTiles }));
         setSelectedSwapTile(null);

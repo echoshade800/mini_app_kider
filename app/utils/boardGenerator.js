@@ -126,31 +126,16 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   const random = seededRandom(seed);
   
-  // 获取数字方块数量和布局
-  let tileCount, rows, cols;
-  
-  if (isChallenge) {
-    // 挑战模式：固定14行11列
-    rows = 10;
-    cols = 12;
-    tileCount = 120; // 固定120个方块
-  } else {
-    // 关卡模式：使用原有逻辑
-    tileCount = getTileCount(level, isChallenge);
-    const layoutConfig = getBoardLayoutConfig(tileCount, null, level);
-    rows = layoutConfig.rows;
-    cols = layoutConfig.cols;
-  }
-  
-  // 为挑战模式创建布局配置
-  const layoutConfig = isChallenge ? 
-    getBoardLayoutConfig(tileCount, cols / rows, null) : 
-    getBoardLayoutConfig(tileCount, null, level);
-    
-  // 确保使用布局配置中的实际行列数
-  rows = layoutConfig.rows;
-  cols = layoutConfig.cols;
+  // 统一使用固定的棋盘尺寸（基于挑战模式）
+  const rows = 10;
+  const cols = 12;
   const totalSlots = rows * cols;
+  
+  // 获取数字方块数量
+  const tileCount = isChallenge ? 120 : getTileCount(level, isChallenge);
+  
+  // 创建统一的布局配置
+  const layoutConfig = getBoardLayoutConfig(tileCount, cols / rows, level);
   
   // 计算实际数字方块数量和矩形尺寸
   const actualTileCount = Math.min(tileCount, totalSlots);

@@ -276,9 +276,19 @@ const Board = ({
   const renderTile = (value, row, col) => {
     const index = row * width + col;
     
-    if (value === 0) {
+      return (
       return (
         <View 
+          key={`${row}-${col}`}
+          style={[
+            styles.cell,
+            {
+              width: cellSize,
+              height: cellSize,
+            }
+          ]}
+        />
+      );
           key={`${row}-${col}`}
           style={[
             styles.cell,
@@ -324,13 +334,7 @@ const Board = ({
         ]}
         onStartShouldSetResponder={itemMode ? () => true : () => false}
         onResponderGrant={itemMode ? () => handleTilePress(row, col, value) : undefined}
-      >
-        <Text
-          style={[
-            styles.tileText,
-            {
-              fontSize: fontSize,
-              lineHeight: cellSize,
+        pointerEvents={itemMode ? "auto" : "box-none"}
               fontWeight: isInSelection ? 'bold' : 'normal',
             }
           ]}

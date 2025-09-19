@@ -58,6 +58,11 @@ export default function LevelDetailScreen() {
   const [swapAnimations, setSwapAnimations] = useState(new Map());
   const [fractalAnimations, setFractalAnimations] = useState(new Map());
   const [boardKey, setBoardKey] = useState(0); // 用于强制重新生成棋盘
+  
+  // 进度条状态
+  const [totalTiles, setTotalTiles] = useState(0);
+  const [clearedTiles, setClearedTiles] = useState(0);
+  const [progress, setProgress] = useState(0);
 
   // 生成新棋盘的函数
   const generateNewBoard = useCallback(() => {
@@ -66,6 +71,13 @@ export default function LevelDetailScreen() {
       const newBoard = generateBoard(level);
       setBoard(newBoard);
       setBoardKey(prev => prev + 1); // 更新key强制重新渲染
+      
+      // 初始化进度条状态
+      const initialTileCount = newBoard.tiles.filter(tile => tile > 0).length;
+      setTotalTiles(initialTileCount);
+      setClearedTiles(0);
+      setProgress(0);
+      console.log(`📊 进度条初始化: 总方块=${initialTileCount}, 已清除=0, 进度=0%`);
       
       // 重置游戏状态
       setItemMode(null);
@@ -95,6 +107,16 @@ export default function LevelDetailScreen() {
       // 空数组 - 暂时不处理
       return;
     } else {
+      // 更新已清除方块数量
+      const newClearedCount = clearedTiles + clearedPositions.length;
+      setClearedTiles(newClearedCount);
+      
+      // 计算并更新进度
+      const newProgress = Math.min(newClearedCount / totalTiles, 1);
+      setProgress(newProgress);
+      
+      console.log(`📊 进度更新: 清除${clearedPositions.length}个方块, 总计${newClearedCount}/${totalTiles}, 进度=${(newProgress * 100).toFixed(1)}%`);
+      
       // 更新棋盘：将被清除的方块设为0（空位）
       const newTiles = [...board.tiles];
       clearedPositions.forEach(pos => {
@@ -106,6 +128,10 @@ export default function LevelDetailScreen() {
       const remainingTiles = newTiles.filter(tile => tile > 0).length;
       
       if (remainingTiles === 0) {
+        // 确保进度条达到100%
+        setProgress(1);
+        console.log(`🎉 关卡完成! 进度条达到100%`);
+        
         // 关卡完成！显示完成弹窗
         setShowCompletionModal(true);
         
@@ -166,6 +192,16 @@ export default function LevelDetailScreen() {
         const newTiles = [...board.tiles];
         newTiles[selectedSwapTile.index] = value;
         newTiles[index] = selectedSwapTile.value;
+        
+        // Split道具增加了一个新方块，更新总数
+        const newTotalTiles = totalTiles + 1;
+        setTotalTiles(newTotalTiles);
+        
+        // 重新计算进度（保持已清除数量不变）
+        const newProgress = Math.min(clearedTiles / newTotalTiles, 1);
+        setProgress(newProgress);
+        
+        console.log(`🔄 Split道具使用: 总方块数增加到${newTotalTiles}, 进度调整为${(newProgress * 100).toFixed(1)}%`);
         
         setBoard(prev => ({ ...prev, tiles: newTiles }));
         setSelectedSwapTile(null);
@@ -259,7 +295,7 @@ export default function LevelDetailScreen() {
           {/* 进度条容器 */}
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '70%' }]} />
+              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
             </View>
             {/* 角色图标 */}
             <View style={styles.characterIcon}>
@@ -485,6 +521,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#4CAF50',
     borderRadius: 4,
+    transition: 'width 0.3s ease-out', // 平滑动画效果
   },
   characterIcon: {
     position: 'absolute',

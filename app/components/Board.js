@@ -288,13 +288,8 @@ const Board = ({
             }
           ]}
         />
-          onStartShouldSetResponder={() => itemMode}
-          onResponderGrant={() => {
-            if (itemMode) {
-              handleTilePress(row, col, value);
-            }
-          }}
-      )
+        />
+      );
     }
 
     const tileScale = initTileScale(index);

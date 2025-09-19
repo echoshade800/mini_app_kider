@@ -293,7 +293,6 @@ export default function ChallengeScreen() {
             disabled={false}
             settings={settings}
             headerHeight={80}
-            layoutConfig={board.layoutConfig}
           />
         )}
 

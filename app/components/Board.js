@@ -23,8 +23,7 @@ const Board = ({
   onTileClick = null,
   selectedSwapTile = null,
   settings = {},
-  headerHeight = 120,
-  layoutConfig = null
+  headerHeight = 120
 }) => {
   const N = Math.max(width, height); // Use larger dimension for square board
   const { boardOuter, boardInner, cellSize, fontSize, slack, constants } = useBoardSizing(N, headerHeight);
@@ -40,7 +39,7 @@ const Board = ({
   const tileScales = useRef(new Map()).current;
 
   // Early return if sizing not ready
-  if (!cellSize || !boardOuter || !layoutConfig) {
+  if (!cellSize || !boardOuter) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -177,8 +176,6 @@ const Board = ({
     const maxCol = Math.max(startCol, endCol);
     
     const selectedTiles = [];
-    
-    // 遍历选择框覆盖的所有网格位置
     for (let row = minRow; row <= maxRow; row++) {
       for (let col = minCol; col <= maxCol; col++) {
         if (row >= 0 && row < height && col >= 0 && col < width) {
@@ -190,20 +187,7 @@ const Board = ({
         }
       }
     }
-  }
-  // 检查方块是否与选择框有交集（边缘触碰即可）
-  const isTileIntersectingSelection = (tileRow, tileCol, selection) => {
-    if (!selection) return false;
     return selectedTiles;
-    const { startRow, startCol, endRow, endCol } = selection;
-    const minRow = Math.min(startRow, endRow);
-    const maxRow = Math.max(startRow, endRow);
-    const minCol = Math.min(startCol, endCol);
-    const maxCol = Math.max(startCol, endCol);
-    
-    // 检查方块是否在选择框范围内（包括边缘）
-    return tileRow >= minRow && tileRow <= maxRow && 
-           tileCol >= minCol && tileCol <= maxCol;
   };
 
   const getSelectionSum = () => {
@@ -226,11 +210,10 @@ const Board = ({
     
     const cellWidth = layoutConfig.tileSize + layoutConfig.tileGap;
     const cellHeight = layoutConfig.tileSize + layoutConfig.tileGap;
-    // 选择框覆盖整个网格区域，包括间隙
-    const left = minCol * cellWidth;
-    const top = minRow * cellHeight;
-    const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileGap;
-    const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileGap;
+
+    // 计算中心位置的坐标
+    const centerX = centerCol * cellWidth + layoutConfig.tileSize / 2;
+    const centerY = centerRow * cellHeight + layoutConfig.tileSize / 2;
     
     return {
       sum,
@@ -614,7 +597,7 @@ const styles = StyleSheet.create({
   boardFrame: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
     borderRadius: 16,
-    borderWidth: 8,
+    borderWidth: layoutConfig?.woodFrameWidth || 8,
     borderColor: '#8B5A2B',
     shadowColor: '#000',
     shadowOffset: {

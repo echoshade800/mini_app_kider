@@ -14,10 +14,11 @@ import {
   Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useGameStore } from '../store/gameStore';
-import { generateBoard } from '../utils/boardGenerator';
+import { useCallback } from 'react';
+import { useGameStore } from '../lib/gameStore';
+import { generateBoard } from '../lib/boardGenerator';
 import GameBoard from '../components/GameBoard';
 import RescueModal from '../components/RescueModal';
 
@@ -60,6 +61,7 @@ export default function ChallengeScreen() {
   const [currentIQ, setCurrentIQ] = useState(0);
   const [board, setBoard] = useState(null);
   const [showRescueModal, setShowRescueModal] = useState(false);
+  const [boardKey, setBoardKey] = useState(0); // 用于强制重新生成棋盘
   
   // Refs
   const timerRef = useRef(null);
@@ -94,7 +96,9 @@ export default function ChallengeScreen() {
   }, [gameState, timeLeft]);
 
   const generateNewBoard = () => {
+    console.log('🔄 挑战模式生成新棋盘');
     const newBoard = generateBoard(100, true, true); // 挑战模式：高数量方块
+    setBoardKey(prev => prev + 1); // 更新key强制重新渲染
     
     // 🎯 调试命令：计算并记录棋盘格尺寸数据
     if (newBoard && newBoard.layoutConfig) {
@@ -113,6 +117,21 @@ export default function ChallengeScreen() {
     
     setBoard(newBoard);
   };
+
+  // 页面获得焦点时的处理（仅在开始界面时刷新）
+  useFocusEffect(
+    useCallback(() => {
+      console.log(`📱 挑战模式页面获得焦点 - 游戏状态: ${gameState}`);
+      if (gameState === 'start') {
+        // 只在开始界面时重置，避免打断正在进行的游戏
+        console.log('🔄 重置挑战模式到开始状态');
+        setBoard(null);
+        setCurrentIQ(0);
+        setTimeLeft(CHALLENGE_TIME);
+        setBoardKey(prev => prev + 1);
+      }
+    }, [gameState])
+  );
 
   const handleStartGame = () => {
     setGameState('playing');
@@ -266,6 +285,7 @@ export default function ChallengeScreen() {
         {/* Game Board */}
         {board && (
           <GameBoard
+            key={boardKey}
             tiles={board.tiles}
             width={board.width}
             height={board.height}

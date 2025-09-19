@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand';
-import StorageUtils from '../utils/StorageUtils';
+import StorageUtils from './StorageUtils';
 
 export const useGameStore = create((set, get) => ({
   // State

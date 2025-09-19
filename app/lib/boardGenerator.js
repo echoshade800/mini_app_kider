@@ -4,7 +4,7 @@
  * Features: 只负责数字生成，不涉及布局计算
  */
 
-import { getBoardLayoutConfig } from '../layout/BoardLayout';
+import { getBoardLayoutConfig } from './BoardLayout';
 
 // Deterministic random number generator for consistent board generation
 function seededRandom(seed) {
@@ -59,8 +59,8 @@ function getNumberDistribution(level) {
   // 前5关：极简分布，主要是互补数字
   if (level <= 5) {
     return {
-      smallNumbers: 0.8,  // 80% 1-3的比例，主要是1,2,3
-      mediumNumbers: 0.2, // 20% 4-6的比例，主要是4,5,6  
+      smallNumbers: 0.9,  // 90% 1-3的比例，主要是1,2,3
+      mediumNumbers: 0.1, // 10% 4-6的比例，主要是4,5,6  
       largeNumbers: 0.0   // 0% 7-9的比例，避免复杂组合
     };
   }
@@ -326,51 +326,26 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   // Fill remaining tiles to achieve target sum (multiple of 10)
   if (remainingTiles.length > 0) {
     // 前几关：优先确保总和是10的倍数，便于完全消除
-    if (level <= 10) {
-      // 计算需要的剩余总和使整体是10的倍数
-      const minPossibleSum = currentSum + remainingTiles.length; // All 1s
-      const maxPossibleSum = currentSum + remainingTiles.length * 6; // 限制最大为6
-      
-      // 找到范围内最接近的10的倍数
-      let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
-      if (targetTotalSum > maxPossibleSum) {
-        targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
+    if (level <= 10 && !isChallenge) {
+      // 简化策略：直接确保总和是10的倍数
+      // 先全部填1
+      for (let i = 0; i < remainingTiles.length; i++) {
+        remainingTiles[i] = 1;
       }
       
-      const targetRemainingSum = targetTotalSum - currentSum;
+      const currentTotal = currentSum + remainingTiles.length;
+      const targetTotal = Math.ceil(currentTotal / 10) * 10;
+      let needed = targetTotal - currentTotal;
       
-      // 确保目标剩余总和是合理的
-      if (targetRemainingSum >= remainingTiles.length && targetRemainingSum <= remainingTiles.length * 6) {
-        // 使用平均值填充
-        const avgValue = Math.max(1, Math.min(6, Math.round(targetRemainingSum / remainingTiles.length)));
-        
-        for (let i = 0; i < remainingTiles.length; i++) {
-          remainingTiles[i] = avgValue;
-        }
-        
-        // 微调以达到精确的目标总和
-        let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
-        let difference = targetRemainingSum - currentRemainingSum;
-        
-        let attempts = 0;
-        while (difference !== 0 && attempts < 50) {
-          for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
-            if (difference > 0 && remainingTiles[i] < 6) {
-              remainingTiles[i]++;
-              difference--;
-            } else if (difference < 0 && remainingTiles[i] > 1) {
-              remainingTiles[i]--;
-              difference++;
-            }
-          }
-          attempts++;
-        }
-      } else {
-        // 如果目标剩余总和不合理，使用简单填充
-        for (let i = 0; i < remainingTiles.length; i++) {
-          remainingTiles[i] = Math.floor(random() * 6) + 1; // 1-6
-        }
+      // 在剩余位置分配需要的数值，前5关限制在1-3范围内
+      for (let i = 0; i < remainingTiles.length && needed > 0; i++) {
+        const maxValue = level <= 5 ? 3 : 6; // 前5关最大值3，其他关最大值6
+        const canAdd = Math.min(maxValue - remainingTiles[i], needed);
+        remainingTiles[i] += canAdd;
+        needed -= canAdd;
       }
+      
+      console.log(`🎯 Level ${level}: 配对总和=${currentSum}, 剩余总和=${remainingTiles.reduce((sum, val) => sum + val, 0)}, 目标总和=${targetTotal}`);
       
     } else if (isChallenge) {
       // 挑战模式使用特殊的数字生成策略
@@ -416,7 +391,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
         attempts++;
       }
       
-    } else {
+    } else if (!isChallenge) {
       // 关卡模式：确保总和是10的倍数
       const minPossibleSum = currentSum + remainingTiles.length; // All 1s
       const maxPossibleSum = currentSum + remainingTiles.length * 9; // All 9s
@@ -429,49 +404,76 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
       
       const targetRemainingSum = targetTotalSum - currentSum;
       
-      // Start with average distribution
-      const avgValue = Math.max(1, Math.min(9, Math.round(targetRemainingSum / remainingTiles.length)));
-      
-      for (let i = 0; i < remainingTiles.length; i++) {
-        remainingTiles[i] = avgValue;
-      }
-      
-      // Adjust to match exact target sum
-      let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
-      let difference = targetRemainingSum - currentRemainingSum;
-      
-      // Distribute the difference
-      let attempts = 0;
-      while (difference !== 0 && attempts < 100) {
-        for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
-          if (difference > 0 && remainingTiles[i] < 9) {
-            remainingTiles[i]++;
-            difference--;
-          } else if (difference < 0 && remainingTiles[i] > 1) {
-            remainingTiles[i]--;
-            difference++;
+      // 确保目标剩余总和是合理的
+      if (targetRemainingSum >= remainingTiles.length && targetRemainingSum <= remainingTiles.length * 9) {
+        // Start with average distribution
+        const avgValue = Math.max(1, Math.min(9, Math.round(targetRemainingSum / remainingTiles.length)));
+        
+        for (let i = 0; i < remainingTiles.length; i++) {
+          remainingTiles[i] = avgValue;
+        }
+        
+        // Adjust to match exact target sum
+        let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
+        let difference = targetRemainingSum - currentRemainingSum;
+        
+        // Distribute the difference
+        let attempts = 0;
+        while (difference !== 0 && attempts < 100) {
+          for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+            if (difference > 0 && remainingTiles[i] < 9) {
+              remainingTiles[i]++;
+              difference--;
+            } else if (difference < 0 && remainingTiles[i] > 1) {
+              remainingTiles[i]--;
+              difference++;
+            }
+          }
+          attempts++;
+        }
+        
+        // Apply some randomization while maintaining sum
+        for (let i = 0; i < remainingTiles.length - 1; i++) {
+          if (random() < 0.3) { // 30% chance to randomize
+            const maxIncrease = Math.min(9 - remainingTiles[i], remainingTiles[i + 1] - 1);
+            const maxDecrease = Math.min(remainingTiles[i] - 1, 9 - remainingTiles[i + 1]);
+            
+            if (maxIncrease > 0 && random() < 0.5) {
+              const change = Math.floor(random() * maxIncrease) + 1;
+              remainingTiles[i] += change;
+              remainingTiles[i + 1] -= change;
+            } else if (maxDecrease > 0) {
+              const change = Math.floor(random() * maxDecrease) + 1;
+              remainingTiles[i] -= change;
+              remainingTiles[i + 1] += change;
+            }
           }
         }
-        attempts++;
-      }
-      
-      // Apply some randomization while maintaining sum
-      for (let i = 0; i < remainingTiles.length - 1; i++) {
-        if (random() < 0.3) { // 30% chance to randomize
-          const maxIncrease = Math.min(9 - remainingTiles[i], remainingTiles[i + 1] - 1);
-          const maxDecrease = Math.min(remainingTiles[i] - 1, 9 - remainingTiles[i + 1]);
-          
-          if (maxIncrease > 0 && random() < 0.5) {
-            const change = Math.floor(random() * maxIncrease) + 1;
-            remainingTiles[i] += change;
-            remainingTiles[i + 1] -= change;
-          } else if (maxDecrease > 0) {
-            const change = Math.floor(random() * maxDecrease) + 1;
-            remainingTiles[i] -= change;
-            remainingTiles[i + 1] += change;
-          }
+        
+        console.log(`🎯 Level ${level}: 配对总和=${currentSum}, 剩余总和=${remainingTiles.reduce((sum, val) => sum + val, 0)}, 目标总和=${targetTotalSum}`);
+      } else {
+        // 如果目标剩余总和不合理，使用简单填充但确保10的倍数
+        console.warn(`⚠️ Level ${level}: 目标剩余总和不合理 (${targetRemainingSum}), 使用备用方案`);
+        
+        // 简单填充为1，然后调整最后几个数字使总和为10的倍数
+        for (let i = 0; i < remainingTiles.length; i++) {
+          remainingTiles[i] = 1;
+        }
+        
+        const currentTotal = currentSum + remainingTiles.length;
+        const targetTotal = Math.ceil(currentTotal / 10) * 10;
+        let needed = targetTotal - currentTotal;
+        
+        // 在最后几个位置添加需要的数值
+        for (let i = remainingTiles.length - 1; i >= 0 && needed > 0; i--) {
+          const canAdd = Math.min(8, needed); // 最多加到9
+          remainingTiles[i] += canAdd;
+          needed -= canAdd;
         }
       }
+    } else {
+      // 挑战模式的逻辑保持不变
+      // ... (挑战模式代码)
     }
   }
   
@@ -570,9 +572,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   // Verify the sum is a multiple of 10 (for debugging)
   const finalSum = numberTiles.filter(val => val > 0).reduce((sum, val) => sum + val, 0);
   if (finalSum % 10 !== 0) {
-    console.warn(`Number tiles sum ${finalSum} is not a multiple of 10 for level ${level}`);
+    console.warn(`❌ Level ${level}: 总和 ${finalSum} 不是10的倍数！`);
   } else {
-    console.log(`✅ Level ${level}: Total sum = ${finalSum} (${finalSum/10} × 10)`);
+    console.log(`✅ Level ${level}: 总和 = ${finalSum} (${finalSum/10} × 10)`);
   }
     
   

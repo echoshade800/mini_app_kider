@@ -14,11 +14,12 @@ import {
   Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useGameStore } from '../store/gameStore';
-import { generateBoard } from '../utils/boardGenerator';
-import { STAGE_NAMES } from '../utils/stageNames';
+import { useCallback } from 'react';
+import { useGameStore } from '../lib/gameStore';
+import { generateBoard } from '../lib/boardGenerator';
+import { STAGE_NAMES } from '../lib/stageNames';
 import GameBoard from '../components/GameBoard';
 import RescueModal from '../components/RescueModal';
 
@@ -56,13 +57,47 @@ export default function LevelDetailScreen() {
   const [selectedSwapTile, setSelectedSwapTile] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
   const [fractalAnimations, setFractalAnimations] = useState(new Map());
+  const [boardKey, setBoardKey] = useState(0); // 用于强制重新生成棋盘
+  
+  // 进度条状态
+  const [totalTiles, setTotalTiles] = useState(0);
+  const [clearedTiles, setClearedTiles] = useState(0);
+  const [progress, setProgress] = useState(0);
 
-  useEffect(() => {
+  // 生成新棋盘的函数
+  const generateNewBoard = useCallback(() => {
     if (level && !isNaN(level)) {
+      console.log(`🔄 生成新棋盘 - 关卡 ${level}`);
       const newBoard = generateBoard(level);
       setBoard(newBoard);
+      setBoardKey(prev => prev + 1); // 更新key强制重新渲染
+      
+      // 初始化进度条状态
+      const initialTileCount = newBoard.tiles.filter(tile => tile > 0).length;
+      setTotalTiles(initialTileCount);
+      setClearedTiles(0);
+      setProgress(0);
+      
+      // 重置游戏状态
+      setItemMode(null);
+      setSelectedSwapTile(null);
+      setSwapAnimations(new Map());
+      setFractalAnimations(new Map());
     }
   }, [level]);
+
+  // 初始化棋盘
+  useEffect(() => {
+    generateNewBoard();
+  }, [generateNewBoard]);
+
+  // 页面获得焦点时刷新棋盘
+  useFocusEffect(
+    useCallback(() => {
+      console.log(`📱 页面获得焦点 - 关卡 ${level}`);
+      generateNewBoard();
+    }, [generateNewBoard])
+  );
 
   const handleTilesClear = (clearedPositions, newTilesData = null) => {
     if (!board) return;
@@ -71,6 +106,14 @@ export default function LevelDetailScreen() {
       // 空数组 - 暂时不处理
       return;
     } else {
+      // 更新已清除方块数量
+      const newClearedCount = clearedTiles + clearedPositions.length;
+      setClearedTiles(newClearedCount);
+      
+      // 计算并更新进度
+      const newProgress = Math.min(newClearedCount / totalTiles, 1);
+      setProgress(newProgress);
+      
       // 更新棋盘：将被清除的方块设为0（空位）
       const newTiles = [...board.tiles];
       clearedPositions.forEach(pos => {
@@ -82,6 +125,9 @@ export default function LevelDetailScreen() {
       const remainingTiles = newTiles.filter(tile => tile > 0).length;
       
       if (remainingTiles === 0) {
+        // 确保进度条达到100%
+        setProgress(1);
+        
         // 关卡完成！显示完成弹窗
         setShowCompletionModal(true);
         
@@ -142,6 +188,14 @@ export default function LevelDetailScreen() {
         const newTiles = [...board.tiles];
         newTiles[selectedSwapTile.index] = value;
         newTiles[index] = selectedSwapTile.value;
+        
+        // Split道具增加了一个新方块，更新总数
+        const newTotalTiles = totalTiles + 1;
+        setTotalTiles(newTotalTiles);
+        
+        // 重新计算进度（保持已清除数量不变）
+        const newProgress = Math.min(clearedTiles / newTotalTiles, 1);
+        setProgress(newProgress);
         
         setBoard(prev => ({ ...prev, tiles: newTiles }));
         setSelectedSwapTile(null);
@@ -221,132 +275,136 @@ export default function LevelDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBackPress}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        
-        <View style={styles.headerCenter}>
-          {/* 进度条容器 */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '70%' }]} />
+    <>
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeContainer}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={handleBackPress}
+            >
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+            
+            <View style={styles.headerCenter}>
+              {/* 进度条容器 */}
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+                </View>
+                {/* 角色图标 */}
+                <View style={styles.characterIcon}>
+                  <Text style={styles.characterEmoji}>🤗</Text>
+                </View>
+              </View>
             </View>
-            {/* 角色图标 */}
-            <View style={styles.characterIcon}>
-              <Text style={styles.characterEmoji}>🤗</Text>
+            
+            <View style={styles.headerRight}>
+              {/* 蓝色书本图标 */}
+              <View style={styles.bookIcon}>
+                <Ionicons name="book" size={24} color="#2196F3" />
+              </View>
+              {/* 关卡名称显示区 */}
+              {displayLevelName && (
+                <Text style={styles.levelNameText} numberOfLines={1}>
+                  {displayLevelName}
+                </Text>
+              )}
             </View>
           </View>
-        </View>
-        
-        <View style={styles.headerRight}>
-          {/* 蓝色书本图标 */}
-          <View style={styles.bookIcon}>
-            <Ionicons name="book" size={24} color="#2196F3" />
-          </View>
-          {/* 关卡名称显示区 */}
-          {displayLevelName && (
-            <Text style={styles.levelNameText} numberOfLines={1}>
-              {displayLevelName}
+
+          {/* Game Board */}
+          <GameBoard
+            key={boardKey}
+            tiles={board.tiles}
+            width={board.width}
+            height={board.height}
+            onTilesClear={handleTilesClear}
+            disabled={false}
+            itemMode={itemMode}
+            onTileClick={handleTileClick}
+            selectedSwapTile={selectedSwapTile}
+            swapAnimations={swapAnimations}
+            fractalAnimations={fractalAnimations}
+            settings={settings}
+            isChallenge={false}
+            layoutConfig={board.layoutConfig}
+          />
+        </SafeAreaView>
+
+        {/* Bottom Toolbar - 固定在屏幕最底部 */}
+        <View style={styles.bottomToolbar}>
+          <TouchableOpacity 
+            style={[
+              styles.bottomToolButton,
+              itemMode === 'swapMaster' && styles.toolButtonActive,
+              (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
+            ]}
+            onPress={handleUseSwapMaster}
+            disabled={(gameData?.swapMasterItems || 0) <= 0}
+            activeOpacity={0.7}
+            hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+          >
+            <Ionicons 
+              name="swap-horizontal" 
+              size={20} 
+              color={
+                (gameData?.swapMasterItems || 0) <= 0 ? '#ccc' :
+                itemMode === 'swapMaster' ? 'white' : '#666'
+              } 
+            />
+            <Text style={[
+              styles.toolButtonText,
+              itemMode === 'swapMaster' && styles.toolButtonTextActive,
+              (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonTextDisabled
+            ]}>
+              Change
             </Text>
-          )}
+            <Text style={[
+              styles.toolButtonCount,
+              itemMode === 'swapMaster' && styles.toolButtonCountActive,
+              (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonCountDisabled
+            ]}>
+              {gameData?.swapMasterItems || 0}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[
+              styles.bottomToolButton,
+              itemMode === 'fractalSplit' && styles.toolButtonActive,
+              (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
+            ]}
+            onPress={handleUseFractalSplit}
+            disabled={(gameData?.splitItems || 0) <= 0}
+            activeOpacity={0.7}
+            hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+          >
+            <Ionicons 
+              name="cut" 
+              size={20} 
+              color={
+                (gameData?.splitItems || 0) <= 0 ? '#ccc' :
+                itemMode === 'fractalSplit' ? 'white' : '#666'
+              } 
+            />
+            <Text style={[
+              styles.toolButtonText,
+              itemMode === 'fractalSplit' && styles.toolButtonTextActive,
+              (gameData?.splitItems || 0) <= 0 && styles.toolButtonTextDisabled
+            ]}>
+              Split
+            </Text>
+            <Text style={[
+              styles.toolButtonCount,
+              itemMode === 'fractalSplit' && styles.toolButtonCountActive,
+              (gameData?.splitItems || 0) <= 0 && styles.toolButtonCountDisabled
+            ]}>
+              {gameData?.splitItems || 0}
+            </Text>
+          </TouchableOpacity>
         </View>
-      </View>
-
-      {/* 道具工具栏 - 确保在GameBoard之前渲染 */}
-      {/* Game Board */}
-      <GameBoard
-        tiles={board.tiles}
-        width={board.width}
-        height={board.height}
-        onTilesClear={handleTilesClear}
-        disabled={false}
-        itemMode={itemMode}
-        onTileClick={handleTileClick}
-        selectedSwapTile={selectedSwapTile}
-        swapAnimations={swapAnimations}
-        fractalAnimations={fractalAnimations}
-        settings={settings}
-        isChallenge={false}
-        layoutConfig={board.layoutConfig}
-      />
-
-      {/* Bottom Toolbar - 移到GameBoard下方确保不被覆盖 */}
-      <View style={styles.bottomToolbar}>
-        <TouchableOpacity 
-          style={[
-            styles.bottomToolButton,
-            itemMode === 'swapMaster' && styles.toolButtonActive,
-            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
-          ]}
-          onPress={handleUseSwapMaster}
-          disabled={(gameData?.swapMasterItems || 0) <= 0}
-          activeOpacity={0.7}
-          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
-        >
-          <Ionicons 
-            name="swap-horizontal" 
-            size={20} 
-            color={
-              (gameData?.swapMasterItems || 0) <= 0 ? '#ccc' :
-              itemMode === 'swapMaster' ? 'white' : '#666'
-            } 
-          />
-          <Text style={[
-            styles.toolButtonText,
-            itemMode === 'swapMaster' && styles.toolButtonTextActive,
-            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonTextDisabled
-          ]}>
-            Change
-          </Text>
-          <Text style={[
-            styles.toolButtonCount,
-            itemMode === 'swapMaster' && styles.toolButtonCountActive,
-            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonCountDisabled
-          ]}>
-            {gameData?.swapMasterItems || 0}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[
-            styles.bottomToolButton,
-            itemMode === 'fractalSplit' && styles.toolButtonActive,
-            (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
-          ]}
-          onPress={handleUseFractalSplit}
-          disabled={(gameData?.splitItems || 0) <= 0}
-          activeOpacity={0.7}
-          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
-        >
-          <Ionicons 
-            name="cut" 
-            size={20} 
-            color={
-              (gameData?.splitItems || 0) <= 0 ? '#ccc' :
-              itemMode === 'fractalSplit' ? 'white' : '#666'
-            } 
-          />
-          <Text style={[
-            styles.toolButtonText,
-            itemMode === 'fractalSplit' && styles.toolButtonTextActive,
-            (gameData?.splitItems || 0) <= 0 && styles.toolButtonTextDisabled
-          ]}>
-            Split
-          </Text>
-          <Text style={[
-            styles.toolButtonCount,
-            itemMode === 'fractalSplit' && styles.toolButtonCountActive,
-            (gameData?.splitItems || 0) <= 0 && styles.toolButtonCountDisabled
-          ]}>
-            {gameData?.splitItems || 0}
-          </Text>
-        </TouchableOpacity>
       </View>
 
       {/* Completion Modal */}
@@ -407,7 +465,7 @@ export default function LevelDetailScreen() {
           handleBackPress();
         }}
       />
-    </SafeAreaView>
+    </>
   );
 }
 
@@ -415,6 +473,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f8ff',
+  },
+  safeContainer: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -460,6 +521,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#4CAF50',
     borderRadius: 4,
+    transition: 'width 0.3s ease-out', // 平滑动画效果
   },
   characterIcon: {
     position: 'absolute',
@@ -497,6 +559,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     gap: 20,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     zIndex: 1000,
     elevation: 1000,
   },

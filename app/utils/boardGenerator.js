@@ -229,8 +229,8 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     
     while (attempts < 50 && !placed) {
       const pos1 = Math.floor(random() * finalTileCount);
-      const row1 = Math.floor(pos1 / maxTileCols);
-      const col1 = pos1 % maxTileCols;
+      const row1 = Math.floor(pos1 / cols);
+      const col1 = pos1 % cols;
       
       if (placedPositions.has(pos1)) {
         attempts++;
@@ -249,12 +249,12 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
         const row2 = row1 + dr;
         const col2 = col1 + dc;
         
-        if (row2 >= 0 && row2 < maxTileRows && col2 >= 0 && col2 < maxTileCols) {
-          const pos2 = row2 * maxTileCols + col2;
+        if (row2 >= 0 && row2 < rows && col2 >= 0 && col2 < cols) {
+          const pos2 = row2 * cols + col2;
           
           if (!placedPositions.has(pos2)) {
-            numberTiles[pos1] = val1;
-            numberTiles[pos2] = val2;
+            tiles[pos1] = val1;
+            tiles[pos2] = val2;
             placedPositions.add(pos1);
             placedPositions.add(pos2);
             adjacentPairsPlaced++;
@@ -291,8 +291,8 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
       const remainingPositions = availablePositions.filter(p => p !== pos1);
       const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
       
-      numberTiles[pos1] = val1;
-      numberTiles[pos2] = val2;
+      tiles[pos1] = val1;
+      tiles[pos2] = val2;
       placedPositions.add(pos1);
       placedPositions.add(pos2);
       pairsPlaced++;
@@ -305,7 +305,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const remainingCount = finalTileCount - (pairsPlaced * 2);
   const availablePositions = [];
   for (let i = 0; i < totalSlots; i++) {
-    if (!placedPositions.has(i) && numberTiles[i] === 0) {
+    if (!placedPositions.has(i) && tiles[i] === 0) {
       availablePositions.push(i);
     }
   }
@@ -320,8 +320,8 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   // Calculate current sum from placed pairs
   let currentSum = 0;
   for (let i = 0; i < finalTileCount; i++) {
-    if (numberTiles[i] > 0) {
-      currentSum += numberTiles[i];
+    if (tiles[i] > 0) {
+      currentSum += tiles[i];
     }
   }
   
@@ -480,7 +480,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   // Place the calculated remaining tiles
   for (let i = 0; i < remainingTiles.length; i++) {
     const pos = availablePositions[i];
-    numberTiles[pos] = remainingTiles[i];
+    tiles[pos] = remainingTiles[i];
   }
   
   // 应用大数字不相邻规则

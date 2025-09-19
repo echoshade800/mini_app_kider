@@ -13,6 +13,7 @@ import {
   Animated,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { hasValidCombinations, reshuffleBoard } from '../utils/gameLogic';
 import RescueModal from './RescueModal';
 
 const GameBoard = ({ 
@@ -36,7 +37,7 @@ const GameBoard = ({
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [calibrationAttempts, setCalibrationAttempts] = useState(0);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
@@ -138,6 +139,7 @@ const GameBoard = ({
     if (sum === 10 && selectedTiles.length > 0) {
       // 重置重排计数
       setReshuffleCount(0);
+      setCalibrationAttempts(0);
       
       // Success - create explosion effect with yellow "10" note
       if (settings?.hapticsEnabled !== false) {
@@ -191,6 +193,11 @@ const GameBoard = ({
       ]).start(() => {
         setSelection(null);
         onTilesClear(tilePositions);
+        
+        // 消除成功后检查是否还有可消除组合
+        setTimeout(() => {
+          checkForValidCombinations();
+        }, 500);
       });
 
     } else if (selectedTiles.length > 0) {
@@ -215,6 +222,47 @@ const GameBoard = ({
       });
     } else {
       setSelection(null);
+    }
+  };
+
+  // 检查是否有可消除的组合，如果没有则进行校准
+  const checkForValidCombinations = () => {
+    if (!tiles || !width || !height) return;
+    
+    const hasValidMoves = hasValidCombinations(tiles, width, height);
+    
+    if (!hasValidMoves) {
+      // 没有可消除组合，尝试重排
+      if (calibrationAttempts < 3) {
+        const newTiles = reshuffleBoard(tiles, width, height);
+        const hasValidMovesAfterShuffle = hasValidCombinations(newTiles, width, height);
+        
+        if (hasValidMovesAfterShuffle) {
+          // 重排后有解，更新棋盘
+          onTilesClear([]); // 触发父组件更新，传入空数组表示重排
+          setCalibrationAttempts(0);
+        } else {
+          // 重排后仍无解，增加尝试次数
+          setCalibrationAttempts(prev => prev + 1);
+          
+          if (calibrationAttempts + 1 >= 3) {
+            // 三次校准都失败，显示救援弹窗
+            if (onRescueNeeded) {
+              onRescueNeeded();
+            }
+          } else {
+            // 继续尝试重排
+            setTimeout(() => {
+              checkForValidCombinations();
+            }, 1000);
+          }
+        }
+      } else {
+        // 已经尝试3次，显示救援弹窗
+        if (onRescueNeeded) {
+          onRescueNeeded();
+        }
+      }
     }
   };
 
@@ -355,13 +403,11 @@ const GameBoard = ({
 
   // 处理救援选择
   const handleRescueContinue = () => {
-    setShowRescueModal(false);
-    setReshuffleCount(0);
+    setCalibrationAttempts(0);
   };
 
   const handleRescueReturn = () => {
-    setShowRescueModal(false);
-    setReshuffleCount(0);
+    setCalibrationAttempts(0);
   };
 
   const getSelectionStyle = () => {
@@ -618,13 +664,6 @@ const GameBoard = ({
           </View>
         </View>
       </View>
-      
-      {/* Rescue Modal */}
-      <RescueModal
-        visible={showRescueModal}
-        onContinue={handleRescueContinue}
-        onReturn={handleRescueReturn}
-      />
     </View>
   );
 };

@@ -32,28 +32,26 @@ const RescueModal = ({
             <Ionicons name="help-circle" size={60} color="#FF9800" />
           </View>
           
-          <Text style={styles.title}>Need Help?</Text>
+          <Text style={styles.title}>无解状态</Text>
           <Text style={styles.message}>
-            It looks like you might be stuck. What would you like to do?
+            经过3次自动校准后，当前棋盘仍无可消除的组合。您可以选择：
           </Text>
           
           <View style={styles.buttonContainer}>
-            {hasItems && (
-              <TouchableOpacity 
-                style={[styles.button, styles.continueButton]}
-                onPress={onContinue}
-              >
-                <Ionicons name="refresh" size={20} color="white" />
-                <Text style={styles.buttonText}>Use Items</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              style={[styles.button, styles.continueButton]}
+              onPress={onContinue}
+            >
+              <Ionicons name="construct" size={20} color="white" />
+              <Text style={styles.buttonText}>使用道具继续</Text>
+            </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.button, styles.returnButton]}
               onPress={onReturn}
             >
               <Ionicons name="home" size={20} color="white" />
-              <Text style={styles.buttonText}>Return Home</Text>
+              <Text style={styles.buttonText}>返回主页</Text>
             </TouchableOpacity>
           </View>
           

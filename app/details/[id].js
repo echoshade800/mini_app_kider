@@ -49,44 +49,54 @@ export default function LevelDetailScreen() {
   const handleTilesClear = (clearedPositions) => {
     if (!board) return;
 
-    // 更新棋盘：将被清除的方块设为0（空位）
-    const newTiles = [...board.tiles];
-    clearedPositions.forEach(pos => {
-      const index = pos.row * board.width + pos.col;
-      newTiles[index] = 0;
-    });
-
-    // 检查棋盘是否完全清空（所有非零方块都被消除）
-    const remainingTiles = newTiles.filter(tile => tile > 0).length;
-    
-    if (remainingTiles === 0) {
-      // 关卡完成！显示完成弹窗
-      setShowCompletionModal(true);
-      
-      // 更新进度
-      const currentMaxLevel = gameData?.maxLevel || 0;
-      const newMaxLevel = Math.max(currentMaxLevel, level);
-      const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
-      const newSplitItems = (gameData?.splitItems || 0) + 1;
-      
-      updateGameData({
-        maxLevel: newMaxLevel,
-        lastPlayedLevel: level,
-        swapMasterItems: newSwapMasterItems,
-        splitItems: newSplitItems,
+    if (clearedPositions.length === 0) {
+      // 空数组表示重排请求
+      const { reshuffleBoard } = require('../utils/gameLogic');
+      const newTiles = reshuffleBoard(board.tiles, board.width, board.height);
+      setBoard(prev => ({
+        ...prev,
+        tiles: newTiles
+      }));
+    } else {
+      // 更新棋盘：将被清除的方块设为0（空位）
+      const newTiles = [...board.tiles];
+      clearedPositions.forEach(pos => {
+        const index = pos.row * board.width + pos.col;
+        newTiles[index] = 0;
       });
+
+      // 检查棋盘是否完全清空（所有非零方块都被消除）
+      const remainingTiles = newTiles.filter(tile => tile > 0).length;
       
-      return; // 不更新棋盘，直接显示完成弹窗
+      if (remainingTiles === 0) {
+        // 关卡完成！显示完成弹窗
+        setShowCompletionModal(true);
+        
+        // 更新进度
+        const currentMaxLevel = gameData?.maxLevel || 0;
+        const newMaxLevel = Math.max(currentMaxLevel, level);
+        const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
+        const newSplitItems = (gameData?.splitItems || 0) + 1;
+        
+        updateGameData({
+          maxLevel: newMaxLevel,
+          lastPlayedLevel: level,
+          swapMasterItems: newSwapMasterItems,
+          splitItems: newSplitItems,
+        });
+        
+        return; // 不更新棋盘，直接显示完成弹窗
+      }
+
+      // 更新当前棋盘状态（被清除的位置变为空位）
+      setBoard(prev => ({
+        ...prev,
+        tiles: newTiles
+      }));
+
+      // 成功消除后重置重排计数
+      setReshuffleCount(0);
     }
-
-    // 更新当前棋盘状态（被清除的位置变为空位）
-    setBoard(prev => ({
-      ...prev,
-      tiles: newTiles
-    }));
-
-    // 成功消除后重置重排计数
-    setReshuffleCount(0);
   };
 
   const handleNextLevel = () => {

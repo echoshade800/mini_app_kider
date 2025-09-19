@@ -50,7 +50,9 @@ export function hasValidCombinations(tiles, width, height) {
       
       if (canFormRectangle(pos1, pos2, width, height)) {
         const positions = getRectanglePositions(pos1, pos2, width, height);
-        const sum = positions.reduce((acc, pos) => acc + tiles[pos], 0);
+        const sum = positions.reduce((acc, pos) => {
+          return acc + (tiles[pos] || 0);
+        }, 0);
         
         if (sum === 10) {
           return true; // 找到可消除的组合

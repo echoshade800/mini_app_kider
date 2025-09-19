@@ -40,6 +40,221 @@ function getTileCount(level, isChallenge = false) {
   return Math.floor(360 + (level - 200) * 0.5);
 }
 
+/**
+ * 生成游戏棋盘
+ * @param {number} level - 关卡等级或数字方块数量
+ * @param {boolean} isChallenge - 是否为挑战模式
+ * @param {boolean} useHighCount - 是否使用高数量方块
+ * @returns {Object} 棋盘数据
+ */
+export function generateBoard(level, isChallenge = false, useHighCount = false) {
+  let tileCount;
+  
+  if (isChallenge || useHighCount) {
+    // 挑战模式：使用固定高数量
+    tileCount = 120;
+  } else {
+    // 关卡模式：根据等级计算数量
+    tileCount = getTileCount(level, false);
+  }
+  
+  // 使用固定的16行×9列布局
+  const layoutConfig = getBoardLayoutConfig(tileCount, null, level, 16, 9);
+  
+  // 生成数字方块数据
+  const tiles = generateTileData(tileCount, layoutConfig.rows, layoutConfig.cols, level);
+  
+  return {
+    width: layoutConfig.cols,
+    height: layoutConfig.rows,
+    tiles: tiles,
+    layoutConfig: layoutConfig,
+    level: level,
+    isChallenge: isChallenge,
+    tileCount: tileCount
+  };
+}
+
+/**
+ * 生成数字方块数据
+ * @param {number} tileCount - 数字方块数量
+ * @param {number} rows - 行数
+ * @param {number} cols - 列数
+ * @param {number} level - 关卡等级
+ * @returns {Array} 方块数据数组
+ */
+function generateTileData(tileCount, rows, cols, level) {
+  const totalCells = rows * cols;
+  const tiles = new Array(totalCells).fill(0);
+  
+  // 生成目标对 (sum = 10)
+  const targetPairs = [
+    [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
+  ];
+  
+  // 计算要放置的对数
+  const pairCount = Math.floor(tileCount / 2);
+  const remainingCount = tileCount - (pairCount * 2);
+  
+  // 随机放置目标对
+  const usedPositions = new Set();
+  let placedPairs = 0;
+  
+  // 使用简单的随机数生成器
+  const random = () => Math.random();
+  
+  while (placedPairs < pairCount) {
+    const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
+    const [val1, val2] = pairType;
+    
+    // 找两个空位置
+    const availablePositions = [];
+    for (let i = 0; i < totalCells; i++) {
+      if (!usedPositions.has(i)) {
+        availablePositions.push(i);
+      }
+    }
+    
+    if (availablePositions.length >= 2) {
+      const pos1 = availablePositions[Math.floor(random() * availablePositions.length)];
+      const remainingPositions = availablePositions.filter(p => p !== pos1);
+      const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
+      
+      tiles[pos1] = val1;
+      tiles[pos2] = val2;
+      usedPositions.add(pos1);
+      usedPositions.add(pos2);
+      placedPairs++;
+    } else {
+      break;
+    }
+  }
+  
+  // 放置剩余的单个方块
+  const availablePositions = [];
+  for (let i = 0; i < totalCells; i++) {
+    if (!usedPositions.has(i)) {
+      availablePositions.push(i);
+    }
+  }
+  
+  for (let i = 0; i < Math.min(remainingCount, availablePositions.length); i++) {
+    const pos = availablePositions[i];
+    tiles[pos] = Math.floor(random() * 9) + 1;
+  }
+  
+  // 应用大数字分离规则
+  applyLargeNumberSeparation(tiles, rows, cols);
+  
+  return tiles;
+}
+
+/**
+ * 应用大数字分离规则 - 让相同的大数字(7,8,9)尽量不相邻
+ * @param {Array} tiles - 方块数组
+ * @param {number} rows - 行数
+ * @param {number} cols - 列数
+ */
+function applyLargeNumberSeparation(tiles, rows, cols) {
+  const largeNumbers = [7, 8, 9];
+  const maxAttempts = 50;
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    let hasImprovement = false;
+    
+    for (let i = 0; i < tiles.length; i++) {
+      const value = tiles[i];
+      
+      // 只处理大数字
+      if (!largeNumbers.includes(value)) continue;
+      
+      // 检查是否与相同数字相邻
+      if (hasAdjacentSameNumber(tiles, i, rows, cols, value)) {
+        // 尝试找一个不相邻的位置交换
+        const betterPos = findNonAdjacentPosition(tiles, i, rows, cols, value);
+        if (betterPos !== -1) {
+          // 交换位置
+          const temp = tiles[i];
+          tiles[i] = tiles[betterPos];
+          tiles[betterPos] = temp;
+          hasImprovement = true;
+        }
+      }
+    }
+    
+    // 如果没有改善，提前结束
+    if (!hasImprovement) break;
+  }
+}
+
+/**
+ * 检查指定位置是否与相同数字相邻
+ * @param {Array} tiles - 方块数组
+ * @param {number} pos - 位置索引
+ * @param {number} rows - 行数
+ * @param {number} cols - 列数
+ * @param {number} value - 数字值
+ * @returns {boolean} 是否相邻
+ */
+function hasAdjacentSameNumber(tiles, pos, rows, cols, value) {
+  const row = Math.floor(pos / cols);
+  const col = pos % cols;
+  
+  // 检查四个方向
+  const directions = [
+    [-1, 0], [1, 0], [0, -1], [0, 1] // 上、下、左、右
+  ];
+  
+  for (const [dr, dc] of directions) {
+    const newRow = row + dr;
+    const newCol = col + dc;
+    
+    if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
+      const newPos = newRow * cols + newCol;
+      if (tiles[newPos] === value) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * 寻找一个不与相同数字相邻的位置
+ * @param {Array} tiles - 方块数组
+ * @param {number} currentPos - 当前位置
+ * @param {number} rows - 行数
+ * @param {number} cols - 列数
+ * @param {number} value - 数字值
+ * @returns {number} 更好的位置索引，-1表示没找到
+ */
+function findNonAdjacentPosition(tiles, currentPos, rows, cols, value) {
+  for (let i = 0; i < tiles.length; i++) {
+    if (i === currentPos) continue;
+    
+    // 检查这个位置交换后是否会改善情况
+    const tempValue = tiles[i];
+    
+    // 模拟交换
+    tiles[i] = value;
+    tiles[currentPos] = tempValue;
+    
+    // 检查新位置是否不相邻
+    const isGoodPosition = !hasAdjacentSameNumber(tiles, i, rows, cols, value);
+    
+    // 恢复原状
+    tiles[currentPos] = value;
+    tiles[i] = tempValue;
+    
+    if (isGoodPosition) {
+      return i;
+    }
+  }
+  
+  return -1;
+}
+
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // 布局常量

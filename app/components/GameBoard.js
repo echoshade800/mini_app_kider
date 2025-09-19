@@ -549,8 +549,8 @@ const GameBoard = ({
         key={`${row}-${col}`}
         style={{
           position: 'absolute',
-          left: tilePos.gameAreaRelativeX,
-          top: tilePos.gameAreaRelativeY,
+          left: tilePos.x,
+          top: tilePos.y,
           width: tilePos.width,
           height: tilePos.height,
           alignItems: 'center',

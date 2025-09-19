@@ -333,6 +333,9 @@ export function layoutTiles(gridBorder, rows, cols, tileSize, gap = TILE_GAP) {
       y: screenY,
       width: tileSize,
       height: tileSize,
+      // 为了兼容性，也提供游戏区域相对坐标
+      gameAreaRelativeX: screenX - gridBorder.left,
+      gameAreaRelativeY: screenY - gridBorder.top,
     };
   };
 }

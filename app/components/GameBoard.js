@@ -62,43 +62,21 @@ const GameBoard = ({
     
     // 计算精确布局
     if (layoutConfig && width > 0 && height > 0) {
-      // 使用调试版布局引擎
-      setTimeout(async () => {
-        try {
-          const { layout, originOffset } = await computeWithDebug({
-            boardRef,
-            sampleRef: sampleTileRef,
-            safeInsets: insets,
-            autoOriginFix: __DEV__, // 开发模式下自动修正
-            board: newBoardRect,
-            frame: layoutConfig.woodFrameWidth || 8,
-            pad: layoutConfig.boardPadding || 5,
-            rows: height,
-            cols: width,
-            gap: layoutConfig.tileGap || 4,
-            minTile: layoutConfig.minTileSize || 28,
-            maxTile: 32, // 固定32px
-            lockTile: true, // 固定方块尺寸
-          });
-          
-          setLayoutResult({ ...layout, originOffset });
-        } catch (error) {
-          console.warn('Debug layout failed, using fallback:', error);
-          // 回退到普通布局
-          const result = computeLayout({
-            board: newBoardRect,
-            frame: layoutConfig.woodFrameWidth || 8,
-            pad: layoutConfig.boardPadding || 5,
-            rows: height,
-            cols: width,
-            gap: layoutConfig.tileGap || 4,
-            minTile: layoutConfig.minTileSize || 28,
-            maxTile: 32,
-            lockTile: true,
-          });
-          setLayoutResult({ ...result, originOffset: { dx: 0, dy: 0 } });
-        }
-      }, 100); // 延迟确保DOM已渲染
+      // 直接使用布局配置，不需要重新计算
+      setLayoutResult({
+        inner: {
+          left: newBoardRect.left + (layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5),
+          top: newBoardRect.top + (layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5),
+          width: newBoardRect.width - 2 * ((layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5)),
+          height: newBoardRect.height - 2 * ((layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5)),
+        },
+        tile: layoutConfig.tileSize,
+        gap: layoutConfig.tileGap || 4,
+        startX: layoutConfig.boardLeft + (layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5),
+        startY: layoutConfig.boardTop + (layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5),
+        tiles: [], // 将在渲染时动态计算
+        originOffset: { dx: 0, dy: 0 }
+      });
     }
   };
 

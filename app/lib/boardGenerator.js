@@ -327,67 +327,25 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   if (remainingTiles.length > 0) {
     // 前几关：优先确保总和是10的倍数，便于完全消除
     if (level <= 10 && !isChallenge) {
-      // 计算需要的剩余总和使整体是10的倍数
-      const minPossibleSum = currentSum + remainingTiles.length; // All 1s
-      const maxPossibleSum = currentSum + remainingTiles.length * 6; // 限制最大为6
-      
-      // 找到范围内最接近的10的倍数
-      let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
-      if (targetTotalSum > maxPossibleSum) {
-        targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
+      // 简化策略：直接确保总和是10的倍数
+      // 先全部填1
+      for (let i = 0; i < remainingTiles.length; i++) {
+        remainingTiles[i] = 1;
       }
       
-      const targetRemainingSum = targetTotalSum - currentSum;
+      const currentTotal = currentSum + remainingTiles.length;
+      const targetTotal = Math.ceil(currentTotal / 10) * 10;
+      let needed = targetTotal - currentTotal;
       
-      // 确保目标剩余总和是合理的
-      if (targetRemainingSum >= remainingTiles.length && targetRemainingSum <= remainingTiles.length * 6) {
-        // 使用平均值填充
-        const avgValue = Math.max(1, Math.min(6, Math.round(targetRemainingSum / remainingTiles.length)));
-        
-        for (let i = 0; i < remainingTiles.length; i++) {
-          remainingTiles[i] = avgValue;
-        }
-        
-        // 微调以达到精确的目标总和
-        let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
-        let difference = targetRemainingSum - currentRemainingSum;
-        
-        let attempts = 0;
-        while (difference !== 0 && attempts < 50) {
-          for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
-            if (difference > 0 && remainingTiles[i] < 6) {
-              remainingTiles[i]++;
-              difference--;
-            } else if (difference < 0 && remainingTiles[i] > 1) {
-              remainingTiles[i]--;
-              difference++;
-            }
-          }
-          attempts++;
-        }
-        
-        console.log(`🎯 Level ${level}: 配对总和=${currentSum}, 剩余总和=${remainingTiles.reduce((sum, val) => sum + val, 0)}, 目标总和=${targetTotalSum}`);
-      } else {
-        // 如果目标剩余总和不合理，使用简单填充
-        console.warn(`⚠️ Level ${level}: 目标剩余总和不合理 (${targetRemainingSum}), 使用备用方案`);
-        
-        // 备用方案：先全部填1，然后调整到10的倍数
-        for (let i = 0; i < remainingTiles.length; i++) {
-          remainingTiles[i] = 1;
-        }
-        
-        const currentTotal = currentSum + remainingTiles.length;
-        const targetTotal = Math.ceil(currentTotal / 10) * 10;
-        let needed = targetTotal - currentTotal;
-        
-        // 在剩余位置分配需要的数值
-        for (let i = remainingTiles.length - 1; i >= 0 && needed > 0; i--) {
-          const maxAdd = level <= 5 ? 2 : 5; // 前5关最多加到3，其他关最多加到6
-          const canAdd = Math.min(maxAdd, needed);
-          remainingTiles[i] += canAdd;
-          needed -= canAdd;
-        }
+      // 在剩余位置分配需要的数值，前5关限制在1-3范围内
+      for (let i = 0; i < remainingTiles.length && needed > 0; i++) {
+        const maxValue = level <= 5 ? 3 : 6; // 前5关最大值3，其他关最大值6
+        const canAdd = Math.min(maxValue - remainingTiles[i], needed);
+        remainingTiles[i] += canAdd;
+        needed -= canAdd;
       }
+      
+      console.log(`🎯 Level ${level}: 配对总和=${currentSum}, 剩余总和=${remainingTiles.reduce((sum, val) => sum + val, 0)}, 目标总和=${targetTotal}`);
       
     } else if (isChallenge) {
       // 挑战模式使用特殊的数字生成策略

@@ -407,12 +407,3 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
     minTileSize: MIN_TILE_SIZE,
   };
 }
-
-// 🎯 调试信息：最终布局验证
-if (layout.isValid) {
-  console.log('🏗️  数字方块矩形居中验证:');
-  console.log(`   棋盘格中心: (${layout.contentWidth/2}, ${layout.contentHeight/2})`);
-  console.log(`   数字方块矩形尺寸: ${layout.tilesRectWidth} × ${layout.tilesRectHeight}px`);
-  console.log(`   理论留白: 水平=${(layout.contentWidth - layout.tilesRectWidth)/2}px, 垂直=${(layout.contentHeight - layout.tilesRectHeight)/2}px`);
-  console.log('🏗️  ========================');
-}

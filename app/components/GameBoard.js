@@ -221,164 +221,133 @@ const GameBoard = ({
     } else {
       setSelection(null);
     }
+
+    // 消除成功后检查是否还有可消除组合
+    if (sum === 10 && selectedTiles.length > 0) {
+      setTimeout(() => {
+        checkForValidCombinations();
+      }, 1000);
+    }
   };
 
   // 检查是否有可消除的组合，如果没有则进行校准
-  const checkForValidCombinations = async (currentTiles = tiles, currentWidth = width, currentHeight = height) => {
-    if (!currentTiles || !currentWidth || !currentHeight) return;
+  const checkForValidCombinations = async () => {
+    if (!tiles || !width || !height) return;
     
-    const hasValidMoves = hasValidCombinations(currentTiles, currentWidth, currentHeight);
+    const hasValidMoves = hasValidCombinations(tiles, width, height);
     
     if (!hasValidMoves) {
       // 没有可消除组合，尝试重排
       if (calibrationAttempts < 3) {
         console.log(`校准尝试 ${calibrationAttempts + 1}/3`);
-        await performCalibrationWithAnimation(currentTiles, currentWidth, currentHeight);
+        setCalibrationAttempts(prev => prev + 1);
+        await performReshuffleAnimation();
       } else {
         // 已经尝试3次，显示救援弹窗
-        console.log('已达到最大校准次数，显示救援弹窗');
+        console.log('Maximum calibration attempts reached, showing rescue modal');
         if (onRescueNeeded) {
           onRescueNeeded();
         }
       }
     } else {
-      console.log('棋盘有可消除组合，无需校准');
+      console.log('Board has valid combinations, no calibration needed');
     }
   };
 
-  // 执行带动画的校准过程
-  const performCalibrationWithAnimation = async (currentTiles, currentWidth, currentHeight) => {
+  // 执行重排列动画
+  const performReshuffleAnimation = async () => {
     setIsCalibrating(true);
     
-    console.log('开始校准动画...');
+    console.log('Starting reshuffle animation...');
     
-    // 生成新的排列
-    const newTiles = reshuffleBoard(currentTiles, currentWidth, currentHeight);
-    
-    // 创建交换动画
-    await createSwapAnimations(currentTiles, newTiles, currentWidth, currentHeight);
-    
-    // 等待动画完成后更新棋盘
-    setTimeout(() => {
-      // 通知父组件更新棋盘
-      if (onTilesClear) {
-        // 创建一个特殊的更新信号，传递新的tiles数据
-        onTilesClear([], newTiles);
-      }
-    }, 100);
-    
-    // 检查新排列是否有解
-    const hasValidMovesAfterShuffle = hasValidCombinations(newTiles, currentWidth, currentHeight);
-    
-    if (hasValidMovesAfterShuffle) {
-      // 重排后有解，更新棋盘
-      console.log('校准成功，找到可消除组合');
-      setCalibrationAttempts(0);
-    } else {
-      // 重排后仍无解，增加尝试次数
-      console.log('校准失败，继续尝试');
-      setCalibrationAttempts(prev => prev + 1);
-      
-      if (calibrationAttempts + 1 >= 3) {
-        // 三次校准都失败，显示救援弹窗
-        console.log('三次校准都失败，显示救援弹窗');
-        if (onRescueNeeded) {
-          onRescueNeeded();
-        }
-      } else {
-        // 继续尝试重排
-        setTimeout(() => {
-          checkForValidCombinations(currentTiles, currentWidth, currentHeight);
-        }, 1000);
+    // 获取所有非零数字的位置和值
+    const nonZeroTiles = [];
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i] > 0) {
+        const row = Math.floor(i / width);
+        const col = i % width;
+        nonZeroTiles.push({
+          index: i,
+          row,
+          col,
+          value: tiles[i],
+          currentPos: layoutConfig.getTilePosition(row, col)
+        });
       }
     }
+    
+    // 生成新的排列（只重排数字，位置保持不变）
+    const newTiles = reshuffleBoard(tiles, width, height);
+    const newNonZeroTiles = [];
+    for (let i = 0; i < newTiles.length; i++) {
+      if (newTiles[i] > 0) {
+        const row = Math.floor(i / width);
+        const col = i % width;
+        newNonZeroTiles.push({
+          index: i,
+          row,
+          col,
+          value: newTiles[i],
+          targetPos: layoutConfig.getTilePosition(row, col)
+        });
+      }
+    }
+    
+    // 创建重排列动画
+    await createReshuffleAnimations(nonZeroTiles, newNonZeroTiles, newTiles);
     
     setIsCalibrating(false);
   };
 
-  // 创建数字方块交换动画
-  const createSwapAnimations = (oldTiles, newTiles, boardWidth, boardHeight) => {
+  // 创建重排列动画
+  const createReshuffleAnimations = (oldTiles, newTiles, newTilesData) => {
     return new Promise((resolve) => {
-      console.log('创建交换动画...');
+      console.log(`Creating reshuffle animation for ${oldTiles.length} tiles`);
+      
       const animations = new Map();
-      
-      // 找出所有需要交换的位置
-      const swapPairs = [];
-      const processed = new Set();
-      
-      for (let i = 0; i < oldTiles.length; i++) {
-        if (oldTiles[i] !== newTiles[i] && oldTiles[i] > 0 && !processed.has(i)) {
-          // 找到这个数字在新排列中的位置
-          for (let j = i + 1; j < newTiles.length; j++) {
-            if (newTiles[j] === oldTiles[i] && oldTiles[j] === newTiles[i] && !processed.has(j)) {
-              swapPairs.push([i, j]);
-              processed.add(i);
-              processed.add(j);
-              break;
-            }
-          }
-        }
-      }
-      
-      console.log(`找到 ${swapPairs.length} 个交换对`);
-      
-      // 为每个交换对创建动画
       const animationPromises = [];
       
-      swapPairs.forEach(([pos1, pos2]) => {
-        const row1 = Math.floor(pos1 / boardWidth);
-        const col1 = pos1 % boardWidth;
-        const row2 = Math.floor(pos2 / boardWidth);
-        const col2 = pos2 % boardWidth;
-        
-        const pos1Layout = layoutConfig.getTilePosition(row1, col1);
-        const pos2Layout = layoutConfig.getTilePosition(row2, col2);
-        
-        if (pos1Layout && pos2Layout) {
-          console.log(`创建动画: (${row1},${col1}) <-> (${row2},${col2})`);
+      // 为每个方块创建移动动画
+      oldTiles.forEach((oldTile, index) => {
+        if (index < newTiles.length) {
+          const newTile = newTiles[index];
           
-          // 计算移动距离
-          const deltaX = pos2Layout.x - pos1Layout.x;
-          const deltaY = pos2Layout.y - pos1Layout.y;
-          
-          // 创建动画值
-          const translateX1 = new Animated.Value(0);
-          const translateY1 = new Animated.Value(0);
-          const translateX2 = new Animated.Value(0);
-          const translateY2 = new Animated.Value(0);
-          
-          animations.set(pos1, { translateX: translateX1, translateY: translateY1 });
-          animations.set(pos2, { translateX: translateX2, translateY: translateY2 });
-          
-          // 创建交换动画
-          const animation1 = Animated.parallel([
-            Animated.timing(translateX1, {
-              toValue: deltaX,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateY1, {
-              toValue: deltaY,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-          ]);
-          
-          const animation2 = Animated.parallel([
-            Animated.timing(translateX2, {
-              toValue: -deltaX,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateY2, {
-              toValue: -deltaY,
-              duration: 800,
-              useNativeDriver: true,
-            }),
-          ]);
-          
-          animationPromises.push(animation1);
-          animationPromises.push(animation2);
+          if (oldTile.currentPos && newTile.targetPos) {
+            // 计算移动距离
+            const deltaX = newTile.targetPos.x - oldTile.currentPos.x;
+            const deltaY = newTile.targetPos.y - oldTile.currentPos.y;
+            
+            // 只有位置发生变化才创建动画
+            if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+              console.log(`Animating tile from (${oldTile.row},${oldTile.col}) to (${newTile.row},${newTile.col})`);
+              
+              // 创建动画值
+              const translateX = new Animated.Value(0);
+              const translateY = new Animated.Value(0);
+              
+              animations.set(oldTile.index, { 
+                translateX, 
+                translateY,
+                newValue: newTile.value
+              });
+              
+              // 创建移动动画
+              const animation = Animated.parallel([
+                Animated.timing(translateX, {
+                  toValue: deltaX,
+                  duration: 1000,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(translateY, {
+                  toValue: deltaY,
+                  duration: 1000,
+                  useNativeDriver: true,
+                }),
+              ]);
+              
+              animationPromises.push(animation);
+            }
+          }
         }
       });
       
@@ -387,19 +356,48 @@ const GameBoard = ({
       
       // 执行所有动画
       if (animationPromises.length > 0) {
-        console.log(`开始执行 ${animationPromises.length} 个动画`);
+        console.log(`Starting ${animationPromises.length} animations`);
         Animated.parallel(animationPromises).start(() => {
-          console.log('动画执行完成');
-          // 动画完成后清理
-          setCalibrationAnimations(new Map());
-          resolve();
+          console.log('Reshuffle animation completed');
+          
+          // 动画完成后更新棋盘数据
+          if (onTilesClear) {
+            onTilesClear([], newTilesData);
+          }
+          
+          // 清理动画状态
+          setTimeout(() => {
+            setCalibrationAnimations(new Map());
+            
+            // 检查新排列是否有解
+            const hasValidMovesAfterShuffle = hasValidCombinations(newTilesData, width, height);
+            
+            if (hasValidMovesAfterShuffle) {
+              console.log('Calibration successful, valid combinations found');
+              setCalibrationAttempts(0);
+            } else {
+              console.log('Calibration failed, trying again');
+              // 继续尝试重排（如果还有次数）
+              setTimeout(() => {
+                checkForValidCombinations();
+              }, 500);
+            }
+            
+            resolve();
+          }, 200);
         });
       } else {
-        console.log('没有需要执行的动画');
+        console.log('No animations needed');
+        // 没有动画需要执行，直接更新数据
+        if (onTilesClear) {
+          onTilesClear([], newTilesData);
+        }
+        setCalibrationAnimations(new Map());
         resolve();
       }
     });
   };
+    
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
       if (itemMode) return false;

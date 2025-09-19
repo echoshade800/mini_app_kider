@@ -250,11 +250,22 @@ const GameBoard = ({
   const performCalibrationWithAnimation = async (currentTiles, currentWidth, currentHeight) => {
     setIsCalibrating(true);
     
+    console.log('开始校准动画...');
+    
     // 生成新的排列
     const newTiles = reshuffleBoard(currentTiles, currentWidth, currentHeight);
     
     // 创建交换动画
     await createSwapAnimations(currentTiles, newTiles, currentWidth, currentHeight);
+    
+    // 等待动画完成后更新棋盘
+    setTimeout(() => {
+      // 通知父组件更新棋盘
+      if (onTilesClear) {
+        // 创建一个特殊的更新信号，传递新的tiles数据
+        onTilesClear([], newTiles);
+      }
+    }, 100);
     
     // 检查新排列是否有解
     const hasValidMovesAfterShuffle = hasValidCombinations(newTiles, currentWidth, currentHeight);
@@ -262,9 +273,6 @@ const GameBoard = ({
     if (hasValidMovesAfterShuffle) {
       // 重排后有解，更新棋盘
       console.log('校准成功，找到可消除组合');
-      if (onTilesClear) {
-        onTilesClear([]); // 触发父组件更新
-      }
       setCalibrationAttempts(0);
     } else {
       // 重排后仍无解，增加尝试次数
@@ -291,22 +299,28 @@ const GameBoard = ({
   // 创建数字方块交换动画
   const createSwapAnimations = (oldTiles, newTiles, boardWidth, boardHeight) => {
     return new Promise((resolve) => {
+      console.log('创建交换动画...');
       const animations = new Map();
-      const animatedValues = new Map();
       
       // 找出所有需要交换的位置
       const swapPairs = [];
+      const processed = new Set();
+      
       for (let i = 0; i < oldTiles.length; i++) {
-        if (oldTiles[i] !== newTiles[i] && oldTiles[i] > 0 && newTiles[i] > 0) {
+        if (oldTiles[i] !== newTiles[i] && oldTiles[i] > 0 && !processed.has(i)) {
           // 找到这个数字在新排列中的位置
           for (let j = i + 1; j < newTiles.length; j++) {
-            if (newTiles[j] === oldTiles[i] && oldTiles[j] === newTiles[i]) {
+            if (newTiles[j] === oldTiles[i] && oldTiles[j] === newTiles[i] && !processed.has(j)) {
               swapPairs.push([i, j]);
+              processed.add(i);
+              processed.add(j);
               break;
             }
           }
         }
       }
+      
+      console.log(`找到 ${swapPairs.length} 个交换对`);
       
       // 为每个交换对创建动画
       const animationPromises = [];
@@ -315,12 +329,14 @@ const GameBoard = ({
         const row1 = Math.floor(pos1 / boardWidth);
         const col1 = pos1 % boardWidth;
         const row2 = Math.floor(pos2 / boardWidth);
-        const col2 = col2 % boardWidth;
+        const col2 = pos2 % boardWidth;
         
         const pos1Layout = layoutConfig.getTilePosition(row1, col1);
         const pos2Layout = layoutConfig.getTilePosition(row2, col2);
         
         if (pos1Layout && pos2Layout) {
+          console.log(`创建动画: (${row1},${col1}) <-> (${row2},${col2})`);
+          
           // 计算移动距离
           const deltaX = pos2Layout.x - pos1Layout.x;
           const deltaY = pos2Layout.y - pos1Layout.y;
@@ -371,12 +387,15 @@ const GameBoard = ({
       
       // 执行所有动画
       if (animationPromises.length > 0) {
+        console.log(`开始执行 ${animationPromises.length} 个动画`);
         Animated.parallel(animationPromises).start(() => {
+          console.log('动画执行完成');
           // 动画完成后清理
           setCalibrationAnimations(new Map());
           resolve();
         });
       } else {
+        console.log('没有需要执行的动画');
         resolve();
       }
     });
@@ -633,6 +652,7 @@ const GameBoard = ({
     // Get swap and fractal animations
     const swapAnim = swapAnimations ? swapAnimations.get(index) : null;
     const fractalAnim = fractalAnimations ? fractalAnimations.get(index) : null;
+    const calibrationAnim = calibrationAnimations ? calibrationAnimations.get(index) : null;
     
     const transforms = [
       { scale: tileScale },
@@ -645,6 +665,15 @@ const GameBoard = ({
       });
       transforms.push({
         translateY: swapAnim.translateY,
+      });
+    }
+    
+    if (calibrationAnim && calibrationAnim.translateX && calibrationAnim.translateY) {
+      transforms.push({
+        translateX: calibrationAnim.translateX,
+      });
+      transforms.push({
+        translateY: calibrationAnim.translateY,
       });
     }
     

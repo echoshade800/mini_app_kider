@@ -46,8 +46,18 @@ export default function LevelDetailScreen() {
     }
   }, [level]);
 
-  const handleTilesClear = (clearedPositions) => {
+  const handleTilesClear = (clearedPositions, newTilesData = null) => {
     if (!board) return;
+
+    // 处理校准更新
+    if (newTilesData) {
+      setBoard(prev => ({
+        ...prev,
+        tiles: newTilesData
+      }));
+      setReshuffleCount(0);
+      return;
+    }
 
     if (clearedPositions.length === 0) {
       // 空数组表示重排请求

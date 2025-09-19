@@ -1,10 +1,17 @@
+/**
+ * Level Detail Screen - Individual level gameplay
+ * Purpose: Play specific levels with completion tracking and item usage
+ * Features: Level completion detection, next level navigation, item management
+ */
+
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -18,112 +25,175 @@ import RescueModal from '../components/RescueModal';
 export default function LevelDetailScreen() {
   const { id } = useLocalSearchParams();
   const level = parseInt(id);
-  const { gameData, updateGameData } = useGameStore();
   
+  const { gameData, updateGameData, settings } = useGameStore();
+  
+  // Game state
   const [board, setBoard] = useState(null);
-  const [showRescue, setShowRescue] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [showRescueModal, setShowRescueModal] = useState(false);
+  const [itemMode, setItemMode] = useState(null);
+  const [selectedSwapTile, setSelectedSwapTile] = useState(null);
+  const [swapAnimations, setSwapAnimations] = useState(new Map());
+  const [fractalAnimations, setFractalAnimations] = useState(new Map());
 
-  // 获取关卡名称
-  const getStageName = (level) => {
-    if (level > 200) {
-      return `The Last Horizon+${level - 200}`;
-    }
-    return STAGE_NAMES[level] || `Level ${level}`;
-  };
-
-  // 生成棋盘
-  const generateNewBoard = () => {
-    const newBoard = generateBoard(level, false, false);
-    
-    // 🎯 调试命令：计算并记录棋盘格尺寸数据
-    if (newBoard && newBoard.layoutConfig) {
-      console.log(`🎯 关卡${level}棋盘格尺寸数据:`);
-      console.log(`- 棋盘总尺寸: ${newBoard.layoutConfig.boardWidth}px × ${newBoard.layoutConfig.boardHeight}px`);
-      console.log(`- 行数: ${newBoard.layoutConfig.rows}, 列数: ${newBoard.layoutConfig.cols}`);
-      console.log(`- 方块尺寸: ${newBoard.layoutConfig.tileSize}px`);
-      console.log(`- 数字方块矩形: ${newBoard.layoutConfig.tilesRectWidth}px × ${newBoard.layoutConfig.tilesRectHeight}px`);
-      console.log(`- 内容区尺寸: ${newBoard.layoutConfig.contentWidth}px × ${newBoard.layoutConfig.contentHeight}px`);
-    }
-    
-    setBoard(newBoard);
-  };
-
-  // 初始化
   useEffect(() => {
-    if (level && level > 0) {
-      generateNewBoard();
+    if (level && !isNaN(level)) {
+      const newBoard = generateBoard(level);
+      setBoard(newBoard);
     }
   }, [level]);
 
-  // 处理方块清除
-  const handleTilesClear = (clearedPositions) => {
-    // 检查是否完成关卡
-    const remainingTiles = board.tiles.filter(tile => tile > 0);
-    const clearedCount = clearedPositions.length;
-    
-    if (remainingTiles.length === clearedCount) {
-      // 关卡完成
-      setIsCompleted(true);
+  const handleTilesClear = (clearedPositions, newTilesData = null) => {
+    if (!board) return;
+
+    if (clearedPositions.length === 0) {
+      // 空数组 - 暂时不处理
+      return;
+    } else {
+      // 更新棋盘：将被清除的方块设为0（空位）
+      const newTiles = [...board.tiles];
+      clearedPositions.forEach(pos => {
+        const index = pos.row * board.width + pos.col;
+        newTiles[index] = 0;
+      });
+
+      // 检查棋盘是否完全清空（所有非零方块都被消除）
+      const remainingTiles = newTiles.filter(tile => tile > 0).length;
       
-      // 更新进度
-      const currentMaxLevel = gameData?.maxLevel || 1;
-      const currentSwapMasterItems = gameData?.swapMasterItems || 0;
-      
-      if (level >= currentMaxLevel) {
+      if (remainingTiles === 0) {
+        // 关卡完成！显示完成弹窗
+        setShowCompletionModal(true);
+        
+        // 更新进度
+        const currentMaxLevel = gameData?.maxLevel || 0;
+        const newMaxLevel = Math.max(currentMaxLevel, level);
+        const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
+        const newSplitItems = (gameData?.splitItems || 0) + 1;
+        
         updateGameData({
-          maxLevel: level + 1,
+          maxLevel: newMaxLevel,
           lastPlayedLevel: level,
-          swapMasterItems: currentSwapMasterItems + 1, // 完成关卡获得1个SwapMaster道具
+          swapMasterItems: newSwapMasterItems,
+          splitItems: newSplitItems,
         });
+        
+        return; // 不更新棋盘，直接显示完成弹窗
       }
-      
-      // 显示完成提示
-      setTimeout(() => {
-        Alert.alert(
-          '🎉 Level Complete!',
-          `Congratulations! You completed ${getStageName(level)}.\n\n+1 SwapMaster item earned!`,
-          [
-            {
-              text: 'Next Level',
-              onPress: () => {
-                if (level < 200) {
-                  router.replace(`/details/${level + 1}`);
-                } else {
-                  router.replace('/');
-                }
-              }
-            },
-            {
-              text: 'Home',
-              onPress: () => router.replace('/'),
-              style: 'cancel'
-            }
-          ]
-        );
-      }, 1000);
+
+      // 更新当前棋盘状态（被清除的位置变为空位）
+      setBoard(prev => ({
+        ...prev,
+        tiles: newTiles
+      }));
+
     }
   };
 
-  // 处理救援
-  const handleRescue = () => {
-    setShowRescue(false);
-    generateNewBoard();
+  const handleNextLevel = () => {
+    setShowCompletionModal(false);
+    const nextLevel = level + 1;
+    router.replace(`/details/${nextLevel}`);
   };
 
-  // 返回主页
-  const handleGoHome = () => {
-    router.replace('/');
+  const handleBackToLevels = () => {
+    setShowCompletionModal(false);
+    router.replace('/(tabs)/levels');
   };
 
-  if (!level || level < 1) {
+  const handleBackPress = () => {
+    router.replace('/(tabs)/levels');
+  };
+
+  const handleTileClick = (row, col, value) => {
+    if (!itemMode || !board || value === 0) return;
+
+    const index = row * board.width + col;
+    
+    if (itemMode === 'swapMaster') {
+      if (!selectedSwapTile) {
+        // Select first tile
+        setSelectedSwapTile({ row, col, value, index });
+      } else if (selectedSwapTile.index === index) {
+        // Deselect same tile
+        setSelectedSwapTile(null);
+      } else {
+        // Swap tiles
+        const newTiles = [...board.tiles];
+        newTiles[selectedSwapTile.index] = value;
+        newTiles[index] = selectedSwapTile.value;
+        
+        setBoard(prev => ({ ...prev, tiles: newTiles }));
+        setSelectedSwapTile(null);
+        setItemMode(null);
+        
+        // Consume item
+        const newSwapMasterItems = Math.max(0, (gameData?.swapMasterItems || 0) - 1);
+        updateGameData({ swapMasterItems: newSwapMasterItems });
+      }
+    } else if (itemMode === 'fractalSplit') {
+      // Split the selected tile into two tiles with value 1 and (value-1)
+      if (value > 1) {
+        const newTiles = [...board.tiles];
+        
+        // Find an empty position for the new tile
+        let emptyIndex = -1;
+        for (let i = 0; i < newTiles.length; i++) {
+          if (newTiles[i] === 0) {
+            emptyIndex = i;
+            break;
+          }
+        }
+        
+        if (emptyIndex !== -1) {
+          // Split: original tile becomes 1, new tile gets (value-1)
+          newTiles[index] = 1;
+          newTiles[emptyIndex] = value - 1;
+          
+          setBoard(prev => ({ ...prev, tiles: newTiles }));
+          setItemMode(null);
+          
+          // Consume item
+          const newSplitItems = Math.max(0, (gameData?.splitItems || 0) - 1);
+          updateGameData({ splitItems: newSplitItems });
+        } else {
+          Alert.alert('No Space', 'No empty space available for splitting.');
+        }
+      } else {
+        Alert.alert('Cannot Split', 'Cannot split a tile with value 1.');
+      }
+    }
+  };
+
+  const handleUseSwapMaster = () => {
+    if ((gameData?.swapMasterItems || 0) <= 0) {
+      Alert.alert('No Items', 'You don\'t have any SwapMaster items.');
+      return;
+    }
+    
+    const newMode = itemMode === 'swapMaster' ? null : 'swapMaster';
+    setItemMode(newMode);
+    setSelectedSwapTile(null);
+  };
+
+  const handleUseFractalSplit = () => {
+    if ((gameData?.splitItems || 0) <= 0) {
+      Alert.alert('No Items', 'You don\'t have any Split items.');
+      return;
+    }
+    
+    const newMode = itemMode === 'fractalSplit' ? null : 'fractalSplit';
+    setItemMode(newMode);
+    setSelectedSwapTile(null);
+  };
+
+  const stageName = STAGE_NAMES[level] || `Level ${level}`;
+
+  if (!board) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Invalid level</Text>
-          <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
-            <Text style={styles.homeButtonText}>Go Home</Text>
-          </TouchableOpacity>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading level...</Text>
         </View>
       </SafeAreaView>
     );
@@ -131,43 +201,173 @@ export default function LevelDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 头部 */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={handleGoHome}
+          onPress={handleBackPress}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{getStageName(level)}</Text>
-          <Text style={styles.headerSubtitle}>Level {level}</Text>
+          <Text style={styles.levelTitle}>Level {level}</Text>
+          <Text style={styles.stageName} numberOfLines={1}>{stageName}</Text>
         </View>
         
-        <View style={styles.placeholder} />
+        <View style={styles.headerRight}>
+          <Text style={styles.targetText}>Target: 10</Text>
+        </View>
       </View>
 
-      {/* 游戏区域 */}
-      <View style={styles.gameArea}>
-        {board && (
-          <GameBoard
-            tiles={board.tiles}
-            width={board.width}
-            height={board.height}
-            layoutConfig={board.layoutConfig}
-            onTilesClear={handleTilesClear}
-            showItemButtons={true}
-            onNoValidMoves={() => setShowRescue(true)}
+      {/* 道具工具栏 - 确保在GameBoard之前渲染 */}
+      {/* Game Board */}
+      <GameBoard
+        tiles={board.tiles}
+        width={board.width}
+        height={board.height}
+        onTilesClear={handleTilesClear}
+        disabled={false}
+        itemMode={itemMode}
+        onTileClick={handleTileClick}
+        selectedSwapTile={selectedSwapTile}
+        swapAnimations={swapAnimations}
+        fractalAnimations={fractalAnimations}
+        settings={settings}
+        isChallenge={false}
+        layoutConfig={board.layoutConfig}
+      />
+
+      {/* Bottom Toolbar - 移到GameBoard下方确保不被覆盖 */}
+      <View style={styles.bottomToolbar}>
+        <TouchableOpacity 
+          style={[
+            styles.bottomToolButton,
+            itemMode === 'swapMaster' && styles.toolButtonActive,
+            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
+          ]}
+          onPress={handleUseSwapMaster}
+          disabled={(gameData?.swapMasterItems || 0) <= 0}
+          activeOpacity={0.7}
+          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+        >
+          <Ionicons 
+            name="swap-horizontal" 
+            size={20} 
+            color={
+              (gameData?.swapMasterItems || 0) <= 0 ? '#ccc' :
+              itemMode === 'swapMaster' ? 'white' : '#666'
+            } 
           />
-        )}
+          <Text style={[
+            styles.toolButtonText,
+            itemMode === 'swapMaster' && styles.toolButtonTextActive,
+            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonTextDisabled
+          ]}>
+            Change
+          </Text>
+          <Text style={[
+            styles.toolButtonCount,
+            itemMode === 'swapMaster' && styles.toolButtonCountActive,
+            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonCountDisabled
+          ]}>
+            {gameData?.swapMasterItems || 0}
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[
+            styles.bottomToolButton,
+            itemMode === 'fractalSplit' && styles.toolButtonActive,
+            (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
+          ]}
+          onPress={handleUseFractalSplit}
+          disabled={(gameData?.splitItems || 0) <= 0}
+          activeOpacity={0.7}
+          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+        >
+          <Ionicons 
+            name="cut" 
+            size={20} 
+            color={
+              (gameData?.splitItems || 0) <= 0 ? '#ccc' :
+              itemMode === 'fractalSplit' ? 'white' : '#666'
+            } 
+          />
+          <Text style={[
+            styles.toolButtonText,
+            itemMode === 'fractalSplit' && styles.toolButtonTextActive,
+            (gameData?.splitItems || 0) <= 0 && styles.toolButtonTextDisabled
+          ]}>
+            Split
+          </Text>
+          <Text style={[
+            styles.toolButtonCount,
+            itemMode === 'fractalSplit' && styles.toolButtonCountActive,
+            (gameData?.splitItems || 0) <= 0 && styles.toolButtonCountDisabled
+          ]}>
+            {gameData?.splitItems || 0}
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* 救援弹窗 */}
+      {/* Completion Modal */}
+      <Modal 
+        visible={showCompletionModal} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => setShowCompletionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.completionModal}>
+            <View style={styles.completionIcon}>
+              <Ionicons name="trophy" size={60} color="#FFD700" />
+            </View>
+            
+            <Text style={styles.completionTitle}>🎉 Level Complete!</Text>
+            <Text style={styles.completionMessage}>
+              Excellent work! You've cleared all the tiles.
+            </Text>
+            
+            <View style={styles.rewardInfo}>
+              <Ionicons name="gift" size={20} color="#4CAF50" />
+              <Text style={styles.rewardText}>+1 Change & +1 Split Item earned!</Text>
+            </View>
+            
+            <View style={styles.completionButtons}>
+              <TouchableOpacity 
+                style={styles.nextLevelButton}
+                onPress={handleNextLevel}
+              >
+                <Ionicons name="arrow-forward" size={20} color="white" />
+                <Text style={styles.nextLevelButtonText}>Next Level</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.backToLevelsButton}
+                onPress={handleBackToLevels}
+              >
+                <Ionicons name="list" size={20} color="#666" />
+                <Text style={styles.backToLevelsButtonText}>Level List</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Rescue Modal */}
       <RescueModal
-        visible={showRescue}
-        onContinue={handleRescue}
-        onReturn={handleGoHome}
+        visible={showRescueModal}
+        onContinue={() => {
+          setShowRescueModal(false);
+          // Generate new board as rescue
+          const newBoard = generateBoard(level);
+          setBoard(newBoard);
+        }}
+        onReturn={() => {
+          setShowRescueModal(false);
+          handleBackPress();
+        }}
       />
     </SafeAreaView>
   );
@@ -177,6 +377,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f8ff',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#666',
   },
   header: {
     flexDirection: 'row',
@@ -193,46 +402,165 @@ const styles = StyleSheet.create({
   headerCenter: {
     flex: 1,
     alignItems: 'center',
+    marginHorizontal: 16,
   },
-  headerTitle: {
+  levelTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#333',
-    textAlign: 'center',
   },
-  headerSubtitle: {
+  stageName: {
     fontSize: 14,
     color: '#666',
     marginTop: 2,
   },
-  placeholder: {
-    width: 40,
+  headerRight: {
+    alignItems: 'flex-end',
   },
-  gameArea: {
-    flex: 1,
+  targetText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  bottomToolbar: {
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    gap: 20,
+    zIndex: 1000,
+    elevation: 1000,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  bottomToolButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+    minWidth: 120,
+    justifyContent: 'center',
+  },
+  toolButtonActive: {
+    backgroundColor: '#2196F3',
+  },
+  toolButtonDisabled: {
+    backgroundColor: '#f0f0f0',
+  },
+  toolButtonText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  toolButtonTextActive: {
+    color: 'white',
+  },
+  toolButtonTextDisabled: {
+    color: '#ccc',
+  },
+  toolButtonCount: {
+    fontSize: 14,
+    color: '#999',
+    backgroundColor: 'white',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  toolButtonCountActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    color: 'white',
+  },
+  toolButtonCountDisabled: {
+    backgroundColor: '#f8f8f8',
+    color: '#ccc',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 20,
   },
-  errorText: {
-    fontSize: 18,
-    color: '#f44336',
+  completionModal: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    minWidth: 300,
+  },
+  completionIcon: {
+    marginBottom: 16,
+  },
+  completionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  completionMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
     marginBottom: 20,
   },
-  homeButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+  rewardInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 24,
+    gap: 8,
   },
-  homeButtonText: {
+  rewardText: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: '600',
+  },
+  completionButtons: {
+    width: '100%',
+    gap: 12,
+  },
+  nextLevelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  nextLevelButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  backToLevelsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  backToLevelsButtonText: {
+    color: '#666',
+    fontSize: 16,
   },
 });

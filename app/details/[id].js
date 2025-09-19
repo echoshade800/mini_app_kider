@@ -1,209 +1,400 @@
 /**
- * 棋盘自适应布局系统 - 唯一布局规则来源
- * Purpose: 根据数字方块数量动态计算棋盘尺寸和布局
- * Features: 自适应尺寸、最小28px限制、棋盘比矩形大一圈
+ * Level Detail Screen - Individual level gameplay
+ * Purpose: Play specific levels with progress tracking and item usage
+ * Features: Level-specific boards, item usage, progress saving, rescue system
  */
 
-import { Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet,
+  Alert,
+  Modal
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useGameStore } from '../store/gameStore';
+import { GameBoard } from '../components/GameBoard';
+import { generateBoard } from '../utils/boardGenerator';
+import { hasValidCombinations, isBoardEmpty } from '../utils/gameLogic';
+import { STAGE_NAMES } from '../utils/stageNames';
+import RescueModal from '../components/RescueModal';
 
-// 根据关卡获取数字方块数量（从boardGenerator复制过来避免循环依赖）
-function getTileCount(level, isChallenge = false) {
-  if (isChallenge) {
-    // 挑战模式：使用高数量提供最大挑战
-    return 200; // 固定高数量
-  }
+export default function LevelDetailScreen() {
+  const { id } = useLocalSearchParams();
+  const level = parseInt(id);
   
-  // 关卡模式：渐进式增长
-  if (level >= 1 && level <= 10) {
-    return Math.floor(12 + level * 2); // 14-32个方块
-  }
-  if (level >= 11 && level <= 20) {
-    return Math.floor(30 + (level - 10) * 3); // 33-60个方块
-  }
-  if (level >= 21 && level <= 30) {
-    return Math.floor(60 + (level - 20) * 4); // 64-100个方块
-  }
-  if (level >= 31 && level <= 50) {
-    return Math.floor(100 + (level - 30) * 3); // 103-160个方块
-  }
-  if (level >= 51 && level <= 80) {
-    return Math.floor(160 + (level - 50) * 2); // 162-220个方块
-  }
-  if (level >= 81 && level <= 120) {
-    return Math.floor(220 + (level - 80) * 1.5); // 221-280个方块
-  }
-  if (level >= 121 && level <= 200) {
-    return Math.floor(280 + (level - 120) * 1); // 281-360个方块
-  }
+  const { gameData, updateGameData } = useGameStore();
   
-  // 200关以后继续增长
-  return Math.floor(360 + (level - 200) * 0.5);
-}
+  const [board, setBoard] = useState(null);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [showRescue, setShowRescue] = useState(false);
+  const [itemMode, setItemMode] = useState(null);
+  const [selectedSwapTile, setSelectedSwapTile] = useState(null);
+  const [swapAnimations, setSwapAnimations] = useState(new Map());
+  const [fractalAnimations, setFractalAnimations] = useState(new Map());
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-// 布局常量
-const MIN_TILE_SIZE = 28; // 最小方块尺寸
-const TILE_GAP = 4; // 方块间距
-const BOARD_PADDING = 5; // 棋盘内边距（方块矩形到木框的留白）
-const WOOD_FRAME_WIDTH = 8; // 木框厚度
-
-// 有效游戏区域配置
-const EFFECTIVE_AREA = {
-  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
-};
-
-/**
- * 获取有效游戏区域尺寸
- */
-function getEffectiveGameArea() {
-  const effectiveHeight = screenHeight - EFFECTIVE_AREA.TOP_RESERVED - EFFECTIVE_AREA.BOTTOM_RESERVED;
-  const effectiveWidth = screenWidth;
-  
-  return {
-    width: effectiveWidth,
-    height: effectiveHeight,
-    top: EFFECTIVE_AREA.TOP_RESERVED,
-    left: 0,
-  };
-}
-
-/**
- * 根据数字方块数量计算最佳矩形行列数
- * @param {number} N - 数字方块数量
- * @param {number} targetAspect - 期望宽高比（可选，默认根据屏幕比例）
- * @returns {Object} { rows, cols }
- */
-export function computeGridRC(N, targetAspect = null) {
-  if (N <= 0) return { rows: 1, cols: 1 };
-  
-  const gameArea = getEffectiveGameArea();
-  const defaultAspect = targetAspect || (gameArea.width / gameArea.height);
-  
-  // 寻找最接近目标宽高比的 (R, C) 组合
-  let bestR = 1, bestC = N;
-  let bestDiff = Infinity;
-  
-  for (let r = 1; r <= N; r++) {
-    const c = Math.ceil(N / r);
-    if (r * c >= N) {
-      const currentAspect = c / r;
-      const diff = Math.abs(currentAspect - defaultAspect);
+  // Initialize board
+  useEffect(() => {
+    if (level && level > 0) {
+      const newBoard = generateBoard(level, false, false);
+      setBoard(newBoard);
       
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestR = r;
-        bestC = c;
+      // 🎯 调试命令：计算并记录棋盘格尺寸数据
+      if (newBoard && newBoard.layoutConfig) {
+        console.log('📏 关卡模式棋盘格尺寸数据:');
+        console.log(`  棋盘格行数: ${newBoard.layoutConfig.rows}`);
+        console.log(`  棋盘格列数: ${newBoard.layoutConfig.cols}`);
+        console.log(`  棋盘总宽度: ${newBoard.layoutConfig.boardWidth}px`);
+        console.log(`  棋盘总高度: ${newBoard.layoutConfig.boardHeight}px`);
+        console.log(`  单个方块尺寸: ${newBoard.layoutConfig.tileSize}px`);
+        console.log(`  数字方块矩形宽度: ${newBoard.layoutConfig.tilesRectWidth}px`);
+        console.log(`  数字方块矩形高度: ${newBoard.layoutConfig.tilesRectHeight}px`);
+        console.log(`  棋盘格总数: ${newBoard.layoutConfig.rows * newBoard.layoutConfig.cols}`);
       }
     }
-  }
-  
-  return { rows: bestR, cols: bestC };
-}
+  }, [level]);
 
-/**
- * 计算在给定容器内能放下的最大方块尺寸
- * @param {number} containerWidth - 容器宽度
- * @param {number} containerHeight - 容器高度
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} gap - 方块间距
- * @param {number} padding - 内边距
- * @param {number} minTile - 最小方块尺寸
- * @returns {Object} 布局信息
- */
-export function computeTileSize(containerWidth, containerHeight, rows, cols, gap = TILE_GAP, padding = BOARD_PADDING, minTile = MIN_TILE_SIZE) {
-  // 计算可用空间（减去木框厚度和内边距）
-  const availableWidth = containerWidth - WOOD_FRAME_WIDTH * 2 - padding * 2;
-  const availableHeight = containerHeight - WOOD_FRAME_WIDTH * 2 - padding * 2;
-  
-  // 计算方块尺寸上限
-  const tileW = (availableWidth - (cols - 1) * gap) / cols;
-  const tileH = (availableHeight - (rows - 1) * gap) / rows;
-  const tileSize = Math.floor(Math.min(tileW, tileH));
-  
-  // 计算数字方块矩形的实际尺寸
-  const tilesRectWidth = cols * tileSize + (cols - 1) * gap;
-  const tilesRectHeight = rows * tileSize + (rows - 1) * gap;
-  
-  // 计算棋盘内容区尺寸（数字方块矩形 + 内边距）
-  const contentWidth = tilesRectWidth + 2 * padding;
-  const contentHeight = tilesRectHeight + 2 * padding;
-  
-  // 棋盘总尺寸（内容区 + 木框）
-  const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
-  const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
-  
-  return {
-    tileSize,
-    tilesRectWidth,
-    tilesRectHeight,
-    boardWidth,
-    boardHeight,
-    contentWidth,
-    contentHeight,
-    isValid: tileSize >= minTile,
+  const handleTilesClear = (clearedPositions) => {
+    if (!board) return;
+
+    // Create new tiles array with cleared positions set to 0
+    const newTiles = [...board.tiles];
+    clearedPositions.forEach(pos => {
+      const index = pos.row * board.width + pos.col;
+      newTiles[index] = 0;
+    });
+
+    // Update board
+    const updatedBoard = { ...board, tiles: newTiles };
+    setBoard(updatedBoard);
+
+    // Check if level is completed
+    if (isBoardEmpty(newTiles)) {
+      setIsCompleted(true);
+      
+      // Update progress
+      const newMaxLevel = Math.max(gameData?.maxLevel || 1, level + 1);
+      const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
+      
+      updateGameData({
+        maxLevel: newMaxLevel,
+        swapMasterItems: newSwapMasterItems,
+        lastPlayedLevel: level,
+      });
+
+      // Show completion message
+      setTimeout(() => {
+        Alert.alert(
+          'Level Complete!',
+          `Congratulations! You've completed ${STAGE_NAMES[level] || `Level ${level}`}.\n\n+1 SwapMaster item earned!`,
+          [
+            { text: 'Next Level', onPress: () => router.push(`/details/${level + 1}`) },
+            { text: 'Back to Levels', onPress: () => router.back() }
+          ]
+        );
+      }, 1000);
+    } else {
+      // Check if there are valid combinations left
+      setTimeout(() => {
+        if (!hasValidCombinations(newTiles, board.width, board.height)) {
+          setShowRescue(true);
+        }
+      }, 500);
+    }
   };
-}
 
-/**
- * 自适应棋盘布局计算
- * @param {number} N - 数字方块数量
- * @param {number} targetAspect - 期望宽高比（可选）
- * @param {number} level - 关卡等级（用于特殊处理）
- * @returns {Object} 完整布局信息
- */
-export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
-  const gameArea = getEffectiveGameArea();
-  let { rows, cols } = computeGridRC(N, targetAspect);
-  
-  // 前35关：使用第35关的方块尺寸作为基准
-  if (level && level <= 35) {
-    const level35TileCount = getTileCount(35, false);
-    const level35Layout = computeGridRC(level35TileCount, targetAspect);
-    const level35TileSize = computeTileSize(
-      gameArea.width, 
-      gameArea.height, 
-      level35Layout.rows, 
-      level35Layout.cols
-    );
-    
-    if (level35TileSize.isValid) {
-      const targetTileSize = level35TileSize.tileSize;
+  const handleItemUse = (itemType) => {
+    if (itemType === 'swapMaster') {
+      if ((gameData?.swapMasterItems || 0) <= 0) {
+        Alert.alert('No Items', 'You don\'t have any SwapMaster items.');
+        return;
+      }
       
-      // 计算数字方块矩形尺寸
-      const tilesRectWidth = cols * targetTileSize + (cols - 1) * TILE_GAP;
-      const tilesRectHeight = rows * targetTileSize + (rows - 1) * TILE_GAP;
+      setItemMode('swapMaster');
+      setSelectedSwapTile(null);
+    } else if (itemType === 'fractalSplit') {
+      if ((gameData?.splitItems || 0) <= 0) {
+        Alert.alert('No Items', 'You don\'t have any Split items.');
+        return;
+      }
       
-      // 计算棋盘内容区和总尺寸
-      const contentWidth = tilesRectWidth + 2 * BOARD_PADDING;
-      const contentHeight = tilesRectHeight + 2 * BOARD_PADDING;
-      const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
-      const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
-      
-      // 检查是否能放入有效区域
-      if (boardWidth <= gameArea.width && boardHeight <= gameArea.height) {
-        const boardLeft = (gameArea.width - boardWidth) / 2;
-        const boardTop = gameArea.top + (gameArea.height - boardHeight) / 2;
+      setItemMode('fractalSplit');
+    }
+  };
+
+  const handleTileClick = (row, col, value) => {
+    if (itemMode === 'swapMaster') {
+      if (!selectedSwapTile) {
+        // Select first tile
+        setSelectedSwapTile({ row, col, value });
+      } else {
+        // Swap with second tile
+        const newTiles = [...board.tiles];
+        const index1 = selectedSwapTile.row * board.width + selectedSwapTile.col;
+        const index2 = row * board.width + col;
         
-        return {
-          tileSize: targetTileSize,
-          tilesRectWidth,
-          tilesRectHeight,
-          boardWidth,
-          boardHeight,
-          contentWidth,
-          contentHeight,
-          rows,
-          cols,
-          boardLeft,
-          boardTop,
-          gameArea,
-          isValid: true,
-        };
+        // Perform swap
+        const temp = newTiles[index1];
+        newTiles[index1] = newTiles[index2];
+        newTiles[index2] = temp;
+        
+        // Update board
+        setBoard({ ...board, tiles: newTiles });
+        
+        // Consume item
+        updateGameData({
+          swapMasterItems: (gameData?.swapMasterItems || 0) - 1,
+        });
+        
+        // Reset mode
+        setItemMode(null);
+        setSelectedSwapTile(null);
+      }
+    } else if (itemMode === 'fractalSplit') {
+      if (value > 1) {
+        // Split the number
+        const newTiles = [...board.tiles];
+        const index = row * board.width + col;
+        
+        // Replace with two smaller numbers that sum to original
+        const half = Math.floor(value / 2);
+        const remainder = value - half;
+        
+        newTiles[index] = half;
+        
+        // Find empty spot for remainder
+        const emptyIndex = newTiles.findIndex(tile => tile === 0);
+        if (emptyIndex !== -1) {
+          newTiles[emptyIndex] = remainder;
+        }
+        
+        // Update board
+        setBoard({ ...board, tiles: newTiles });
+        
+        // Consume item
+        updateGameData({
+          splitItems: (gameData?.splitItems || 0) - 1,
+        });
+        
+        // Reset mode
+        setItemMode(null);
+      } else {
+        Alert.alert('Cannot Split', 'Cannot split a tile with value 1.');
       }
     }
+  };
+
+  const handleRescueContinue = () => {
+    // Generate new board
+    const newBoard = generateBoard(level, false, false);
+    setBoard(newBoard);
+    setShowRescue(false);
+  };
+
+  const handleRescueReturn = () => {
+    setShowRescue(false);
+    router.back();
+  };
+
+  const handleBack = () => {
+    router.back();
+  };
+
+  const stageName = STAGE_NAMES[level] || `Level ${level}`;
+
+  if (!board) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
-  
-  // 策略a: 尝试在有
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleBack}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        
+        <View style={styles.headerCenter}>
+          <Text style={styles.levelTitle}>{stageName}</Text>
+          <Text style={styles.levelNumber}>Level {level}</Text>
+        </View>
+        
+        <View style={styles.placeholder} />
+      </View>
+
+      {/* Game Board */}
+      {board && (
+        <GameBoard
+          tiles={board.tiles}
+          width={board.width}
+          height={board.height}
+          onTilesClear={handleTilesClear}
+          disabled={isCompleted}
+          itemMode={itemMode}
+          onTileClick={handleTileClick}
+          selectedSwapTile={selectedSwapTile}
+          swapAnimations={swapAnimations}
+          fractalAnimations={fractalAnimations}
+          layoutConfig={board.layoutConfig}
+        />
+      )}
+
+      {/* Bottom Controls */}
+      <View style={styles.bottomControls}>
+        <View style={styles.itemsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.itemButton,
+              itemMode === 'swapMaster' && styles.itemButtonActive
+            ]}
+            onPress={() => handleItemUse('swapMaster')}
+            disabled={isCompleted}
+          >
+            <Ionicons name="swap-horizontal" size={20} color="#fff" />
+            <Text style={styles.itemButtonText}>
+              SwapMaster ({gameData?.swapMasterItems || 0})
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.itemButton,
+              styles.splitButton,
+              itemMode === 'fractalSplit' && styles.itemButtonActive
+            ]}
+            onPress={() => handleItemUse('fractalSplit')}
+            disabled={isCompleted}
+          >
+            <Ionicons name="cut" size={20} color="#fff" />
+            <Text style={styles.itemButtonText}>
+              Split ({gameData?.splitItems || 0})
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        {itemMode && (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => {
+              setItemMode(null);
+              setSelectedSwapTile(null);
+            }}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Rescue Modal */}
+      <RescueModal
+        visible={showRescue}
+        onContinue={handleRescueContinue}
+        onReturn={handleRescueReturn}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f0f8ff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#666',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  levelTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  levelNumber: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  placeholder: {
+    width: 40,
+  },
+  bottomControls: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  itemsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 12,
+  },
+  itemButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2196F3',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: 140,
+    justifyContent: 'center',
+  },
+  splitButton: {
+    backgroundColor: '#9C27B0',
+  },
+  itemButtonActive: {
+    backgroundColor: '#FF9800',
+  },
+  itemButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  cancelButton: {
+    alignSelf: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    backgroundColor: '#f44336',
+    borderRadius: 6,
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

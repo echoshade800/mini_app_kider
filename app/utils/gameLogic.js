@@ -39,7 +39,16 @@ function getRectanglePositions(pos1, pos2, width, height) {
 
 // 检查棋盘是否有可消除的组合
 export function hasValidCombinations(tiles, width, height) {
+  console.log('🔍 [GAME_LOGIC] hasValidCombinations called:', { 
+    tilesLength: tiles.length, 
+    width, 
+    height,
+    nonZeroCount: tiles.filter(t => t > 0).length
+  });
+  
   const size = width * height;
+  let combinationsChecked = 0;
+  let validCombinationsFound = 0;
   
   // 遍历所有可能的矩形组合
   for (let pos1 = 0; pos1 < size; pos1++) {
@@ -49,18 +58,28 @@ export function hasValidCombinations(tiles, width, height) {
       if (tiles[pos2] === 0) continue;
       
       if (canFormRectangle(pos1, pos2, width, height)) {
+        combinationsChecked++;
         const positions = getRectanglePositions(pos1, pos2, width, height);
         const sum = positions.reduce((acc, pos) => {
           return acc + (tiles[pos] || 0);
         }, 0);
         
         if (sum === 10) {
+          validCombinationsFound++;
+          console.log('✅ [GAME_LOGIC] Found valid combination:', {
+            pos1, pos2, positions, sum,
+            tiles: positions.map(p => tiles[p])
+          });
           return true; // 找到可消除的组合
         }
       }
     }
   }
   
+  console.log('❌ [GAME_LOGIC] No valid combinations found:', {
+    combinationsChecked,
+    validCombinationsFound
+  });
   return false; // 没有可消除的组合
 }
 

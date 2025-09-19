@@ -47,10 +47,17 @@ export default function LevelDetailScreen() {
   }, [level]);
 
   const handleTilesClear = (clearedPositions, newTilesData = null) => {
+    console.log('🎯 [LEVEL] handleTilesClear called:', { 
+      clearedPositionsLength: clearedPositions.length,
+      hasNewTilesData: !!newTilesData,
+      boardExists: !!board
+    });
+    
     if (!board) return;
 
     // 处理校准更新
     if (newTilesData) {
+      console.log('🔄 [LEVEL] Updating board with calibration data');
       setBoard(prev => ({
         ...prev,
         tiles: newTilesData
@@ -61,6 +68,7 @@ export default function LevelDetailScreen() {
 
     if (clearedPositions.length === 0) {
       // 空数组表示重排请求
+      console.log('🔄 [LEVEL] Empty array - reshuffling board');
       const { reshuffleBoard } = require('../utils/gameLogic');
       const newTiles = reshuffleBoard(board.tiles, board.width, board.height);
       setBoard(prev => ({
@@ -71,6 +79,7 @@ export default function LevelDetailScreen() {
       // 重置校准计数
       setReshuffleCount(0);
     } else {
+      console.log('🎯 [LEVEL] Processing cleared positions:', clearedPositions);
       // 更新棋盘：将被清除的方块设为0（空位）
       const newTiles = [...board.tiles];
       clearedPositions.forEach(pos => {
@@ -80,9 +89,11 @@ export default function LevelDetailScreen() {
 
       // 检查棋盘是否完全清空（所有非零方块都被消除）
       const remainingTiles = newTiles.filter(tile => tile > 0).length;
+      console.log('🎯 [LEVEL] Remaining tiles after clear:', remainingTiles);
       
       if (remainingTiles === 0) {
         // 关卡完成！显示完成弹窗
+        console.log('🎉 [LEVEL] Level completed!');
         setShowCompletionModal(true);
         
         // 更新进度
@@ -102,6 +113,7 @@ export default function LevelDetailScreen() {
       }
 
       // 更新当前棋盘状态（被清除的位置变为空位）
+      console.log('🔄 [LEVEL] Updating board state with cleared positions');
       setBoard(prev => ({
         ...prev,
         tiles: newTiles

@@ -47,14 +47,32 @@ const GameBoard = ({
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef(new Map()).current;
 
-  // 初始检查：游戏开始时检查是否有可消除组合
+  // 重置初始检查状态当关卡改变时
   useEffect(() => {
+    console.log('🔍 [CALIBRATION] useEffect triggered:', { 
+      hasInitialCheck, 
+      tilesLength: tiles?.length, 
+      width, 
+      height, 
+      hasLayoutConfig: !!layoutConfig 
+    });
+    
     if (!hasInitialCheck && tiles && width && height && layoutConfig) {
+      console.log('🔍 [CALIBRATION] Setting hasInitialCheck to true, scheduling check...');
       setHasInitialCheck(true);
       // 延迟检查，确保组件完全渲染
       setTimeout(() => {
+        console.log('🔍 [CALIBRATION] Executing delayed checkForValidCombinations...');
         checkForValidCombinations();
       }, 500);
+    } else {
+      console.log('🔍 [CALIBRATION] Skipping initial check:', {
+        hasInitialCheck,
+        hasTiles: !!tiles,
+        hasWidth: !!width,
+        hasHeight: !!height,
+        hasLayoutConfig: !!layoutConfig
+      });
     }
   }, [tiles, width, height, layoutConfig, hasInitialCheck]);
 
@@ -237,33 +255,53 @@ const GameBoard = ({
 
   // 检查是否有可消除的组合，如果没有则进行校准
   const checkForValidCombinations = async () => {
+    console.log('🔍 [CALIBRATION] checkForValidCombinations called');
+      console.log('❌ [CALIBRATION] Missing required data:', { 
+        hasTiles: !!tiles, 
+        width, 
+        height 
+      });
+    
     if (!tiles || !width || !height) return;
     
+    console.log('🔍 [CALIBRATION] Checking for valid combinations...');
+    console.log('🔍 [CALIBRATION] Board state:', {
+      tilesLength: tiles.length,
+      nonZeroTiles: tiles.filter(t => t > 0).length,
+      calibrationAttempts,
+      tiles: tiles.slice(0, Math.min(20, tiles.length)) // 只显示前20个方块
+    });
+    
     const hasValidMoves = hasValidCombinations(tiles, width, height);
+    console.log('🔍 [CALIBRATION] hasValidCombinations result:', hasValidMoves);
     
     if (!hasValidMoves) {
       // 没有可消除组合，尝试重排
       if (calibrationAttempts < 3) {
-        console.log(`校准尝试 ${calibrationAttempts + 1}/3`);
+        console.log(`🔧 [CALIBRATION] 校准尝试 ${calibrationAttempts + 1}/3`);
         setCalibrationAttempts(prev => prev + 1);
         await performReshuffleAnimation();
       } else {
         // 已经尝试3次，显示救援弹窗
-        console.log('Maximum calibration attempts reached, showing rescue modal');
+        console.log('🚨 [CALIBRATION] Maximum calibration attempts reached, showing rescue modal');
         if (onRescueNeeded) {
+          console.log('🚨 [CALIBRATION] Calling onRescueNeeded...');
           onRescueNeeded();
+        } else {
+          console.log('❌ [CALIBRATION] onRescueNeeded is not available');
         }
       }
     } else {
-      console.log('Board has valid combinations, no calibration needed');
+      console.log('✅ [CALIBRATION] Board has valid combinations, no calibration needed');
     }
   };
 
   // 执行重排列动画
   const performReshuffleAnimation = async () => {
+    console.log('🔄 [CALIBRATION] performReshuffleAnimation started');
     setIsCalibrating(true);
     
-    console.log('Starting reshuffle animation...');
+    console.log('🔄 [CALIBRATION] Starting reshuffle animation...');
     
     // 获取所有非零数字的位置和值
     const nonZeroTiles = [];
@@ -281,8 +319,12 @@ const GameBoard = ({
       }
     }
     
+    console.log('🔄 [CALIBRATION] Found non-zero tiles:', nonZeroTiles.length);
+    
     // 生成新的排列（只重排数字，位置保持不变）
     const newTiles = reshuffleBoard(tiles, width, height);
+    console.log('🔄 [CALIBRATION] Generated new tiles arrangement');
+    
     const newNonZeroTiles = [];
     for (let i = 0; i < newTiles.length; i++) {
       if (newTiles[i] > 0) {
@@ -298,16 +340,19 @@ const GameBoard = ({
       }
     }
     
+    console.log('🔄 [CALIBRATION] Prepared new tile positions:', newNonZeroTiles.length);
+    
     // 创建重排列动画
     await createReshuffleAnimations(nonZeroTiles, newNonZeroTiles, newTiles);
     
+    console.log('🔄 [CALIBRATION] performReshuffleAnimation completed');
     setIsCalibrating(false);
   };
 
   // 创建重排列动画
   const createReshuffleAnimations = (oldTiles, newTiles, newTilesData) => {
     return new Promise((resolve) => {
-      console.log(`Creating reshuffle animation for ${oldTiles.length} tiles`);
+      console.log(`🎬 [CALIBRATION] Creating reshuffle animation for ${oldTiles.length} tiles`);
       
       const animations = new Map();
       const animationPromises = [];
@@ -324,7 +369,7 @@ const GameBoard = ({
             
             // 只有位置发生变化才创建动画
             if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
-              console.log(`Animating tile from (${oldTile.row},${oldTile.col}) to (${newTile.row},${newTile.col})`);
+              console.log(`🎬 [CALIBRATION] Animating tile from (${oldTile.row},${oldTile.col}) to (${newTile.row},${newTile.col})`);
               
               // 创建动画值
               const translateX = new Animated.Value(0);
@@ -361,26 +406,33 @@ const GameBoard = ({
       
       // 执行所有动画
       if (animationPromises.length > 0) {
-        console.log(`Starting ${animationPromises.length} animations`);
+        console.log(`🎬 [CALIBRATION] Starting ${animationPromises.length} animations`);
         Animated.parallel(animationPromises).start(() => {
-          console.log('Reshuffle animation completed');
+          console.log('✅ [CALIBRATION] Reshuffle animation completed');
           
           // 动画完成后更新棋盘数据
           if (onTilesClear) {
+            console.log('🔄 [CALIBRATION] Calling onTilesClear with new tiles data');
             onTilesClear([], newTilesData);
+          } else {
+            console.log('❌ [CALIBRATION] onTilesClear is not available');
           }
           
           // 清理动画状态
           setTimeout(() => {
+            console.log('🧹 [CALIBRATION] Cleaning up animation state');
             setCalibrationAnimations(new Map());
             resolve();
           }, 200);
         });
       } else {
-        console.log('📝 No animations needed');
+        console.log('📝 [CALIBRATION] No animations needed, updating data directly');
         // 没有动画需要执行，直接更新数据
         if (onTilesClear) {
+          console.log('🔄 [CALIBRATION] Calling onTilesClear with new tiles data (no animation)');
           onTilesClear([], newTilesData);
+        } else {
+          console.log('❌ [CALIBRATION] onTilesClear is not available');
         }
         setCalibrationAnimations(new Map());
         resolve();

@@ -406,65 +406,65 @@ export default function LevelDetailScreen() {
       </View>
     </View>
 
-    {/* Completion Modal */}
-    <Modal 
-      visible={showCompletionModal} 
-      transparent 
-      animationType="fade"
-      onRequestClose={() => setShowCompletionModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.completionModal}>
-          <View style={styles.completionIcon}>
-            <Ionicons name="trophy" size={60} color="#FFD700" />
-          </View>
-          
-          <Text style={styles.completionTitle}>🎉 Level Complete!</Text>
-          <Text style={styles.completionMessage}>
-            Excellent work! You've cleared all the tiles.
-          </Text>
-          
-          <View style={styles.rewardInfo}>
-            <Ionicons name="gift" size={20} color="#4CAF50" />
-            <Text style={styles.rewardText}>+1 Change & +1 Split Item earned!</Text>
-          </View>
-          
-          <View style={styles.completionButtons}>
-            <TouchableOpacity 
-              style={styles.nextLevelButton}
-              onPress={handleNextLevel}
-            >
-              <Ionicons name="arrow-forward" size={20} color="white" />
-              <Text style={styles.nextLevelButtonText}>Next Level</Text>
-            </TouchableOpacity>
+      {/* Completion Modal */}
+      <Modal 
+        visible={showCompletionModal} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => setShowCompletionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.completionModal}>
+            <View style={styles.completionIcon}>
+              <Ionicons name="trophy" size={60} color="#FFD700" />
+            </View>
             
-            <TouchableOpacity 
-              style={styles.backToLevelsButton}
-              onPress={handleBackToLevels}
-            >
-              <Ionicons name="list" size={20} color="#666" />
-              <Text style={styles.backToLevelsButtonText}>Level List</Text>
-            </TouchableOpacity>
+            <Text style={styles.completionTitle}>🎉 Level Complete!</Text>
+            <Text style={styles.completionMessage}>
+              Excellent work! You've cleared all the tiles.
+            </Text>
+            
+            <View style={styles.rewardInfo}>
+              <Ionicons name="gift" size={20} color="#4CAF50" />
+              <Text style={styles.rewardText}>+1 Change & +1 Split Item earned!</Text>
+            </View>
+            
+            <View style={styles.completionButtons}>
+              <TouchableOpacity 
+                style={styles.nextLevelButton}
+                onPress={handleNextLevel}
+              >
+                <Ionicons name="arrow-forward" size={20} color="white" />
+                <Text style={styles.nextLevelButtonText}>Next Level</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.backToLevelsButton}
+                onPress={handleBackToLevels}
+              >
+                <Ionicons name="list" size={20} color="#666" />
+                <Text style={styles.backToLevelsButtonText}>Level List</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
 
-    {/* Rescue Modal */}
-    <RescueModal
-      visible={showRescueModal}
-      onContinue={() => {
-        setShowRescueModal(false);
-        // Generate new board as rescue
-        const newBoard = generateBoard(level);
-        setBoard(newBoard);
-      }}
-      onReturn={() => {
-        setShowRescueModal(false);
-        handleBackPress();
-      }}
-    />
-  </View>
+      {/* Rescue Modal */}
+      <RescueModal
+        visible={showRescueModal}
+        onContinue={() => {
+          setShowRescueModal(false);
+          // Generate new board as rescue
+          const newBoard = generateBoard(level);
+          setBoard(newBoard);
+        }}
+        onReturn={() => {
+          setShowRescueModal(false);
+          handleBackPress();
+        }}
+      />
+    </View>
   );
 }
 

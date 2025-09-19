@@ -32,7 +32,7 @@ const GameBoard = ({
   reshuffleCount,
   setReshuffleCount,
   onRescueNeeded,
-  layoutConfig // 新增：布局配置
+  layoutConfig, // 新增：布局配置
 }) => {
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
@@ -136,9 +136,6 @@ const GameBoard = ({
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
 
     if (sum === 10 && selectedTiles.length > 0) {
-      // 重置重排计数
-      setReshuffleCount(0);
-      
       // Success - create explosion effect with yellow "10" note
       if (settings?.hapticsEnabled !== false) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

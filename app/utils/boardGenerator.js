@@ -55,6 +55,15 @@ function getTileCount(level, isChallenge = false) {
 
 // Get number distribution strategy based on level
 function getNumberDistribution(level) {
+  // 挑战模式使用特殊的数字分布
+  if (level === -1) { // 挑战模式标识
+    return {
+      smallNumbers: 0.15,  // 大幅减少1-2的比例 (原来0.4)
+      mediumNumbers: 0.65, // 大幅增加3-6的比例 (原来0.4) 
+      largeNumbers: 0.20   // 略微增加7-9的比例 (原来0.2)
+    };
+  }
+  
   if (level <= 30) {
     return {
       smallNumbers: 0.6,  // 1-3的比例
@@ -116,7 +125,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const tiles = new Array(totalSlots).fill(0);
   
   // Get difficulty parameters
-  const distribution = getNumberDistribution(level);
+  const distribution = getNumberDistribution(isChallenge ? -1 : level);
   
   // Target pairs that sum to 10
   const targetPairs = [
@@ -206,6 +215,51 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   // Fill remaining tiles to achieve target sum
   if (remainingTiles.length > 0) {
+    // 挑战模式使用特殊的数字生成策略
+    if (isChallenge) {
+      // 根据分布比例生成数字
+      const smallCount = Math.floor(remainingTiles.length * distribution.smallNumbers);
+      const mediumCount = Math.floor(remainingTiles.length * distribution.mediumNumbers);
+      const largeCount = remainingTiles.length - smallCount - mediumCount;
+      
+      let index = 0;
+      
+      // 生成少量小数字 (1-2)
+      for (let i = 0; i < smallCount; i++) {
+        remainingTiles[index++] = Math.floor(random() * 2) + 1; // 1-2
+      }
+      
+      // 生成大量中等数字 (3-6)
+      for (let i = 0; i < mediumCount; i++) {
+        remainingTiles[index++] = Math.floor(random() * 4) + 3; // 3-6
+      }
+      
+      // 生成一些大数字 (7-9)
+      for (let i = 0; i < largeCount; i++) {
+        remainingTiles[index++] = Math.floor(random() * 3) + 7; // 7-9
+      }
+      
+      // 调整总和为10的倍数
+      let currentSum = remainingTiles.reduce((sum, val) => sum + val, 0) + currentSum;
+      let targetSum = Math.ceil(currentSum / 10) * 10;
+      let difference = targetSum - currentSum;
+      
+      // 微调数字以达到目标总和
+      let attempts = 0;
+      while (difference !== 0 && attempts < 100) {
+        for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+          if (difference > 0 && remainingTiles[i] < 9) {
+            remainingTiles[i]++;
+            difference--;
+          } else if (difference < 0 && remainingTiles[i] > 1) {
+            remainingTiles[i]--;
+            difference++;
+          }
+        }
+        attempts++;
+      }
+    } else {
+      // 关卡模式保持原有逻辑
     // Start with average distribution
     const avgValue = Math.max(1, Math.min(9, Math.round(targetRemainingSum / remainingTiles.length)));
     
@@ -248,6 +302,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
           remainingTiles[i + 1] += change;
         }
       }
+    }
     }
   }
   

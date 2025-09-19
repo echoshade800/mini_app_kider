@@ -331,78 +331,6 @@ export default function LevelDetailScreen() {
         layoutConfig={board.layoutConfig}
       />
 
-      {/* Bottom Toolbar - 移到GameBoard下方确保不被覆盖 */}
-      <View style={styles.bottomToolbar}>
-        <TouchableOpacity 
-          style={[
-            styles.bottomToolButton,
-            itemMode === 'swapMaster' && styles.toolButtonActive,
-            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
-          ]}
-          onPress={handleUseSwapMaster}
-          disabled={(gameData?.swapMasterItems || 0) <= 0}
-          activeOpacity={0.7}
-          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
-        >
-          <Ionicons 
-            name="swap-horizontal" 
-            size={20} 
-            color={
-              (gameData?.swapMasterItems || 0) <= 0 ? '#ccc' :
-              itemMode === 'swapMaster' ? 'white' : '#666'
-            } 
-          />
-          <Text style={[
-            styles.toolButtonText,
-            itemMode === 'swapMaster' && styles.toolButtonTextActive,
-            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonTextDisabled
-          ]}>
-            Change
-          </Text>
-          <Text style={[
-            styles.toolButtonCount,
-            itemMode === 'swapMaster' && styles.toolButtonCountActive,
-            (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonCountDisabled
-          ]}>
-            {gameData?.swapMasterItems || 0}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[
-            styles.bottomToolButton,
-            itemMode === 'fractalSplit' && styles.toolButtonActive,
-            (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
-          ]}
-          onPress={handleUseFractalSplit}
-          disabled={(gameData?.splitItems || 0) <= 0}
-          activeOpacity={0.7}
-          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
-        >
-          <Ionicons 
-            name="cut" 
-            size={20} 
-            color={
-              (gameData?.splitItems || 0) <= 0 ? '#ccc' :
-              itemMode === 'fractalSplit' ? 'white' : '#666'
-            } 
-          />
-          <Text style={[
-            styles.toolButtonText,
-            itemMode === 'fractalSplit' && styles.toolButtonTextActive,
-            (gameData?.splitItems || 0) <= 0 && styles.toolButtonTextDisabled
-          ]}>
-            Split
-          </Text>
-          <Text style={[
-            styles.toolButtonCount,
-            itemMode === 'fractalSplit' && styles.toolButtonCountActive,
-            (gameData?.splitItems || 0) <= 0 && styles.toolButtonCountDisabled
-          ]}>
-            {gameData?.splitItems || 0}
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Completion Modal */}
       <Modal 
@@ -463,6 +391,79 @@ export default function LevelDetailScreen() {
         }}
       />
     </SafeAreaView>
+
+    {/* Bottom Toolbar - 固定在屏幕最底部 */}
+    <View style={styles.bottomToolbar}>
+      <TouchableOpacity 
+        style={[
+          styles.bottomToolButton,
+          itemMode === 'swapMaster' && styles.toolButtonActive,
+          (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
+        ]}
+        onPress={handleUseSwapMaster}
+        disabled={(gameData?.swapMasterItems || 0) <= 0}
+        activeOpacity={0.7}
+        hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+      >
+        <Ionicons 
+          name="swap-horizontal" 
+          size={20} 
+          color={
+            (gameData?.swapMasterItems || 0) <= 0 ? '#ccc' :
+            itemMode === 'swapMaster' ? 'white' : '#666'
+          } 
+        />
+        <Text style={[
+          styles.toolButtonText,
+          itemMode === 'swapMaster' && styles.toolButtonTextActive,
+          (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonTextDisabled
+        ]}>
+          Change
+        </Text>
+        <Text style={[
+          styles.toolButtonCount,
+          itemMode === 'swapMaster' && styles.toolButtonCountActive,
+          (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonCountDisabled
+        ]}>
+          {gameData?.swapMasterItems || 0}
+        </Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={[
+          styles.bottomToolButton,
+          itemMode === 'fractalSplit' && styles.toolButtonActive,
+          (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
+        ]}
+        onPress={handleUseFractalSplit}
+        disabled={(gameData?.splitItems || 0) <= 0}
+        activeOpacity={0.7}
+        hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+      >
+        <Ionicons 
+          name="cut" 
+          size={20} 
+          color={
+            (gameData?.splitItems || 0) <= 0 ? '#ccc' :
+            itemMode === 'fractalSplit' ? 'white' : '#666'
+          } 
+        />
+        <Text style={[
+          styles.toolButtonText,
+          itemMode === 'fractalSplit' && styles.toolButtonTextActive,
+          (gameData?.splitItems || 0) <= 0 && styles.toolButtonTextDisabled
+        ]}>
+          Split
+        </Text>
+        <Text style={[
+          styles.toolButtonCount,
+          itemMode === 'fractalSplit' && styles.toolButtonCountActive,
+          (gameData?.splitItems || 0) <= 0 && styles.toolButtonCountDisabled
+        ]}>
+          {gameData?.splitItems || 0}
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -553,6 +554,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     gap: 20,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     zIndex: 1000,
     elevation: 1000,
   },

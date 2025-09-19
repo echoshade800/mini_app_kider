@@ -17,6 +17,8 @@ import * as Haptics from 'expo-haptics';
 import { hasValidCombinations } from '../lib/gameLogic';
 import RescueModal from './RescueModal';
 import { computeLayout } from '../lib/layoutEngine';
+import { computeWithDebug } from '../lib/computeWithDebug';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const R = (v) => PixelRatio.roundToNearestPixel(v);
 
@@ -44,6 +46,11 @@ const GameBoard = ({
   const [boardRect, setBoardRect] = useState(null);
   const [layoutResult, setLayoutResult] = useState(null);
   
+  // Debug refs and insets
+  const boardRef = useRef(null);
+  const sampleTileRef = useRef(null);
+  const insets = useSafeAreaInsets();
+  
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
@@ -57,18 +64,44 @@ const GameBoard = ({
     
     // 计算精确布局
     if (layoutConfig && width > 0 && height > 0) {
-      const result = computeLayout({
-        board: newBoardRect,
-        frame: layoutConfig.woodFrameWidth || 8,
-        pad: layoutConfig.boardPadding || 5,
-        rows: height,
-        cols: width,
-        gap: layoutConfig.tileGap || 4,
-        minTile: layoutConfig.minTileSize || 28,
-        maxTile: 32, // 固定32px
-        lockTile: true, // 固定方块尺寸
-      });
-      setLayoutResult(result);
+      // 使用调试版布局引擎
+      setTimeout(async () => {
+        try {
+          const { layout, originOffset } = await computeWithDebug({
+            boardRef,
+            sampleRef: sampleTileRef,
+            safeInsets: insets,
+            autoOriginFix: __DEV__, // 开发模式下自动修正
+            computeLayout,
+            board: newBoardRect,
+            frame: layoutConfig.woodFrameWidth || 8,
+            pad: layoutConfig.boardPadding || 5,
+            rows: height,
+            cols: width,
+            gap: layoutConfig.tileGap || 4,
+            minTile: layoutConfig.minTileSize || 28,
+            maxTile: 32, // 固定32px
+            lockTile: true, // 固定方块尺寸
+          });
+          
+          setLayoutResult({ ...layout, originOffset });
+        } catch (error) {
+          console.warn('Debug layout failed, using fallback:', error);
+          // 回退到普通布局
+          const result = computeLayout({
+            board: newBoardRect,
+            frame: layoutConfig.woodFrameWidth || 8,
+            pad: layoutConfig.boardPadding || 5,
+            rows: height,
+            cols: width,
+            gap: layoutConfig.tileGap || 4,
+            minTile: layoutConfig.minTileSize || 28,
+            maxTile: 32,
+            lockTile: true,
+          });
+          setLayoutResult({ ...result, originOffset: { dx: 0, dy: 0 } });
+        }
+      }, 100); // 延迟确保DOM已渲染
     }
   };
 
@@ -490,6 +523,10 @@ const GameBoard = ({
     const tilePos = layoutConfig.getTilePosition(row, col);
     if (!tilePos) return null;
 
+    // 应用调试修正偏移
+    const dx = layoutResult?.originOffset?.dx || 0;
+    const dy = layoutResult?.originOffset?.dy || 0;
+
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
     
@@ -542,10 +579,11 @@ const GameBoard = ({
     return (
       <View
         key={`${row}-${col}`}
+        ref={index === 0 ? sampleTileRef : undefined} // 第一个方块用于调试测量
         style={{
           position: 'absolute',
-          left: tilePos.x,
-          top: tilePos.y,
+          left: tilePos.x + dx,
+          top: tilePos.y + dy,
           width: tilePos.width,
           height: tilePos.height,
           alignItems: 'center',
@@ -597,6 +635,8 @@ const GameBoard = ({
               height: layoutConfig.boardHeight,
             }
           ]}
+          ref={boardRef}
+          onLayout={handleBoardLayout}
           pointerEvents="auto"
         >
           {/* 数字方块内容区 */}

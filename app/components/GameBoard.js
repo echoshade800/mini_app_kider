@@ -351,11 +351,22 @@ const GameBoard = ({
           endCol,
         }));
         
+        // Get current selected tiles for this selection
+        const currentSelectedTiles = getSelectedTilesForSelection({
+          startRow: selection.startRow,
+          startCol: selection.startCol,
+          endRow,
+          endCol,
+        });
+        
+        // Create set of currently hovered tile indices
+        const newHoveredSet = new Set(currentSelectedTiles.map(tile => tile.index));
+        
         // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
-        const sum = newSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+        const sum = currentSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
         const targetScale = sum === 10 ? 1.1 : 1.05;
         
-        newSelectedTiles.forEach(tile => {
+        currentSelectedTiles.forEach(tile => {
           if (!hoveredTiles.has(tile.index)) {
             scaleTile(tile.index, targetScale);
           }

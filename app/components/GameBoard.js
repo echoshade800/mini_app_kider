@@ -750,7 +750,7 @@ const GameBoard = ({
   const selectionSum = getSelectionSum();
 
   return (
-    <View style={styles.fullScreenContainer}>
+    <View style={styles.fullScreenContainer} pointerEvents="box-none">
       <View style={styles.container}>
         <View 
           style={[
@@ -763,7 +763,7 @@ const GameBoard = ({
               height: layoutConfig.boardHeight,
             }
           ]}
-          pointerEvents="box-none"
+          pointerEvents="auto"
         >
           {/* 数字方块内容区 */}
           <View

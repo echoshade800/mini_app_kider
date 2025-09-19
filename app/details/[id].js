@@ -292,20 +292,20 @@ export default function LevelDetailScreen() {
         layoutConfig={board.layoutConfig}
       />
 
-      {/* Bottom Toolbar */}
-      <View style={styles.toolbar}>
+      {/* Bottom Toolbar - 移到GameBoard下方确保不被覆盖 */}
+      <View style={styles.bottomToolbar}>
         <TouchableOpacity 
           style={[
-            styles.toolButton,
+            styles.bottomToolButton,
             itemMode === 'swapMaster' && styles.toolButtonActive,
             (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
           ]}
           onPress={handleUseSwapMaster}
-          onPressIn={() => console.log('🔧 SwapMaster button pressed IN')}
-          onPressOut={() => console.log('🔧 SwapMaster button pressed OUT')}
+          onPressIn={() => console.log('🔧 BOTTOM SwapMaster button pressed IN')}
+          onPressOut={() => console.log('🔧 BOTTOM SwapMaster button pressed OUT')}
           disabled={(gameData?.swapMasterItems || 0) <= 0}
           activeOpacity={0.7}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
         >
           <Ionicons 
             name="swap-horizontal" 
@@ -333,16 +333,16 @@ export default function LevelDetailScreen() {
         
         <TouchableOpacity 
           style={[
-            styles.toolButton,
+            styles.bottomToolButton,
             itemMode === 'fractalSplit' && styles.toolButtonActive,
             (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
           ]}
           onPress={handleUseFractalSplit}
-          onPressIn={() => console.log('✂️ FractalSplit button pressed IN')}
-          onPressOut={() => console.log('✂️ FractalSplit button pressed OUT')}
+          onPressIn={() => console.log('✂️ BOTTOM FractalSplit button pressed IN')}
+          onPressOut={() => console.log('✂️ BOTTOM FractalSplit button pressed OUT')}
           disabled={(gameData?.splitItems || 0) <= 0}
           activeOpacity={0.7}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
         >
           <Ionicons 
             name="cut" 
@@ -480,69 +480,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  topToolbar: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    gap: 40,
-    zIndex: 1000,
-    elevation: 1000,
-  },
-  topToolButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 6,
-    minWidth: 100,
-    justifyContent: 'center',
-    zIndex: 1001,
-    elevation: 1001,
-  },
-  topToolButtonActive: {
-    backgroundColor: 'rgba(33, 150, 243, 0.1)',
-  },
-  topToolButtonDisabled: {
-    opacity: 0.5,
-  },
-  topToolButtonText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  topToolButtonTextActive: {
-    color: '#2196F3',
-    fontWeight: '600',
-  },
-  topToolButtonTextDisabled: {
-    color: '#ccc',
-  },
-  topToolButtonCount: {
-    fontSize: 12,
-    color: '#999',
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    minWidth: 18,
-    textAlign: 'center',
-  },
-  topToolButtonCountActive: {
-    backgroundColor: '#e3f2fd',
-    color: '#1976d2',
-  },
-  topToolButtonCountDisabled: {
-    backgroundColor: '#f8f8f8',
-    color: '#ccc',
-  },
-  toolbar: {
+  bottomToolbar: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -552,8 +490,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     gap: 20,
+    zIndex: 1000,
+    elevation: 1000,
   },
-  toolButton: {
+  bottomToolButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',

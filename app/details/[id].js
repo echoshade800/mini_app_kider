@@ -11,7 +11,9 @@ import {
   TouchableOpacity, 
   StyleSheet,
   Alert,
-  Modal
+  Modal,
+  Image,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -63,6 +65,9 @@ export default function LevelDetailScreen() {
   const [totalTiles, setTotalTiles] = useState(0);
   const [clearedTiles, setClearedTiles] = useState(0);
   const [progress, setProgress] = useState(0);
+  
+  // 人物动画
+  const characterPosition = useRef(new Animated.Value(0)).current;
 
   // 生成新棋盘的函数
   const generateNewBoard = useCallback(() => {
@@ -114,6 +119,13 @@ export default function LevelDetailScreen() {
       // 计算并更新进度
       const newProgress = Math.min(newClearedCount / totalTiles, 1);
       setProgress(newProgress);
+      
+      // 更新人物位置动画
+      Animated.timing(characterPosition, {
+        toValue: newProgress,
+        duration: 500,
+        useNativeDriver: false,
+      }).start();
       
       console.log(`📊 进度更新: 清除${clearedPositions.length}个方块, 总计${newClearedCount}/${totalTiles}, 进度=${(newProgress * 100).toFixed(1)}%`);
       
@@ -200,6 +212,13 @@ export default function LevelDetailScreen() {
         // 重新计算进度（保持已清除数量不变）
         const newProgress = Math.min(clearedTiles / newTotalTiles, 1);
         setProgress(newProgress);
+        
+        // 更新人物位置动画
+        Animated.timing(characterPosition, {
+          toValue: newProgress,
+          duration: 500,
+          useNativeDriver: false,
+        }).start();
         
         console.log(`🔄 Split道具使用: 总方块数增加到${newTotalTiles}, 进度调整为${(newProgress * 100).toFixed(1)}%`);
         
@@ -294,28 +313,44 @@ export default function LevelDetailScreen() {
         <View style={styles.headerCenter}>
           {/* 进度条容器 */}
           <View style={styles.progressContainer}>
+            {/* 进度条背景 */}
             <View style={styles.progressBar}>
+              {/* 已完成的进度（绿色） */}
               <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+              {/* 未完成的进度（灰色） */}
+              <View style={styles.progressRemaining} />
             </View>
-            {/* 角色图标 */}
-            <View style={styles.characterIcon}>
-              <Text style={styles.characterEmoji}>🤗</Text>
+            
+            {/* 动画人物 */}
+            <Animated.View 
+              style={[
+                styles.characterContainer,
+                {
+                  left: characterPosition.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 200], // 根据进度条宽度调整
+                    extrapolate: 'clamp',
+                  }),
+                }
+              ]}
+            >
+              <Image
+                source={{ uri: 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/monsterwalk.webp' }}
+                style={styles.characterImage}
+                resizeMode="contain"
+              />
+            </Animated.View>
+            
+            {/* 关卡名称标签 */}
+            <View style={styles.levelNameContainer}>
+              <Text style={styles.levelNameText}>
+                {displayLevelName}!
+              </Text>
             </View>
           </View>
         </View>
         
-        <View style={styles.headerRight}>
-          {/* 蓝色书本图标 */}
-          <View style={styles.bookIcon}>
-            <Ionicons name="book" size={24} color="#2196F3" />
-          </View>
-          {/* 关卡名称显示区 */}
-          {displayLevelName && (
-            <Text style={styles.levelNameText} numberOfLines={1}>
-              {displayLevelName}
-            </Text>
-          )}
-        </View>
+        <View style={styles.headerRight} />
       </View>
 
       {/* 道具工具栏 - 确保在GameBoard之前渲染 */}
@@ -509,45 +544,75 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     position: 'relative',
+    height: 40,
+    marginHorizontal: 20,
   },
   progressBar: {
-    flex: 1,
-    height: 8,
+    position: 'absolute',
+    top: 15,
+    left: 30,
+    right: 30,
+    height: 10,
     backgroundColor: '#E0E0E0',
-    borderRadius: 4,
+    borderRadius: 5,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#333',
   },
   progressFill: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-    transition: 'width 0.3s ease-out', // 平滑动画效果
-  },
-  characterIcon: {
     position: 'absolute',
-    right: -12,
-    top: -8,
-    width: 24,
-    height: 24,
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#4CAF50',
+    borderRadius: 3,
+  },
+  progressRemaining: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#E0E0E0',
+  },
+  characterContainer: {
+    position: 'absolute',
+    top: -5,
+    width: 30,
+    height: 30,
+    zIndex: 10,
+  },
+  characterImage: {
+    width: '100%',
+    height: '100%',
+  },
+  levelNameContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#333',
+    shadowColor: '#FF5722',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  characterEmoji: {
-    fontSize: 20,
+  levelNameText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: 'bold',
+    textShadowColor: '#FF5722',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    maxWidth: 120,
-  },
-  bookIcon: {
-    marginRight: 8,
-  },
-  levelNameText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-    flex: 1,
+    width: 40,
   },
   bottomToolbar: {
     flexDirection: 'row',

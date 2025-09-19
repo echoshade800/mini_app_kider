@@ -310,9 +310,10 @@ const GameBoard = ({
           startRow: selection.startRow,
           startCol: selection.startCol,
           endRow,
-      console.log('🎯 Pan Move - Grid Position:', { endRow, endCol });
           endCol,
         });
+        
+        console.log('🎯 Pan Move - Grid Position:', { endRow, endCol });
         
         // Create set of currently hovered tile indices
         const newHoveredSet = new Set(currentSelectedTiles.map(tile => tile.index));
@@ -320,26 +321,15 @@ const GameBoard = ({
         // Scale up selected tiles (sum = 10) or normal scale (sum ≠ 10)
         const sum = currentSelectedTiles.reduce((acc, tile) => acc + tile.value, 0);
         const targetScale = sum === 10 ? 1.1 : 1.05;
-      console.log('🎯 Calculated Grid Position:', { startRow, startCol, cellWidth, cellHeight });
-      console.log('🎯 Grid Bounds Check:', { 
-        startRow, 
-        startCol, 
-        height, 
-        width,
-        inBounds: startRow >= 0 && startRow < height && startCol >= 0 && startCol < width 
-        console.log('🎯 Selected Tiles:', currentSelectedTiles.map(t => ({ row: t.row, col: t.col, value: t.value })));
-      });
         
         currentSelectedTiles.forEach(tile => {
-        const tileIndex = startRow * width + startCol;
-        const tileValue = tiles[tileIndex];
-        console.log('🎯 Selected Tile:', { startRow, startCol, tileIndex, tileValue });
-        console.log('🎯 Selection Sum:', sum);
-        
           if (!hoveredTiles.has(tile.index)) {
             scaleTile(tile.index, targetScale);
           }
         });
+        
+        console.log('🎯 Selected Tiles:', currentSelectedTiles.map(t => ({ row: t.row, col: t.col, value: t.value })));
+        console.log('🎯 Selection Sum:', sum);
         
         hoveredTiles.forEach(index => {
           if (!newHoveredSet.has(index)) {
@@ -349,7 +339,7 @@ const GameBoard = ({
         
         setHoveredTiles(newHoveredSet);
       } else {
-        console.log('❌ Touch outside grid bounds');
+        console.log('❌ Touch outside grid bounds:', { endRow, endCol, height, width });
       }
     },
 

@@ -308,19 +308,19 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     }
   }
   
+  // Generate remaining tiles to achieve target sum (multiple of 10)
+  const remainingTilesToPlace = Math.min(remainingCount, availablePositions.length);
+  const remainingTiles = [];
+  for (let i = 0; i < remainingTilesToPlace; i++) {
+    remainingTiles.push(0); // Placeholder
+  }
+  
   // Calculate current sum from placed pairs
   let currentSum = 0;
   for (let i = 0; i < finalTileCount; i++) {
     if (numberTiles[i] > 0) {
       currentSum += numberTiles[i];
     }
-  }
-  
-  // Generate remaining tiles to achieve target sum (multiple of 10)
-  const remainingTilesToPlace = Math.min(remainingCount, availablePositions.length);
-  const remainingTiles = [];
-  for (let i = 0; i < remainingTilesToPlace; i++) {
-    remainingTiles.push(0); // Placeholder
   }
   
   // Fill remaining tiles to achieve target sum (multiple of 10)
@@ -339,29 +339,37 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
       
       const targetRemainingSum = targetTotalSum - currentSum;
       
-      // 使用平均值填充
-      const avgValue = Math.max(1, Math.min(6, Math.round(targetRemainingSum / remainingTiles.length)));
-      
-      for (let i = 0; i < remainingTiles.length; i++) {
-        remainingTiles[i] = avgValue;
-      }
-      
-      // 微调以达到精确的目标总和
-      let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
-      let difference = targetRemainingSum - currentRemainingSum;
-      
-      let attempts = 0;
-      while (difference !== 0 && attempts < 50) {
-        for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
-          if (difference > 0 && remainingTiles[i] < 6) {
-            remainingTiles[i]++;
-            difference--;
-          } else if (difference < 0 && remainingTiles[i] > 1) {
-            remainingTiles[i]--;
-            difference++;
-          }
+      // 确保目标剩余总和是合理的
+      if (targetRemainingSum >= remainingTiles.length && targetRemainingSum <= remainingTiles.length * 6) {
+        // 使用平均值填充
+        const avgValue = Math.max(1, Math.min(6, Math.round(targetRemainingSum / remainingTiles.length)));
+        
+        for (let i = 0; i < remainingTiles.length; i++) {
+          remainingTiles[i] = avgValue;
         }
-        attempts++;
+        
+        // 微调以达到精确的目标总和
+        let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
+        let difference = targetRemainingSum - currentRemainingSum;
+        
+        let attempts = 0;
+        while (difference !== 0 && attempts < 50) {
+          for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+            if (difference > 0 && remainingTiles[i] < 6) {
+              remainingTiles[i]++;
+              difference--;
+            } else if (difference < 0 && remainingTiles[i] > 1) {
+              remainingTiles[i]--;
+              difference++;
+            }
+          }
+          attempts++;
+        }
+      } else {
+        // 如果目标剩余总和不合理，使用简单填充
+        for (let i = 0; i < remainingTiles.length; i++) {
+          remainingTiles[i] = Math.floor(random() * 6) + 1; // 1-6
+        }
       }
       
     } else if (isChallenge) {

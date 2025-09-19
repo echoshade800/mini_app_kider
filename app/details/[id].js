@@ -67,11 +67,13 @@ export default function LevelDetailScreen() {
       const currentMaxLevel = gameData?.maxLevel || 0;
       const newMaxLevel = Math.max(currentMaxLevel, level);
       const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
+      const newSplitItems = (gameData?.splitItems || 0) + 1;
       
       updateGameData({
         maxLevel: newMaxLevel,
         lastPlayedLevel: level,
         swapMasterItems: newSwapMasterItems,
+        splitItems: newSplitItems,
       });
       
       return; // 不更新棋盘，直接显示完成弹窗
@@ -103,7 +105,7 @@ export default function LevelDetailScreen() {
   };
 
   const handleTileClick = (row, col, value) => {
-    if (!itemMode || !board) return;
+    if (!itemMode || !board || value === 0) return;
 
     const index = row * board.width + col;
     
@@ -128,6 +130,37 @@ export default function LevelDetailScreen() {
         const newSwapMasterItems = Math.max(0, (gameData?.swapMasterItems || 0) - 1);
         updateGameData({ swapMasterItems: newSwapMasterItems });
       }
+    } else if (itemMode === 'fractalSplit') {
+      // Split the selected tile into two tiles with value 1 and (value-1)
+      if (value > 1) {
+        const newTiles = [...board.tiles];
+        
+        // Find an empty position for the new tile
+        let emptyIndex = -1;
+        for (let i = 0; i < newTiles.length; i++) {
+          if (newTiles[i] === 0) {
+            emptyIndex = i;
+            break;
+          }
+        }
+        
+        if (emptyIndex !== -1) {
+          // Split: original tile becomes 1, new tile gets (value-1)
+          newTiles[index] = 1;
+          newTiles[emptyIndex] = value - 1;
+          
+          setBoard(prev => ({ ...prev, tiles: newTiles }));
+          setItemMode(null);
+          
+          // Consume item
+          const newSplitItems = Math.max(0, (gameData?.splitItems || 0) - 1);
+          updateGameData({ splitItems: newSplitItems });
+        } else {
+          Alert.alert('No Space', 'No empty space available for splitting.');
+        }
+      } else {
+        Alert.alert('Cannot Split', 'Cannot split a tile with value 1.');
+      }
     }
   };
 
@@ -138,6 +171,16 @@ export default function LevelDetailScreen() {
     }
     
     setItemMode(itemMode === 'swapMaster' ? null : 'swapMaster');
+    setSelectedSwapTile(null);
+  };
+
+  const handleUseFractalSplit = () => {
+    if ((gameData?.splitItems || 0) <= 0) {
+      Alert.alert('No Items', 'You don\'t have any Split items.');
+      return;
+    }
+    
+    setItemMode(itemMode === 'fractalSplit' ? null : 'fractalSplit');
     setSelectedSwapTile(null);
   };
 
@@ -228,6 +271,39 @@ export default function LevelDetailScreen() {
             {gameData?.swapMasterItems || 0}
           </Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[
+            styles.toolButton,
+            itemMode === 'fractalSplit' && styles.toolButtonActive,
+            (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
+          ]}
+          onPress={handleUseFractalSplit}
+          disabled={(gameData?.splitItems || 0) <= 0}
+        >
+          <Ionicons 
+            name="cut" 
+            size={20} 
+            color={
+              (gameData?.splitItems || 0) <= 0 ? '#ccc' :
+              itemMode === 'fractalSplit' ? 'white' : '#666'
+            } 
+          />
+          <Text style={[
+            styles.toolButtonText,
+            itemMode === 'fractalSplit' && styles.toolButtonTextActive,
+            (gameData?.splitItems || 0) <= 0 && styles.toolButtonTextDisabled
+          ]}>
+            Split
+          </Text>
+          <Text style={[
+            styles.toolButtonCount,
+            itemMode === 'fractalSplit' && styles.toolButtonCountActive,
+            (gameData?.splitItems || 0) <= 0 && styles.toolButtonCountDisabled
+          ]}>
+            {gameData?.splitItems || 0}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Completion Modal */}
@@ -250,7 +326,7 @@ export default function LevelDetailScreen() {
             
             <View style={styles.rewardInfo}>
               <Ionicons name="gift" size={20} color="#4CAF50" />
-              <Text style={styles.rewardText}>+1 Change Item earned!</Text>
+              <Text style={styles.rewardText}>+1 Change & +1 Split Item earned!</Text>
             </View>
             
             <View style={styles.completionButtons}>

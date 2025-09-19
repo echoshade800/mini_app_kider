@@ -342,7 +342,7 @@ const GameBoard = ({
 
   // Handle tile click in item mode
   const handleTilePress = (row, col, value) => {
-    if (!itemMode || disabled || value === 0) return;
+    if (!itemMode || disabled) return;
     
     if (onTileClick) {
       onTileClick(row, col, value);

@@ -111,10 +111,10 @@ export const useGameStore = create((set, get) => ({
     try {
       // Reset game data
       const resetGameData = {
-        maxLevel: 0,
+        maxLevel: 1,
         maxScore: 0,
-        swapMasterItems: 0,
-        splitItems: 0,
+        swapMasterItems: 3,
+        splitItems: 2,
         lastPlayedLevel: 1,
       };
       

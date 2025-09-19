@@ -59,55 +59,10 @@ const GameBoard = ({
   console.log(`   棋盘尺寸: ${width} × ${height}`);
   console.log(`   非零方块数: ${tiles.filter(t => t > 0).length}`);
   console.log(`   布局配置存在: ${!!layoutConfig}`);
-  console.log(`   棋盘位置: (${layoutConfig.boardLeft}, ${layoutConfig.boardTop})`);
-  console.log(`   棋盘尺寸: ${layoutConfig.boardWidth} × ${layoutConfig.boardHeight}px`);
-  console.log(`   内容区位置: (${layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding}, ${layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding})`);
-  console.log(`   内容区尺寸: ${layoutConfig.contentWidth - layoutConfig.boardPadding * 2} × ${layoutConfig.contentHeight - layoutConfig.boardPadding * 2}px`);
+  console.log(`   有效游戏区域: ${layoutConfig.gameArea.width} × ${layoutConfig.gameArea.height}px`);
+  console.log(`   有效游戏区域位置: (${layoutConfig.gameArea.left}, ${layoutConfig.gameArea.top})`);
   console.log('🎮 ========================');
   
-  // 🔍 调试：验证实际渲染的方块位置
-  console.log('🔍 实际方块渲染位置验证:');
-  let renderedTileCount = 0;
-  for (let i = 0; i < tiles.length; i++) {
-    if (tiles[i] > 0) {
-      const row = Math.floor(i / width);
-      const col = i % width;
-      const tilePos = layoutConfig.getTilePosition(row, col);
-      if (tilePos && (row === 0 || row === height - 1) && (col === 0 || col === width - 1)) {
-        console.log(`   方块[${row},${col}](值=${tiles[i]}): 内容区相对位置(${tilePos.x}, ${tilePos.y}), 尺寸${tilePos.width}×${tilePos.height}`);
-        
-        // 🔍 关键调试：计算方块在屏幕上的绝对位置
-        const absoluteX = layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding + tilePos.x;
-        const absoluteY = layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding + tilePos.y;
-        console.log(`   方块[${row},${col}] 屏幕绝对位置: (${absoluteX}, ${absoluteY})`);
-        
-        // 🔍 验证方块是否在棋盘中心区域
-        const boardAbsoluteCenterX = layoutConfig.boardLeft + layoutConfig.boardWidth / 2;
-        const boardAbsoluteCenterY = layoutConfig.boardTop + layoutConfig.boardHeight / 2;
-        const tileCenterX = absoluteX + tilePos.width / 2;
-        const tileCenterY = absoluteY + tilePos.height / 2;
-        const distanceFromBoardCenter = Math.sqrt(
-          Math.pow(tileCenterX - boardAbsoluteCenterX, 2) + 
-          Math.pow(tileCenterY - boardAbsoluteCenterY, 2)
-        );
-        console.log(`   方块[${row},${col}] 距离棋盘中心: ${distanceFromBoardCenter.toFixed(2)}px`);
-      }
-      renderedTileCount++;
-    }
-  }
-  console.log(`   总共渲染方块数: ${renderedTileCount}`);
-  
-  // 🔍 关键调试：验证数字方块矩形是否居中
-  console.log('🔍 数字方块矩形居中验证:');
-  const contentAreaAbsoluteX = layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding;
-  const contentAreaAbsoluteY = layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding;
-  const contentAreaCenterX = contentAreaAbsoluteX + layoutConfig.contentWidth / 2 - layoutConfig.boardPadding;
-  const contentAreaCenterY = contentAreaAbsoluteY + layoutConfig.contentHeight / 2 - layoutConfig.boardPadding;
-  
-  console.log(`   内容区绝对中心: (${contentAreaCenterX}, ${contentAreaCenterY})`);
-  console.log(`   棋盘绝对中心: (${layoutConfig.boardLeft + layoutConfig.boardWidth / 2}, ${layoutConfig.boardTop + layoutConfig.boardHeight / 2})`);
-  
-  console.log('🔍 ========================');
 
   const initTileScale = (index) => {
     if (!tileScales.has(index)) {
@@ -289,13 +244,13 @@ const GameBoard = ({
       
       if (!isInsideBoard(pageX, pageY)) return;
       
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
+      const { gameArea, tileSize, tileGap } = layoutConfig;
 
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
+      const gameAreaLeft = gameArea.left;
+      const gameAreaTop = gameArea.top;
 
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
+      const relativeX = pageX - gameAreaLeft;
+      const relativeY = pageY - gameAreaTop;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -323,13 +278,13 @@ const GameBoard = ({
       if (!selection) return;
       
       const { pageX, pageY } = evt.nativeEvent;
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
+      const { gameArea, tileSize, tileGap } = layoutConfig;
 
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
+      const gameAreaLeft = gameArea.left;
+      const gameAreaTop = gameArea.top;
 
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
+      const relativeX = pageX - gameAreaLeft;
+      const relativeY = pageY - gameAreaTop;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -630,23 +585,23 @@ const GameBoard = ({
           ]}
           pointerEvents="auto"
         >
-          {/* 数字方块内容区 */}
+          {/* 数字方块游戏区域 */}
           <View
             {...panResponder.panHandlers}
             style={{
               position: 'absolute',
-              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              width: layoutConfig.tilesRectWidth,
-              height: layoutConfig.tilesRectHeight,
+              left: layoutConfig.gameArea.left - layoutConfig.boardLeft,
+              top: layoutConfig.gameArea.top - layoutConfig.boardTop,
+              width: layoutConfig.gameArea.width,
+              height: layoutConfig.gameArea.height,
             }}
             pointerEvents={itemMode ? "auto" : "auto"}
           >
-            {/* 🎯 数字方块容器 - 使用统一中心点精确定位 */}
+            {/* 🎯 数字方块容器 - 以有效游戏区域中心为坐标原点 */}
             <View
               style={{
-                width: layoutConfig.tilesRectWidth,
-                height: layoutConfig.tilesRectHeight,
+                width: layoutConfig.gameArea.width,
+                height: layoutConfig.gameArea.height,
                 position: 'relative',
               }}
             >

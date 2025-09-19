@@ -43,7 +43,7 @@ function getTileCount(level, isChallenge = false) {
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // 布局常量
-const MIN_TILE_SIZE = 28; // 最小方块尺寸
+const FIXED_TILE_SIZE = 34; // 固定方块尺寸
 const TILE_GAP = 4; // 方块间距
 const BOARD_PADDING = 5; // 棋盘内边距（方块矩形到木框的留白）
 const WOOD_FRAME_WIDTH = 8; // 木框厚度
@@ -110,18 +110,16 @@ export function computeGridRC(N, targetAspect = null) {
  * @param {number} cols - 列数
  * @param {number} gap - 方块间距
  * @param {number} padding - 内边距
- * @param {number} minTile - 最小方块尺寸
+ * @param {number} fixedTile - 固定方块尺寸
  * @returns {Object} 布局信息
  */
-export function computeTileSize(containerWidth, containerHeight, rows, cols, gap = TILE_GAP, padding = BOARD_PADDING, minTile = MIN_TILE_SIZE) {
+export function computeTileSize(containerWidth, containerHeight, rows, cols, gap = TILE_GAP, padding = BOARD_PADDING, fixedTile = FIXED_TILE_SIZE) {
   // 计算可用空间（减去木框厚度和内边距）
   const availableWidth = containerWidth - WOOD_FRAME_WIDTH * 2 - padding * 2;
   const availableHeight = containerHeight - WOOD_FRAME_WIDTH * 2 - padding * 2;
   
-  // 计算方块尺寸上限
-  const tileW = (availableWidth - (cols - 1) * gap) / cols;
-  const tileH = (availableHeight - (rows - 1) * gap) / rows;
-  const tileSize = Math.floor(Math.min(tileW, tileH));
+  // 使用固定方块尺寸
+  const tileSize = fixedTile;
   
   // 计算数字方块矩形的实际尺寸
   const tilesRectWidth = cols * tileSize + (cols - 1) * gap;
@@ -143,7 +141,7 @@ export function computeTileSize(containerWidth, containerHeight, rows, cols, gap
     boardHeight,
     contentWidth,
     contentHeight,
-    isValid: tileSize >= minTile,
+    isValid: true, // 固定尺寸总是有效
   };
 }
 
@@ -209,80 +207,17 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
   // 策略a: 尝试在有效区域内放大棋盘
   let layout = computeTileSize(gameArea.width, gameArea.height, rows, cols);
   
-  if (layout.isValid) {
-    // 计算棋盘在有效区域内的居中位置
-    const boardLeft = (gameArea.width - layout.boardWidth) / 2;
-    const boardTop = gameArea.top + (gameArea.height - layout.boardHeight) / 2;
-    
-    return {
-      ...layout,
-      rows,
-      cols,
-      boardLeft,
-      boardTop,
-      gameArea,
-    };
-  }
-  
-  // 策略b: 调整 (R, C) 比例
-  const alternatives = [];
-  for (let r = 1; r <= N; r++) {
-    const c = Math.ceil(N / r);
-    if (r * c >= N && (r !== rows || c !== cols)) {
-      const testLayout = computeTileSize(gameArea.width, gameArea.height, r, c);
-      if (testLayout.isValid) {
-        alternatives.push({ rows: r, cols: c, ...testLayout });
-      }
-    }
-  }
-  
-  if (alternatives.length > 0) {
-    // 选择方块尺寸最大的方案
-    const bestAlt = alternatives.reduce((best, current) => 
-      current.tileSize > best.tileSize ? current : best
-    );
-    
-    const boardLeft = (gameArea.width - bestAlt.boardWidth) / 2;
-    const boardTop = gameArea.top + (gameArea.height - bestAlt.boardHeight) / 2;
-    
-    return {
-      ...bestAlt,
-      boardLeft,
-      boardTop,
-      gameArea,
-    };
-  }
-  
-  // 策略c: 使用最小尺寸，允许N向上取整
-  const finalRows = Math.ceil(Math.sqrt(N));
-  const finalCols = Math.ceil(N / finalRows);
-  
-  // 强制使用最小尺寸
-  const forcedTileSize = MIN_TILE_SIZE;
-  const forcedTilesRectWidth = finalCols * forcedTileSize + (finalCols - 1) * TILE_GAP;
-  const forcedTilesRectHeight = finalRows * forcedTileSize + (finalRows - 1) * TILE_GAP;
-  const forcedContentWidth = forcedTilesRectWidth + 2 * BOARD_PADDING;
-  const forcedContentHeight = forcedTilesRectHeight + 2 * BOARD_PADDING;
-  const forcedBoardWidth = forcedContentWidth + WOOD_FRAME_WIDTH * 2;
-  const forcedBoardHeight = forcedContentHeight + WOOD_FRAME_WIDTH * 2;
-  
-  const boardLeft = (gameArea.width - forcedBoardWidth) / 2;
-  const boardTop = gameArea.top + (gameArea.height - forcedBoardHeight) / 2;
+  // 计算棋盘在有效区域内的居中位置
+  const boardLeft = (gameArea.width - layout.boardWidth) / 2;
+  const boardTop = gameArea.top + (gameArea.height - layout.boardHeight) / 2;
   
   return {
-    tileSize: forcedTileSize,
-    tilesRectWidth: forcedTilesRectWidth,
-    tilesRectHeight: forcedTilesRectHeight,
-    boardWidth: forcedBoardWidth,
-    boardHeight: forcedBoardHeight,
-    contentWidth: forcedContentWidth,
-    contentHeight: forcedContentHeight,
-    rows: finalRows,
-    cols: finalCols,
+    ...layout,
+    rows,
+    cols,
     boardLeft,
     boardTop,
     gameArea,
-    isValid: true,
   };
 }
 
@@ -348,6 +283,6 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
     tileGap: TILE_GAP,
     boardPadding: BOARD_PADDING,
     woodFrameWidth: WOOD_FRAME_WIDTH,
-    minTileSize: MIN_TILE_SIZE,
+    fixedTileSize: FIXED_TILE_SIZE,
   };
 }

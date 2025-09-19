@@ -591,7 +591,7 @@ const GameBoard = ({
       backgroundColor: isSuccess ? 'rgba(24, 197, 110, 0.3)' : 'rgba(33, 150, 243, 0.2)',
       opacity: selectionOpacity,
       borderRadius: 8,
-      borderWidth: 3,
+      borderWidth: 2,
       borderColor: isSuccess ? '#18C56E' : '#2F80ED',
       shadowColor: isSuccess ? '#18C56E' : '#2F80ED',
       shadowOffset: { width: 0, height: 0 },
@@ -663,6 +663,9 @@ const GameBoard = ({
     const swapAnim = swapAnimations ? swapAnimations.get(index) : null;
     const fractalAnim = fractalAnimations ? fractalAnimations.get(index) : null;
     const calibrationAnim = calibrationAnimations ? calibrationAnimations.get(index) : null;
+    
+    // Check if this tile is in the current selection
+    const isInSelection = hoveredTiles.has(index);
     
     const transforms = [
       { scale: tileScale },
@@ -742,6 +745,7 @@ const GameBoard = ({
             styles.tileText,
             { 
               fontSize: Math.max(12, tilePos.width * 0.5),
+              fontWeight: isInSelection ? 'bold' : 'normal',
             }
           ]}>
             {value}
@@ -904,7 +908,7 @@ const styles = StyleSheet.create({
     borderColor: '#9C27B0',
   },
   tileText: {
-    fontWeight: 'bold',
+    fontWeight: 'normal',
     color: '#111',
     textAlign: 'center',
   },

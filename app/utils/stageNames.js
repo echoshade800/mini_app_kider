@@ -249,4 +249,3 @@ export function getStageGroup(level) {
     }
   }
   return level > 200 ? 'Beyond Reality' : 'Unknown';
-}

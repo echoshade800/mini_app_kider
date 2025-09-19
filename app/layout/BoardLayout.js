@@ -308,52 +308,70 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
   console.log('🎯 棋盘格中心点确定:');
   console.log(`   内容区尺寸: ${contentWidth} × ${contentHeight}px`);
   console.log(`   棋盘格中心点: (${boardCenterX.toFixed(2)}, ${boardCenterY.toFixed(2)})`);
-  console.log(`   数字方块矩形尺寸: ${tilesRectWidth} × ${tilesRectHeight}px`);
+  
+  // 🎯 重新计算实际的数字方块矩形尺寸（确保与实际布局一致）
+  const actualTilesRectWidth = cols * tileSize + (cols - 1) * gap;
+  const actualTilesRectHeight = rows * tileSize + (rows - 1) * gap;
+  
+  console.log(`   传入的数字方块矩形尺寸: ${tilesRectWidth} × ${tilesRectHeight}px`);
+  console.log(`   实际计算的矩形尺寸: ${actualTilesRectWidth} × ${actualTilesRectHeight}px`);
   console.log(`   棋盘格规格: ${rows}行 × ${cols}列，方块尺寸: ${tileSize}px`);
+  
+  // 🎯 使用实际计算的尺寸进行居中
+  const tilesRectCenterX = actualTilesRectWidth / 2;
+  const tilesRectCenterY = actualTilesRectHeight / 2;
+  
+  // 🎯 计算数字方块矩形的起始位置（左上角）
+  const tilesRectStartX = boardCenterX - tilesRectCenterX;
+  const tilesRectStartY = boardCenterY - tilesRectCenterY;
+  
+  // 🎯 验证居中效果
+  const actualCenterX = tilesRectStartX + tilesRectCenterX;
+  const actualCenterY = tilesRectStartY + tilesRectCenterY;
+  const centerOffsetX = Math.abs(actualCenterX - boardCenterX);
+  const centerOffsetY = Math.abs(actualCenterY - boardCenterY);
+  
+  console.log('🎯 中心点对齐验证:');
+  console.log(`   棋盘格中心点: (${boardCenterX.toFixed(2)}, ${boardCenterY.toFixed(2)})`);
+  console.log(`   数字方块矩形起始点: (${tilesRectStartX.toFixed(2)}, ${tilesRectStartY.toFixed(2)})`);
+  console.log(`   数字方块矩形实际中心: (${actualCenterX.toFixed(2)}, ${actualCenterY.toFixed(2)})`);
+  console.log(`   中心点偏移: X=${centerOffsetX.toFixed(4)}px, Y=${centerOffsetY.toFixed(4)}px`);
+  
+  if (centerOffsetX < 0.01 && centerOffsetY < 0.01) {
+    console.log('   ✅ 中心点完美对齐！');
+  } else {
+    console.log('   ❌ 中心点未对齐，需要调整');
+  }
+  
+  // 🎯 留白分布检查
+  const leftMargin = tilesRectStartX;
+  const rightMargin = contentWidth - tilesRectStartX - actualTilesRectWidth;
+  const topMargin = tilesRectStartY;
+  const bottomMargin = contentHeight - tilesRectStartY - actualTilesRectHeight;
+  
+  console.log('📏 留白分布:');
+  console.log(`   左边距: ${leftMargin.toFixed(2)}px`);
+  console.log(`   右边距: ${rightMargin.toFixed(2)}px`);
+  console.log(`   上边距: ${topMargin.toFixed(2)}px`);
+  console.log(`   下边距: ${bottomMargin.toFixed(2)}px`);
+  console.log(`   水平对称性: ${Math.abs(leftMargin - rightMargin).toFixed(4)}px 差异`);
+  console.log(`   垂直对称性: ${Math.abs(topMargin - bottomMargin).toFixed(4)}px 差异`);
   
   return function getTilePosition(row, col) {
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
       return null;
     }
     
-    // 🎯 第二步：计算当前方块相对于数字方块矩形中心的偏移
-    // 数字方块矩形的中心位置（在矩形坐标系中）
-    const rectCenterCol = (cols - 1) / 2;  // 矩形中心列索引
-    const rectCenterRow = (rows - 1) / 2;  // 矩形中心行索引
-    
-    // 当前方块相对于矩形中心的偏移（以方块为单位）
-    const colOffsetFromCenter = col - rectCenterCol;
-    const rowOffsetFromCenter = row - rectCenterRow;
-    
-    // 转换为像素偏移
-    const pixelOffsetX = colOffsetFromCenter * (tileSize + gap);
-    const pixelOffsetY = rowOffsetFromCenter * (tileSize + gap);
-    
-    // 🎯 第三步：基于棋盘格中心点计算最终位置
-    // 方块左上角位置 = 棋盘格中心点 + 像素偏移 - 方块尺寸的一半
-    const x = boardCenterX + pixelOffsetX - tileSize / 2;
-    const y = boardCenterY + pixelOffsetY - tileSize / 2;
+    // 🎯 基于矩形起始位置计算方块位置
+    const x = tilesRectStartX + col * (tileSize + gap);
+    const y = tilesRectStartY + row * (tileSize + gap);
     
     // 🎯 调试信息：详细的位置计算过程（只在关键方块时输出）
-    if ((row === 0 && col === 0) || (row === Math.floor(rectCenterRow) && col === Math.floor(rectCenterCol)) || (row === rows - 1 && col === cols - 1)) {
+    if ((row === 0 && col === 0) || (row === rows - 1 && col === cols - 1)) {
       console.log(`🎯 方块 [${row},${col}] 位置计算:`);
-      console.log(`   矩形中心位置: (${rectCenterCol.toFixed(2)}, ${rectCenterRow.toFixed(2)})`);
-      console.log(`   相对中心偏移: (${colOffsetFromCenter.toFixed(2)}, ${rowOffsetFromCenter.toFixed(2)}) 方块单位`);
-      console.log(`   像素偏移: (${pixelOffsetX.toFixed(2)}, ${pixelOffsetY.toFixed(2)})px`);
+      console.log(`   矩形起始位置: (${tilesRectStartX.toFixed(2)}, ${tilesRectStartY.toFixed(2)})`);
+      console.log(`   方块相对位置: (${col * (tileSize + gap)}, ${row * (tileSize + gap)})`);
       console.log(`   最终位置: (${x.toFixed(2)}, ${y.toFixed(2)})px`);
-      
-      // 验证中心方块是否真的在棋盘格中心
-      if (Math.abs(row - rectCenterRow) < 0.1 && Math.abs(col - rectCenterCol) < 0.1) {
-        const centerTileX = x + tileSize / 2;
-        const centerTileY = y + tileSize / 2;
-        const centerOffsetX = Math.abs(centerTileX - boardCenterX);
-        const centerOffsetY = Math.abs(centerTileY - boardCenterY);
-        console.log(`   🎯 中心方块验证: 方块中心(${centerTileX.toFixed(2)}, ${centerTileY.toFixed(2)}) vs 棋盘中心(${boardCenterX.toFixed(2)}, ${boardCenterY.toFixed(2)})`);
-        console.log(`   🎯 中心偏移: X=${centerOffsetX.toFixed(4)}px, Y=${centerOffsetY.toFixed(4)}px`);
-        if (centerOffsetX < 0.01 && centerOffsetY < 0.01) {
-          console.log('   ✅ 中心方块完美对齐棋盘格中心！');
-        }
-      }
     }
     
     return {

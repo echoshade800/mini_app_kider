@@ -40,11 +40,23 @@ const GameBoard = ({
   const [calibrationAttempts, setCalibrationAttempts] = useState(0);
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [calibrationAnimations, setCalibrationAnimations] = useState(new Map());
+  const [hasInitialCheck, setHasInitialCheck] = useState(false);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef(new Map()).current;
+
+  // 初始检查：游戏开始时检查是否有可消除组合
+  useEffect(() => {
+    if (!hasInitialCheck && tiles && width && height && layoutConfig) {
+      setHasInitialCheck(true);
+      // 延迟检查，确保组件完全渲染
+      setTimeout(() => {
+        checkForValidCombinations();
+      }, 500);
+    }
+  }, [tiles, width, height, layoutConfig, hasInitialCheck]);
 
   // 如果没有布局配置，显示加载状态
   if (!layoutConfig) {
@@ -774,15 +786,6 @@ const GameBoard = ({
               return renderTile(value, row, col);
             })}
             
-            {/* 校准状态提示 */}
-            {isCalibrating && (
-              <View style={styles.calibrationOverlay}>
-                <Text style={styles.calibrationText}>
-                  Calibrating... ({calibrationAttempts}/3)
-                </Text>
-              </View>
-            )}
-            
             {/* Selection overlay */}
             {selectionStyle && (
               <Animated.View style={selectionStyle} />
@@ -924,27 +927,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
-  },
-  calibrationOverlay: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(255, 152, 0, 0.9)',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  calibrationText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 

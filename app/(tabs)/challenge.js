@@ -61,6 +61,7 @@ export default function ChallengeScreen() {
   const [board, setBoard] = useState(null);
   const [showRescueModal, setShowRescueModal] = useState(false);
   const [reshuffleCount, setReshuffleCount] = useState(0);
+  const [hasInitialCheck, setHasInitialCheck] = useState(false);
   
   // Refs
   const timerRef = useRef(null);
@@ -97,6 +98,7 @@ export default function ChallengeScreen() {
   const generateNewBoard = () => {
     const newBoard = generateBoard(100, true, true); // 挑战模式：高数量方块
     setBoard(newBoard);
+    setHasInitialCheck(false); // 重置初始检查状态
   };
 
   const handleStartGame = () => {

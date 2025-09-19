@@ -38,7 +38,7 @@ export default function LevelDetailScreen() {
   const [fractalAnimations, setFractalAnimations] = useState(new Map());
   const [reshuffleCount, setReshuffleCount] = useState(0);
 
-  // Initialize board
+  // 重置初始检查状态当关卡改变时
   useEffect(() => {
     if (level && !isNaN(level)) {
       const newBoard = generateBoard(level);

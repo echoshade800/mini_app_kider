@@ -16,7 +16,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { hasValidCombinations } from '../lib/gameLogic';
 import RescueModal from './RescueModal';
-import { computeLayout } from '../layout/layoutEngine';
+import { computeLayout } from '../lib/layoutEngine';
 
 const R = (v) => PixelRatio.roundToNearestPixel(v);
 

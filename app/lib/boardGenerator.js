@@ -4,7 +4,7 @@
  * Features: 只负责数字生成，不涉及布局计算
  */
 
-import { getBoardLayoutConfig } from '../layout/BoardLayout';
+import { getBoardLayoutConfig } from './BoardLayout';
 
 // Deterministic random number generator for consistent board generation
 function seededRandom(seed) {

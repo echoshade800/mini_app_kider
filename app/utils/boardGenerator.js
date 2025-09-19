@@ -26,31 +26,32 @@ function getTileCount(level, isChallenge = false) {
     return 200; // 固定高数量
   }
   
-  // 关卡模式：渐进式增长
+  // 关卡模式：前几关保证可完全消除，后续渐进式增长
   if (level >= 1 && level <= 10) {
-    return Math.floor(12 + level * 2); // 14-32个方块
+    // 前10关：使用较少方块，确保可完全消除
+    return Math.floor(8 + level * 1.5); // 9.5-23个方块，向下取整为9-22个
   }
   if (level >= 11 && level <= 20) {
-    return Math.floor(30 + (level - 10) * 3); // 33-60个方块
+    return Math.floor(25 + (level - 10) * 2.5); // 27.5-50个方块
   }
   if (level >= 21 && level <= 30) {
-    return Math.floor(60 + (level - 20) * 4); // 64-100个方块
+    return Math.floor(50 + (level - 20) * 3); // 53-80个方块
   }
   if (level >= 31 && level <= 50) {
-    return Math.floor(100 + (level - 30) * 3); // 103-160个方块
+    return Math.floor(80 + (level - 30) * 2.5); // 82.5-130个方块
   }
   if (level >= 51 && level <= 80) {
-    return Math.floor(160 + (level - 50) * 2); // 162-220个方块
+    return Math.floor(130 + (level - 50) * 2); // 132-190个方块
   }
   if (level >= 81 && level <= 120) {
-    return Math.floor(220 + (level - 80) * 1.5); // 221-280个方块
+    return Math.floor(190 + (level - 80) * 1.5); // 191.5-250个方块
   }
   if (level >= 121 && level <= 200) {
-    return Math.floor(280 + (level - 120) * 1); // 281-360个方块
+    return Math.floor(250 + (level - 120) * 1); // 251-330个方块
   }
   
   // 200关以后继续增长
-  return Math.floor(360 + (level - 200) * 0.5);
+  return Math.floor(330 + (level - 200) * 0.5);
 }
 
 // Get number distribution strategy based on level
@@ -64,11 +65,30 @@ function getNumberDistribution(level) {
     };
   }
   
+  // 前5关：极简分布，主要是互补数字
+  if (level <= 5) {
+    return {
+      smallNumbers: 0.8,  // 80% 1-3的比例，主要是1,2,3
+      mediumNumbers: 0.2, // 20% 4-6的比例，主要是4,5,6  
+      largeNumbers: 0.0   // 0% 7-9的比例，避免复杂组合
+    };
+  }
+  
+  // 6-15关：逐步增加复杂度
+  if (level <= 15) {
+    return {
+      smallNumbers: 0.7,  // 70% 1-3的比例
+      mediumNumbers: 0.25, // 25% 4-6的比例
+      largeNumbers: 0.05   // 5% 7-9的比例
+    };
+  }
+  
+  // 16-30关：标准简单分布
   if (level <= 30) {
     return {
-      smallNumbers: 0.6,  // 1-3的比例
-      mediumNumbers: 0.3, // 4-6的比例
-      largeNumbers: 0.1   // 7-9的比例
+      smallNumbers: 0.6,  // 60% 1-3的比例
+      mediumNumbers: 0.3, // 30% 4-6的比例
+      largeNumbers: 0.1   // 10% 7-9的比例
     };
   }
   
@@ -149,13 +169,21 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
   ];
   
-  // Determine how many target pairs to place
-  let targetPairRatio = 0.6; // Easy levels
-  if (level > 40) {
-    targetPairRatio = 0.4; // Medium levels
-  }
-  if (level > 90) {
-    targetPairRatio = 0.25; // Hard levels
+  // 确定目标配对的比例 - 前几关保证高比例的有效配对
+  let targetPairRatio = 0.9; // 前几关：90%都是有效配对
+  
+  if (level <= 5) {
+    targetPairRatio = 0.95; // 前5关：95%有效配对，几乎可以完全消除
+  } else if (level <= 10) {
+    targetPairRatio = 0.85; // 6-10关：85%有效配对
+  } else if (level <= 20) {
+    targetPairRatio = 0.7;  // 11-20关：70%有效配对
+  } else if (level <= 40) {
+    targetPairRatio = 0.6;  // 21-40关：60%有效配对
+  } else if (level <= 80) {
+    targetPairRatio = 0.4;  // 41-80关：40%有效配对
+  } else {
+    targetPairRatio = 0.25; // 81+关：25%有效配对，高难度
   }
   
   const pairCount = Math.floor((finalTileCount / 2) * targetPairRatio);
@@ -211,17 +239,32 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   let targetRemainingSum = 0;
   
   if (remainingTilesToPlace > 0) {
-    // Find the next multiple of 10 that's achievable
-    const minPossibleSum = currentSum + remainingTilesToPlace; // All 1s
-    const maxPossibleSum = currentSum + remainingTilesToPlace * 9; // All 9s
-    
-    // Find the closest multiple of 10 within range
-    let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
-    if (targetTotalSum > maxPossibleSum) {
-      targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
+    // 前几关：优先确保总和是10的倍数，便于完全消除
+    if (level <= 10) {
+      // 简单策略：直接计算需要的总和
+      const minPossibleSum = currentSum + remainingTilesToPlace; // All 1s
+      const maxPossibleSum = currentSum + remainingTilesToPlace * 6; // 限制最大为6，避免过大数字
+      
+      // 找到范围内最接近的10的倍数
+      let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
+      if (targetTotalSum > maxPossibleSum) {
+        targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
+      }
+      
+      targetRemainingSum = targetTotalSum - currentSum;
+    } else {
+      // 后续关卡：使用原有逻辑
+      const minPossibleSum = currentSum + remainingTilesToPlace; // All 1s
+      const maxPossibleSum = currentSum + remainingTilesToPlace * 9; // All 9s
+      
+      // Find the closest multiple of 10 within range
+      let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
+      if (targetTotalSum > maxPossibleSum) {
+        targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
+      }
+      
+      targetRemainingSum = targetTotalSum - currentSum;
     }
-    
-    targetRemainingSum = targetTotalSum - currentSum;
   }
   
   // Generate remaining tiles to achieve target sum
@@ -232,8 +275,51 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   // Fill remaining tiles to achieve target sum
   if (remainingTiles.length > 0) {
-    // 挑战模式使用特殊的数字生成策略
-    if (isChallenge) {
+    if (level <= 10) {
+      // 前10关：使用简单数字，主要是1-6
+      const avgValue = Math.max(1, Math.min(6, Math.round(targetRemainingSum / remainingTiles.length)));
+      
+      for (let i = 0; i < remainingTiles.length; i++) {
+        remainingTiles[i] = avgValue;
+      }
+      
+      // 微调以达到精确的目标总和
+      let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
+      let difference = targetRemainingSum - currentRemainingSum;
+      
+      let attempts = 0;
+      while (difference !== 0 && attempts < 50) {
+        for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+          if (difference > 0 && remainingTiles[i] < 6) { // 限制最大为6
+            remainingTiles[i]++;
+            difference--;
+          } else if (difference < 0 && remainingTiles[i] > 1) {
+            remainingTiles[i]--;
+            difference++;
+          }
+        }
+        attempts++;
+      }
+      
+      // 添加少量随机性，但保持总和
+      for (let i = 0; i < remainingTiles.length - 1; i++) {
+        if (random() < 0.2) { // 20%概率进行调整
+          const maxIncrease = Math.min(6 - remainingTiles[i], remainingTiles[i + 1] - 1);
+          const maxDecrease = Math.min(remainingTiles[i] - 1, 6 - remainingTiles[i + 1]);
+          
+          if (maxIncrease > 0 && random() < 0.5) {
+            const change = Math.floor(random() * maxIncrease) + 1;
+            remainingTiles[i] += change;
+            remainingTiles[i + 1] -= change;
+          } else if (maxDecrease > 0) {
+            const change = Math.floor(random() * maxDecrease) + 1;
+            remainingTiles[i] -= change;
+            remainingTiles[i + 1] += change;
+          }
+        }
+      }
+    } else if (isChallenge) {
+      // 挑战模式使用特殊的数字生成策略
       // 根据分布比例生成数字
       const smallCount = Math.floor(remainingTiles.length * distribution.smallNumbers);
       const mediumCount = Math.floor(remainingTiles.length * distribution.mediumNumbers);
@@ -277,49 +363,49 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
       }
     } else {
       // 关卡模式保持原有逻辑
-    // Start with average distribution
-    const avgValue = Math.max(1, Math.min(9, Math.round(targetRemainingSum / remainingTiles.length)));
-    
-    for (let i = 0; i < remainingTiles.length; i++) {
-      remainingTiles[i] = avgValue;
-    }
-    
-    // Adjust to match exact target sum
-    let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
-    let difference = targetRemainingSum - currentRemainingSum;
-    
-    // Distribute the difference
-    let attempts = 0;
-    while (difference !== 0 && attempts < 100) {
-      for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
-        if (difference > 0 && remainingTiles[i] < 9) {
-          remainingTiles[i]++;
-          difference--;
-        } else if (difference < 0 && remainingTiles[i] > 1) {
-          remainingTiles[i]--;
-          difference++;
+      // Start with average distribution
+      const avgValue = Math.max(1, Math.min(9, Math.round(targetRemainingSum / remainingTiles.length)));
+      
+      for (let i = 0; i < remainingTiles.length; i++) {
+        remainingTiles[i] = avgValue;
+      }
+      
+      // Adjust to match exact target sum
+      let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
+      let difference = targetRemainingSum - currentRemainingSum;
+      
+      // Distribute the difference
+      let attempts = 0;
+      while (difference !== 0 && attempts < 100) {
+        for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+          if (difference > 0 && remainingTiles[i] < 9) {
+            remainingTiles[i]++;
+            difference--;
+          } else if (difference < 0 && remainingTiles[i] > 1) {
+            remainingTiles[i]--;
+            difference++;
+          }
+        }
+        attempts++;
+      }
+      
+      // Apply some randomization while maintaining sum
+      for (let i = 0; i < remainingTiles.length - 1; i++) {
+        if (random() < 0.3) { // 30% chance to randomize
+          const maxIncrease = Math.min(9 - remainingTiles[i], remainingTiles[i + 1] - 1);
+          const maxDecrease = Math.min(remainingTiles[i] - 1, 9 - remainingTiles[i + 1]);
+          
+          if (maxIncrease > 0 && random() < 0.5) {
+            const change = Math.floor(random() * maxIncrease) + 1;
+            remainingTiles[i] += change;
+            remainingTiles[i + 1] -= change;
+          } else if (maxDecrease > 0) {
+            const change = Math.floor(random() * maxDecrease) + 1;
+            remainingTiles[i] -= change;
+            remainingTiles[i + 1] += change;
+          }
         }
       }
-      attempts++;
-    }
-    
-    // Apply some randomization while maintaining sum
-    for (let i = 0; i < remainingTiles.length - 1; i++) {
-      if (random() < 0.3) { // 30% chance to randomize
-        const maxIncrease = Math.min(9 - remainingTiles[i], remainingTiles[i + 1] - 1);
-        const maxDecrease = Math.min(remainingTiles[i] - 1, 9 - remainingTiles[i + 1]);
-        
-        if (maxIncrease > 0 && random() < 0.5) {
-          const change = Math.floor(random() * maxIncrease) + 1;
-          remainingTiles[i] += change;
-          remainingTiles[i + 1] -= change;
-        } else if (maxDecrease > 0) {
-          const change = Math.floor(random() * maxDecrease) + 1;
-          remainingTiles[i] -= change;
-          remainingTiles[i + 1] += change;
-        }
-      }
-    }
     }
   }
   

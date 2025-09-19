@@ -234,12 +234,15 @@ export default function LevelDetailScreen() {
         <View style={styles.headerCenter}>
           {/* 进度条容器 */}
           <View style={styles.progressContainer}>
+            {/* 角色图标 - 位置在进度条左侧起始位置 */}
+            <View style={styles.characterIcon}>
+              <View style={styles.characterHead}>
+                <Text style={styles.characterFace}>😊</Text>
+              </View>
+              <View style={styles.characterBody} />
+            </View>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: '70%' }]} />
-            </View>
-            {/* 角色图标 */}
-            <View style={styles.characterIcon}>
-              <Text style={styles.characterEmoji}>🤗</Text>
             </View>
           </View>
         </View>
@@ -449,6 +452,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
+  characterIcon: {
+    position: 'absolute',
+    left: -12,
+    top: -8,
+    zIndex: 2,
+    alignItems: 'center',
+  },
+  characterHead: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFD700',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FFA500',
+  },
+  characterFace: {
+    fontSize: 12,
+    lineHeight: 14,
+  },
+  characterBody: {
+    width: 16,
+    height: 12,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 8,
+    marginTop: -2,
+    borderWidth: 1,
+    borderColor: '#FF4444',
+  },
   progressBar: {
     flex: 1,
     height: 8,
@@ -460,18 +493,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#4CAF50',
     borderRadius: 4,
-  },
-  characterIcon: {
-    position: 'absolute',
-    right: -12,
-    top: -8,
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  characterEmoji: {
-    fontSize: 20,
   },
   headerRight: {
     flexDirection: 'row',

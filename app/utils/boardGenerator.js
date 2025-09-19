@@ -181,31 +181,98 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   ];
   
   // 确定目标配对的比例 - 前几关保证高比例的有效配对
-  let targetPairRatio = 0.9; // 前几关：90%都是有效配对
+  let targetPairRatio = 0.85; // 默认85%有效配对
+  let adjacentPairRatio = 0.7; // 默认70%的配对是相邻的
   
   if (level <= 5) {
-    targetPairRatio = 0.95; // 前5关：95%有效配对，几乎可以完全消除
+    targetPairRatio = 0.95; // 前5关：95%有效配对
+    adjacentPairRatio = 0.9; // 90%的配对是相邻的，非常容易找到
   } else if (level <= 10) {
     targetPairRatio = 0.85; // 6-10关：85%有效配对
+    adjacentPairRatio = 0.8; // 80%的配对是相邻的
   } else if (level <= 20) {
-    targetPairRatio = 0.7;  // 11-20关：70%有效配对
+    targetPairRatio = 0.75; // 11-20关：75%有效配对
+    adjacentPairRatio = 0.7; // 70%的配对是相邻的
   } else if (level <= 40) {
-    targetPairRatio = 0.6;  // 21-40关：60%有效配对
+    targetPairRatio = 0.65; // 21-40关：65%有效配对
+    adjacentPairRatio = 0.6; // 60%的配对是相邻的
   } else if (level <= 50) {
-    targetPairRatio = 0.5;  // 41-50关：50%有效配对
+    targetPairRatio = 0.55; // 41-50关：55%有效配对
+    adjacentPairRatio = 0.5; // 50%的配对是相邻的
   } else if (level <= 100) {
-    targetPairRatio = 0.3;  // 51-100关：30%有效配对，需要更大框
+    targetPairRatio = 0.45; // 51-100关：45%有效配对
+    adjacentPairRatio = 0.4; // 40%的配对是相邻的
   } else if (level <= 150) {
-    targetPairRatio = 0.2;  // 101-150关：20%有效配对，需要很大框
+    targetPairRatio = 0.35; // 101-150关：35%有效配对
+    adjacentPairRatio = 0.3; // 30%的配对是相邻的
   } else {
-    targetPairRatio = 0.1;  // 151+关：10%有效配对，需要极大框
+    targetPairRatio = 0.3;  // 151+关：30%有效配对，需要大框
+    adjacentPairRatio = 0.25; // 25%的配对是相邻的，最低不低于25%
   }
   
   const pairCount = Math.floor((finalTileCount / 2) * targetPairRatio);
+  const adjacentPairCount = Math.floor(pairCount * adjacentPairRatio);
   const placedPositions = new Set();
   let pairsPlaced = 0;
   
-  // Place target pairs
+  // 首先放置相邻的目标配对（容易找到的）
+  let adjacentPairsPlaced = 0;
+  while (adjacentPairsPlaced < adjacentPairCount && pairsPlaced < pairCount) {
+    const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
+    const [val1, val2] = pairType;
+    
+    // 寻找相邻位置
+    let attempts = 0;
+    let placed = false;
+    
+    while (attempts < 100 && !placed) {
+      const pos1 = Math.floor(random() * finalTileCount);
+      const row1 = Math.floor(pos1 / maxTileCols);
+      const col1 = pos1 % maxTileCols;
+      
+      if (placedPositions.has(pos1)) {
+        attempts++;
+        continue;
+      }
+      
+      // 尝试四个相邻方向：右、下、左、上
+      const directions = [
+        [0, 1],  // 右
+        [1, 0],  // 下
+        [0, -1], // 左
+        [-1, 0]  // 上
+      ];
+      
+      for (const [dr, dc] of directions) {
+        const row2 = row1 + dr;
+        const col2 = col1 + dc;
+        
+        if (row2 >= 0 && row2 < maxTileRows && col2 >= 0 && col2 < maxTileCols) {
+          const pos2 = row2 * maxTileCols + col2;
+          
+          if (!placedPositions.has(pos2)) {
+            numberTiles[pos1] = val1;
+            numberTiles[pos2] = val2;
+            placedPositions.add(pos1);
+            placedPositions.add(pos2);
+            adjacentPairsPlaced++;
+            pairsPlaced++;
+            placed = true;
+            break;
+          }
+        }
+      }
+      
+      attempts++;
+    }
+    
+    if (!placed) {
+      // 如果找不到相邻位置，跳出循环
+      break;
+    }
+  }
+  
+  // 然后放置剩余的非相邻目标配对
   while (pairsPlaced < pairCount) {
     const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
     const [val1, val2] = pairType;

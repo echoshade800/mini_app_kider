@@ -256,13 +256,13 @@ const GameBoard = ({
   // 检查是否有可消除的组合，如果没有则进行校准
   const checkForValidCombinations = async () => {
     console.log('🔍 [CALIBRATION] checkForValidCombinations called');
+    
+    if (!tiles || !width || !height) return;
       console.log('❌ [CALIBRATION] Missing required data:', { 
         hasTiles: !!tiles, 
         width, 
         height 
       });
-    
-    if (!tiles || !width || !height) return;
     
     console.log('🔍 [CALIBRATION] Checking for valid combinations...');
     console.log('🔍 [CALIBRATION] Board state:', {
@@ -324,6 +324,7 @@ const GameBoard = ({
     // 生成新的排列（只重排数字，位置保持不变）
     const newTiles = reshuffleBoard(tiles, width, height);
     console.log('🔄 [CALIBRATION] Generated new tiles arrangement');
+    console.log('🔄 [CALIBRATION] New tiles preview:', newTiles.slice(0, Math.min(20, newTiles.length)));
     
     const newNonZeroTiles = [];
     for (let i = 0; i < newTiles.length; i++) {
@@ -353,6 +354,8 @@ const GameBoard = ({
   const createReshuffleAnimations = (oldTiles, newTiles, newTilesData) => {
     return new Promise((resolve) => {
       console.log(`🎬 [CALIBRATION] Creating reshuffle animation for ${oldTiles.length} tiles`);
+      console.log('🎬 [CALIBRATION] Old tiles positions:', oldTiles.map(t => ({ index: t.index, value: t.value })));
+      console.log('🎬 [CALIBRATION] New tiles positions:', newTiles.map(t => ({ index: t.index, value: t.value })));
       
       const animations = new Map();
       const animationPromises = [];
@@ -366,6 +369,8 @@ const GameBoard = ({
             // 计算移动距离
             const deltaX = newTile.targetPos.x - oldTile.currentPos.x;
             const deltaY = newTile.targetPos.y - oldTile.currentPos.y;
+            
+            console.log(`🎬 [CALIBRATION] Tile ${index}: deltaX=${deltaX}, deltaY=${deltaY}`);
             
             // 只有位置发生变化才创建动画
             if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
@@ -396,6 +401,8 @@ const GameBoard = ({
               ]);
               
               animationPromises.push(animation);
+            } else {
+              console.log(`🎬 [CALIBRATION] Tile ${index}: No movement needed (deltaX=${deltaX}, deltaY=${deltaY})`);
             }
           }
         }

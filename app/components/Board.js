@@ -23,7 +23,8 @@ const Board = ({
   onTileClick = null,
   selectedSwapTile = null,
   settings = {},
-  headerHeight = 120
+  headerHeight = 120,
+  layoutConfig = null
 }) => {
   const N = Math.max(width, height); // Use larger dimension for square board
   const { boardOuter, boardInner, cellSize, fontSize, slack, constants } = useBoardSizing(N, headerHeight);
@@ -38,8 +39,8 @@ const Board = ({
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef(new Map()).current;
 
-  // Early return if sizing not ready
-  if (!cellSize || !boardOuter) {
+  // Early return if sizing not ready or layoutConfig missing
+  if (!cellSize || !boardOuter || !layoutConfig) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>

@@ -332,6 +332,7 @@ export default function LevelDetailScreen() {
         selectedSwapTile={selectedSwapTile}
         settings={settings}
         headerHeight={120}
+        layoutConfig={board.layoutConfig}
       />
 
       {/* Bottom Toolbar - 移到GameBoard下方确保不被覆盖 */}

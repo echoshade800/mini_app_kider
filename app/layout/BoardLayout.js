@@ -324,13 +324,42 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
 
 /**
  * 获取完整的棋盘布局配置
- * @param {number} N - 数字方块数量
+ * @param {number} N - 数字方块数量  
  * @param {number} targetAspect - 期望宽高比（可选）
  * @param {number} level - 关卡等级（可选）
+ * @param {number} fixedRows - 固定行数（可选）
+ * @param {number} fixedCols - 固定列数（可选）
  * @returns {Object} 完整布局配置
  */
-export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
-  const layout = computeAdaptiveLayout(N, targetAspect, level);
+export function getBoardLayoutConfig(N, targetAspect = null, level = null, fixedRows = null, fixedCols = null) {
+  let layout;
+  
+  if (fixedRows && fixedCols) {
+    // 使用固定尺寸布局
+    const gameArea = getEffectiveGameArea();
+    const tileLayout = computeTileSize(gameArea.width, gameArea.height, fixedRows, fixedCols);
+    
+    if (tileLayout.isValid) {
+      const boardLeft = (gameArea.width - tileLayout.boardWidth) / 2;
+      const boardTop = gameArea.top + (gameArea.height - tileLayout.boardHeight) / 2;
+      
+      layout = {
+        ...tileLayout,
+        rows: fixedRows,
+        cols: fixedCols,
+        boardLeft,
+        boardTop,
+        gameArea,
+      };
+    } else {
+      // 如果固定尺寸不可行，回退到自适应布局
+      layout = computeAdaptiveLayout(N, targetAspect, level);
+    }
+  } else {
+    // 使用自适应布局
+    layout = computeAdaptiveLayout(N, targetAspect, level);
+  }
+  
   const getTilePosition = layoutTiles(
     layout.rows, 
     layout.cols, 

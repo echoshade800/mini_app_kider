@@ -1,6 +1,6 @@
 /**
- * Board Generator - 使用以数字方块为基准的布局系统
- * Purpose: 根据难度生成数字方块，布局完全由数字方块矩形决定
+ * Board Generator - 使用新的自适应布局系统
+ * Purpose: 根据难度生成数字方块，布局由BoardLayout统一管理
  * Features: 只负责数字生成，不涉及布局计算
  */
 
@@ -132,18 +132,20 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   if (isChallenge) {
     // 挑战模式：固定14行11列
     rows = 10;
-    const layoutConfig = getBoardLayoutConfig(tileCount, null, null, isChallenge);
+    cols = 12;
     tileCount = 120; // 固定120个方块
   } else {
     // 关卡模式：使用原有逻辑
     tileCount = getTileCount(level, isChallenge);
-    const layoutConfig = getBoardLayoutConfig(tileCount, null, level, isChallenge);
+    const layoutConfig = getBoardLayoutConfig(tileCount, null, level);
     rows = layoutConfig.rows;
     cols = layoutConfig.cols;
   }
   
-  // 创建最终布局配置
-  const layoutConfig = getBoardLayoutConfig(tileCount, null, level, isChallenge);
+  // 为挑战模式创建布局配置
+  const layoutConfig = isChallenge ? 
+    getBoardLayoutConfig(tileCount, cols / rows, null) : 
+    getBoardLayoutConfig(tileCount, null, level);
     
   // 确保使用布局配置中的实际行列数
   rows = layoutConfig.rows;

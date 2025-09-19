@@ -11,14 +11,10 @@ import {
   PanResponder, 
   StyleSheet,
   Animated,
-  PixelRatio,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { hasValidCombinations } from '../lib/gameLogic';
-import { computeWithDebug } from '../lib/computeWithDebug';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const R = (v) => PixelRatio.roundToNearestPixel(v);
+import { hasValidCombinations } from '../utils/gameLogic';
+import RescueModal from './RescueModal';
 
 const GameBoard = ({ 
   tiles, 
@@ -41,47 +37,14 @@ const GameBoard = ({
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
-  const [boardRect, setBoardRect] = useState(null);
-  const [layoutResult, setLayoutResult] = useState(null);
-  
-  // Debug refs and insets
-  const boardRef = useRef(null);
-  const sampleTileRef = useRef(null);
-  const insets = useSafeAreaInsets();
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
   const explosionScale = useRef(new Animated.Value(0)).current;
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef(new Map()).current;
 
-  // 棋盘容器布局回调 - 唯一坐标系来源
-  const handleBoardLayout = (event) => {
-    const { x, y, width, height } = event.nativeEvent.layout;
-    const newBoardRect = { left: x, top: y, width, height };
-    setBoardRect(newBoardRect);
-    
-    // 计算精确布局
-    if (layoutConfig && width > 0 && height > 0) {
-      // 直接使用布局配置，不需要重新计算
-      setLayoutResult({
-        inner: {
-          left: newBoardRect.left + (layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5),
-          top: newBoardRect.top + (layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5),
-          width: newBoardRect.width - 2 * ((layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5)),
-          height: newBoardRect.height - 2 * ((layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5)),
-        },
-        tile: layoutConfig.tileSize,
-        gap: layoutConfig.tileGap || 4,
-        startX: layoutConfig.boardLeft + (layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5),
-        startY: layoutConfig.boardTop + (layoutConfig.woodFrameWidth || 8) + (layoutConfig.boardPadding || 5),
-        tiles: [], // 将在渲染时动态计算
-        originOffset: { dx: 0, dy: 0 }
-      });
-    }
-  };
-
-  // 如果没有布局结果，显示加载状态
-  if (!layoutResult) {
+  // 如果没有布局配置，显示加载状态
+  if (!layoutConfig) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -250,7 +213,7 @@ const GameBoard = ({
     } else {
       setSelection(null);
     }
-  };
+  }
 
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
@@ -269,19 +232,21 @@ const GameBoard = ({
       
       if (!isInsideBoard(pageX, pageY)) return;
       
-      // 🎯 精确触摸检测：遍历所有方块位置
-      let startRow = -1, startCol = -1;
+      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
+
+      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
+      const contentTop = boardTop + woodFrameWidth + boardPadding;
+
+      const relativeX = pageX - contentLeft;
+      const relativeY = pageY - contentTop;
+
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+
+      const startCol = Math.floor(relativeX / cellWidth);
+      const startRow = Math.floor(relativeY / cellHeight);
       
-      for (const tile of layoutResult.tiles) {
-        if (pageX >= tile.left && pageX < tile.left + tile.size &&
-            pageY >= tile.top  && pageY < tile.top  + tile.size) {
-          startRow = tile.row;
-          startCol = tile.col;
-          break;
-        }
-      }
-      
-      if (startRow !== -1 && startCol !== -1) {
+      if (startRow >= 0 && startRow < height && startCol >= 0 && startCol < width) {
         setSelection({
           startRow,
           startCol,
@@ -301,20 +266,21 @@ const GameBoard = ({
       if (!selection) return;
       
       const { pageX, pageY } = evt.nativeEvent;
+      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
+
+      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
+      const contentTop = boardTop + woodFrameWidth + boardPadding;
+
+      const relativeX = pageX - contentLeft;
+      const relativeY = pageY - contentTop;
+
+      const cellWidth = tileSize + tileGap;
+      const cellHeight = tileSize + tileGap;
+
+      const endCol = Math.floor(relativeX / cellWidth);
+      const endRow = Math.floor(relativeY / cellHeight);
       
-      // 精确触摸检测
-      let endRow = -1, endCol = -1;
-      
-      for (const tile of layoutResult.tiles) {
-        if (pageX >= tile.left && pageX < tile.left + tile.size &&
-            pageY >= tile.top  && pageY < tile.top  + tile.size) {
-          endRow = tile.row;
-          endCol = tile.col;
-          break;
-        }
-      }
-      
-      if (endRow !== -1 && endCol !== -1) {
+      if (endRow >= 0 && endRow < height && endCol >= 0 && endCol < width) {
         setSelection(prev => ({
           ...prev,
           endRow,
@@ -498,10 +464,6 @@ const GameBoard = ({
     const tilePos = layoutConfig.getTilePosition(row, col);
     if (!tilePos) return null;
 
-    // 应用调试修正偏移
-    const dx = layoutResult?.originOffset?.dx || 0;
-    const dy = layoutResult?.originOffset?.dy || 0;
-
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
     
@@ -554,11 +516,10 @@ const GameBoard = ({
     return (
       <View
         key={`${row}-${col}`}
-        ref={index === 0 ? sampleTileRef : undefined} // 第一个方块用于调试测量
         style={{
           position: 'absolute',
-          left: tilePos.x + dx,
-          top: tilePos.y + dy,
+          left: tilePos.x,
+          top: tilePos.y,
           width: tilePos.width,
           height: tilePos.height,
           alignItems: 'center',
@@ -610,8 +571,6 @@ const GameBoard = ({
               height: layoutConfig.boardHeight,
             }
           ]}
-          ref={boardRef}
-          onLayout={handleBoardLayout}
           pointerEvents="auto"
         >
           {/* 数字方块内容区 */}
@@ -679,23 +638,6 @@ const GameBoard = ({
             </View>
           </View>
         </View>
-        
-        {/* 🐛 Debug: 显示内容区边界（开发时可启用） */}
-        {__DEV__ && false && (
-          <View
-            style={{
-              position: 'absolute',
-              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
-              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
-              borderWidth: 1,
-              borderColor: 'red',
-              borderStyle: 'dashed',
-              pointerEvents: 'none',
-            }}
-          />
-        )}
       </View>
     </View>
   );

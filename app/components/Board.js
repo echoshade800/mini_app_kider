@@ -197,27 +197,27 @@ const Board = ({
     onPanResponderGrant: (evt) => {
       if (itemMode) return; // 道具模式下不处理拖拽
       
-      const { locationX, locationY } = evt.nativeEvent;
-      
-      console.log('🎯 Touch Start Debug:', {
-        locationX, locationY,
-        cellSize, GAP,
-        boardDimensions: { width, height }
-      });
+      const { pageX, pageY } = evt.nativeEvent;
       
       // 计算相对于棋盘内容区的坐标
-      const relativeX = locationX;
-      const relativeY = locationY;
+      const contentLeft = layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding;
+      const contentTop = layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding;
+      
+      const relativeX = pageX - contentLeft;
+      const relativeY = pageY - contentTop;
       
       // 转换为网格位置
-      const col = Math.floor(relativeX / (cellSize + GAP));
-      const row = Math.floor(relativeY / (cellSize + GAP));
+      const cellWidth = layoutConfig.tileSize + layoutConfig.tileGap;
+      const cellHeight = layoutConfig.tileSize + layoutConfig.tileGap;
+      const col = Math.floor(relativeX / cellWidth);
+      const row = Math.floor(relativeY / cellHeight);
       
-      console.log('🎯 Grid Calculation:', {
+      console.log('🎯 Touch Start:', {
+        pageX, pageY,
+        contentLeft, contentTop,
         relativeX, relativeY,
-        calculatedRow: row, calculatedCol: col,
-        cellPlusGap: cellSize + GAP,
-        boardSize: { width, height }
+        row, col,
+        cellSize: layoutConfig.tileSize
       });
       
       if (row >= 0 && row < height && col >= 0 && col < width) {
@@ -230,7 +230,7 @@ const Board = ({
         
         Animated.timing(selectionOpacity, {
           toValue: 0.6,
-          duration: 80,
+          duration: 50,
           useNativeDriver: false,
         }).start();
       }
@@ -240,15 +240,20 @@ const Board = ({
       if (!selection) return;
       if (itemMode) return; // 道具模式下不处理拖拽
       
-      const { locationX, locationY } = evt.nativeEvent;
+      const { pageX, pageY } = evt.nativeEvent;
       
       // 计算相对于棋盘内容区的坐标
-      const relativeX = locationX;
-      const relativeY = locationY;
+      const contentLeft = layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding;
+      const contentTop = layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding;
+      
+      const relativeX = pageX - contentLeft;
+      const relativeY = pageY - contentTop;
       
       // 转换为网格位置
-      const col = Math.floor(relativeX / (cellSize + GAP));
-      const row = Math.floor(relativeY / (cellSize + GAP));
+      const cellWidth = layoutConfig.tileSize + layoutConfig.tileGap;
+      const cellHeight = layoutConfig.tileSize + layoutConfig.tileGap;
+      const col = Math.floor(relativeX / cellWidth);
+      const row = Math.floor(relativeY / cellHeight);
       
       if (row >= 0 && row < height && col >= 0 && col < width) {
         setSelection(prev => ({
@@ -290,6 +295,21 @@ const Board = ({
       setHoveredTiles(new Set());
       
       handleSelectionComplete();
+    },
+
+    onPanResponderTerminate: () => {
+      // 处理手势被中断的情况
+      hoveredTiles.forEach(index => {
+        scaleTile(index, 1);
+      });
+      setHoveredTiles(new Set());
+      setSelection(null);
+      
+      Animated.timing(selectionOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
     },
   });
 

@@ -96,7 +96,6 @@ export default function ChallengeScreen() {
   const generateNewBoard = () => {
     const newBoard = generateBoard(100, true, true); // 挑战模式：高数量方块
     setBoard(newBoard);
-    setHasInitialCheck(false); // 重置初始检查状态
   };
 
   const handleStartGame = () => {

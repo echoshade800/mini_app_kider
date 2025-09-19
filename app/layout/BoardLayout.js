@@ -355,6 +355,7 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
  */
 export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
   const layout = computeAdaptiveLayout(N, targetAspect, level);
+  const gameArea = getEffectiveGameArea();
   const getTilePosition = layoutTiles(
     layout.rows, 
     layout.cols, 

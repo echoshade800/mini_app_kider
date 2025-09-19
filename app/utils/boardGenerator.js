@@ -481,23 +481,35 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
         console.log(`🎯 Level ${level}: 配对总和=${currentSum}, 剩余总和=${remainingTiles.reduce((sum, val) => sum + val, 0)}, 目标总和=${targetTotalSum}`);
       } else {
         // 如果目标剩余总和不合理，使用简单填充但确保10的倍数
-        console.warn(`⚠️ Level ${level}: 目标剩余总和不合理 (${targetRemainingSum}), 使用备用方案`);
+        console.warn(`⚠️ Level ${level}: 目标剩余总和不合理 (${targetRemainingSum}), 使用随机填充`);
         
-        // 简单填充为1，然后调整最后几个数字使总和为10的倍数
+        // 随机填充，然后调整使总和为10的倍数
         for (let i = 0; i < remainingTiles.length; i++) {
-          remainingTiles[i] = 1;
+          remainingTiles[i] = Math.floor(random() * 6) + 1; // 1-6随机
         }
         
-        const currentTotal = currentSum + remainingTiles.length;
+        const currentTotal = currentSum + remainingTiles.reduce((sum, val) => sum + val, 0);
         const targetTotal = Math.ceil(currentTotal / 10) * 10;
-        const needed = targetTotal - currentTotal;
+        let needed = targetTotal - currentTotal;
         
-        // 在最后几个位置添加需要的数值
-        for (let i = remainingTiles.length - 1; i >= 0 && needed > 0; i--) {
-          const canAdd = Math.min(8, needed); // 最多加到9
-          remainingTiles[i] += canAdd;
-          needed -= canAdd;
+        // 调整数字使总和为10的倍数
+        let attempts = 0;
+        while (needed !== 0 && attempts < 100) {
+          for (let i = 0; i < remainingTiles.length && needed !== 0; i++) {
+            if (needed > 0 && remainingTiles[i] < 9) {
+              const canAdd = Math.min(9 - remainingTiles[i], needed);
+              remainingTiles[i] += canAdd;
+              needed -= canAdd;
+            } else if (needed < 0 && remainingTiles[i] > 1) {
+              const canSubtract = Math.min(remainingTiles[i] - 1, -needed);
+              remainingTiles[i] -= canSubtract;
+              needed += canSubtract;
+            }
+          }
+          attempts++;
         }
+        
+        console.log(`🔧 Level ${level}: 调整后总和=${currentSum + remainingTiles.reduce((sum, val) => sum + val, 0)}`);
       }
     } else {
       // 挑战模式的逻辑保持不变

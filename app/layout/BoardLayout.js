@@ -325,6 +325,18 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
     const x = tileRectStartX + relativeX;
     const y = tileRectStartY + relativeY;
     
+    // 🎯 调试单个方块位置
+    if (row === 0 && col === 0) {
+      console.log('🎯 First Tile Position Debug:', {
+        contentCenter: { x: contentCenterX, y: contentCenterY },
+        tileRectCenter: { x: tileRectCenterX, y: tileRectCenterY },
+        tileRectStart: { x: tileRectStartX, y: tileRectStartY },
+        finalPosition: { x, y },
+        tileSize,
+        gap
+      });
+    }
+    
     return {
       x,
       y,
@@ -352,6 +364,15 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
     layout.contentWidth, 
     layout.contentHeight
   );
+  
+  console.log('🎯 BoardLayout Debug:', {
+    gameArea: { width: gameArea.width, height: gameArea.height, top: gameArea.top },
+    boardSize: { width: layout.boardWidth, height: layout.boardHeight },
+    boardPosition: { left: boardLeft, top: boardTop },
+    tileSize: layout.tileSize,
+    rows: layout.rows,
+    cols: layout.cols
+  });
   
   return {
     ...layout,

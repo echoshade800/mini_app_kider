@@ -460,6 +460,9 @@ const Board = ({
         style={[
           styles.boardFrame,
           {
+            position: 'absolute',
+            left: layoutConfig.boardLeft,
+            top: layoutConfig.boardTop,
             width: boardOuter,
             height: boardOuter,
           }
@@ -470,10 +473,11 @@ const Board = ({
           style={[
             styles.boardContent,
             {
-              margin: FRAME + BOARD_PAD,
-              paddingRight: slack.right,
-              paddingBottom: slack.bottom,
-              gap: GAP,
+              position: 'absolute',
+              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
+              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
             }
           ]}
         >
@@ -509,8 +513,7 @@ const Board = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'relative',
   },
   loadingContainer: {
     height: 200,
@@ -524,8 +527,8 @@ const styles = StyleSheet.create({
   boardFrame: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
     borderRadius: 16,
-    borderWidth: 8,
-    borderColor: '#8B5A2B', // Wooden frame
+    borderWidth: layoutConfig?.woodFrameWidth || 8,
+    borderColor: '#8B5A2B',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -536,8 +539,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   boardContent: {
-    flex: 1,
-    flexDirection: 'column',
+    position: 'relative',
   },
   row: {
     flexDirection: 'row',

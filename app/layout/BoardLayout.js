@@ -288,90 +288,101 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
 
 /**
  * 计算每个方块的位置
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} tileSize - 方块尺寸
- * @param {number} tilesRectWidth - 数字方块矩形宽度
- * @param {number} tilesRectHeight - 数字方块矩形高度
- * @param {number} contentWidth - 棋盘内容区宽度
- * @param {number} contentHeight - 棋盘内容区高度
- * @param {number} gap - 间距
- * @param {number} padding - 内边距
- * @returns {Function} 位置计算函数
+ * 使用坐标系方法：以棋盘中心为原点(0,0)，数字方块矩形居中在坐标轴上
  */
 export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING) {
-  // 🎯 第一步：确定棋盘格的中心点
+  // 🎯 坐标系方法：以棋盘中心为原点(0,0)建立坐标系
+  
+  // 第一步：确定坐标系原点（棋盘中心点）
   const boardCenterX = contentWidth / 2;
   const boardCenterY = contentHeight / 2;
   
-  // 🎯 调试信息：棋盘格中心点
-  console.log('🎯 棋盘格中心点确定:');
+  console.log('🎯 坐标系建立:');
   console.log(`   内容区尺寸: ${contentWidth} × ${contentHeight}px`);
-  console.log(`   棋盘格中心点: (${boardCenterX.toFixed(2)}, ${boardCenterY.toFixed(2)})`);
+  console.log(`   坐标系原点: (${boardCenterX.toFixed(2)}, ${boardCenterY.toFixed(2)})`);
   
-  // 🎯 重新计算实际的数字方块矩形尺寸（确保与实际布局一致）
+  // 第二步：计算数字方块矩形的实际尺寸
   const actualTilesRectWidth = cols * tileSize + (cols - 1) * gap;
   const actualTilesRectHeight = rows * tileSize + (rows - 1) * gap;
   
-  console.log(`   传入的数字方块矩形尺寸: ${tilesRectWidth} × ${tilesRectHeight}px`);
-  console.log(`   实际计算的矩形尺寸: ${actualTilesRectWidth} × ${actualTilesRectHeight}px`);
+  console.log(`   数字方块矩形尺寸: ${actualTilesRectWidth} × ${actualTilesRectHeight}px`);
   console.log(`   棋盘格规格: ${rows}行 × ${cols}列，方块尺寸: ${tileSize}px`);
   
-  // 🎯 使用实际计算的尺寸进行居中
-  const tilesRectCenterX = actualTilesRectWidth / 2;
-  const tilesRectCenterY = actualTilesRectHeight / 2;
+  // 第三步：在坐标系中定义数字方块矩形的边界
+  // 数字方块矩形在坐标系中的范围：从负半宽到正半宽
+  const rectHalfWidth = actualTilesRectWidth / 2;
+  const rectHalfHeight = actualTilesRectHeight / 2;
   
-  // 🎯 计算数字方块矩形的起始位置（左上角）
-  const tilesRectStartX = boardCenterX - tilesRectCenterX;
-  const tilesRectStartY = boardCenterY - tilesRectCenterY;
+  console.log('📐 坐标系中的数字方块矩形:');
+  console.log(`   X轴范围: [-${rectHalfWidth.toFixed(2)}, +${rectHalfWidth.toFixed(2)}]`);
+  console.log(`   Y轴范围: [-${rectHalfHeight.toFixed(2)}, +${rectHalfHeight.toFixed(2)}]`);
   
-  // 🎯 验证居中效果
-  const actualCenterX = tilesRectStartX + tilesRectCenterX;
-  const actualCenterY = tilesRectStartY + tilesRectCenterY;
-  const centerOffsetX = Math.abs(actualCenterX - boardCenterX);
-  const centerOffsetY = Math.abs(actualCenterY - boardCenterY);
-  
-  console.log('🎯 中心点对齐验证:');
-  console.log(`   棋盘格中心点: (${boardCenterX.toFixed(2)}, ${boardCenterY.toFixed(2)})`);
-  console.log(`   数字方块矩形起始点: (${tilesRectStartX.toFixed(2)}, ${tilesRectStartY.toFixed(2)})`);
-  console.log(`   数字方块矩形实际中心: (${actualCenterX.toFixed(2)}, ${actualCenterY.toFixed(2)})`);
-  console.log(`   中心点偏移: X=${centerOffsetX.toFixed(4)}px, Y=${centerOffsetY.toFixed(4)}px`);
-  
-  if (centerOffsetX < 0.01 && centerOffsetY < 0.01) {
-    console.log('   ✅ 中心点完美对齐！');
-  } else {
-    console.log('   ❌ 中心点未对齐，需要调整');
+  // 第四步：计算每个方块在坐标系中的位置
+  // 方块索引到坐标系坐标的映射
+  function getCoordinatePosition(row, col) {
+    // 计算方块在矩形中的相对位置（从左上角开始）
+    const relativeX = col * (tileSize + gap);
+    const relativeY = row * (tileSize + gap);
+    
+    // 转换为坐标系坐标（以矩形中心为基准）
+    const coordX = relativeX - rectHalfWidth + tileSize / 2;
+    const coordY = relativeY - rectHalfHeight + tileSize / 2;
+    
+    return { coordX, coordY };
   }
   
-  // 🎯 留白分布检查
-  const leftMargin = tilesRectStartX;
-  const rightMargin = contentWidth - tilesRectStartX - actualTilesRectWidth;
-  const topMargin = tilesRectStartY;
-  const bottomMargin = contentHeight - tilesRectStartY - actualTilesRectHeight;
+  // 验证中心方块是否在坐标系原点
+  const centerRow = (rows - 1) / 2;
+  const centerCol = (cols - 1) / 2;
+  const centerCoord = getCoordinatePosition(centerRow, centerCol);
   
-  console.log('📏 留白分布:');
-  console.log(`   左边距: ${leftMargin.toFixed(2)}px`);
-  console.log(`   右边距: ${rightMargin.toFixed(2)}px`);
-  console.log(`   上边距: ${topMargin.toFixed(2)}px`);
-  console.log(`   下边距: ${bottomMargin.toFixed(2)}px`);
-  console.log(`   水平对称性: ${Math.abs(leftMargin - rightMargin).toFixed(4)}px 差异`);
-  console.log(`   垂直对称性: ${Math.abs(topMargin - bottomMargin).toFixed(4)}px 差异`);
+  console.log('🎯 坐标系验证:');
+  console.log(`   矩形中心方块位置: [${centerRow}, ${centerCol}]`);
+  console.log(`   在坐标系中的坐标: (${centerCoord.coordX.toFixed(4)}, ${centerCoord.coordY.toFixed(4)})`);
   
+  if (Math.abs(centerCoord.coordX) < 0.01 && Math.abs(centerCoord.coordY) < 0.01) {
+    console.log('   ✅ 数字方块矩形完美居中在坐标系原点！');
+  } else {
+    console.log('   ❌ 数字方块矩形未居中，需要调整');
+  }
+  
+  // 验证边界对称性
+  const leftBoundary = -rectHalfWidth;
+  const rightBoundary = +rectHalfWidth;
+  const topBoundary = -rectHalfHeight;
+  const bottomBoundary = +rectHalfHeight;
+  
+  console.log('📏 坐标系边界对称性:');
+  console.log(`   X轴对称性: ${Math.abs(Math.abs(leftBoundary) - Math.abs(rightBoundary)).toFixed(4)}px 差异`);
+  console.log(`   Y轴对称性: ${Math.abs(Math.abs(topBoundary) - Math.abs(bottomBoundary)).toFixed(4)}px 差异`);
+  
+  // 返回位置计算函数
   return function getTilePosition(row, col) {
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
       return null;
     }
     
-    // 🎯 基于矩形起始位置计算方块位置
-    const x = tilesRectStartX + col * (tileSize + gap);
-    const y = tilesRectStartY + row * (tileSize + gap);
+    // 🎯 坐标系方法：
+    // 1. 获取方块在坐标系中的坐标
+    const { coordX, coordY } = getCoordinatePosition(row, col);
     
-    // 🎯 调试信息：详细的位置计算过程（只在关键方块时输出）
+    // 2. 转换为屏幕坐标（坐标系坐标 + 原点位置 - 方块中心偏移）
+    const x = boardCenterX + coordX - tileSize / 2;
+    const y = boardCenterY + coordY - tileSize / 2;
+    
+    // 调试信息：关键方块的坐标转换过程
     if ((row === 0 && col === 0) || (row === rows - 1 && col === cols - 1)) {
-      console.log(`🎯 方块 [${row},${col}] 位置计算:`);
-      console.log(`   矩形起始位置: (${tilesRectStartX.toFixed(2)}, ${tilesRectStartY.toFixed(2)})`);
-      console.log(`   方块相对位置: (${col * (tileSize + gap)}, ${row * (tileSize + gap)})`);
+      console.log(`📍 方块 [${row},${col}] 坐标转换:`);
+      console.log(`   坐标系坐标: (${coordX.toFixed(2)}, ${coordY.toFixed(2)})`);
       console.log(`   最终位置: (${x.toFixed(2)}, ${y.toFixed(2)})px`);
+    }
+    
+    // 特别验证中心方块
+    if (Math.abs(row - centerRow) < 0.01 && Math.abs(col - centerCol) < 0.01) {
+      console.log(`🎯 中心方块 [${row},${col}] 验证:`);
+      console.log(`   坐标系坐标: (${coordX.toFixed(4)}, ${coordY.toFixed(4)})`);
+      console.log(`   屏幕位置: (${x.toFixed(2)}, ${y.toFixed(2)})`);
+      console.log(`   应该在原点附近: (${boardCenterX.toFixed(2)}, ${boardCenterY.toFixed(2)})`);
     }
     
     return {

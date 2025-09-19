@@ -4,7 +4,6 @@
  * Features: 完全响应式、最小28px方块、棋盘比矩形大一圈
  */
 
-import React, { useState, useRef } from 'react';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 

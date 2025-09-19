@@ -293,12 +293,32 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
 export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING) {
   // 🎯 坐标系方法：以棋盘中心为原点(0,0)建立坐标系
   
+  // 🔍 关键调试：验证传入的内容区尺寸
+  console.log('🔍 layoutTiles 函数参数验证:');
+  console.log(`   传入的 contentWidth: ${contentWidth}px`);
+  console.log(`   传入的 contentHeight: ${contentHeight}px`);
+  console.log(`   传入的 tilesRectWidth: ${tilesRectWidth}px`);
+  console.log(`   传入的 tilesRectHeight: ${tilesRectHeight}px`);
+  console.log(`   传入的 padding: ${padding}px`);
+  
+  // 验证内容区尺寸是否正确
+  const expectedContentWidth = tilesRectWidth + 2 * padding;
+  const expectedContentHeight = tilesRectHeight + 2 * padding;
+  console.log(`   期望的 contentWidth: ${expectedContentWidth}px`);
+  console.log(`   期望的 contentHeight: ${expectedContentHeight}px`);
+  console.log(`   宽度差异: ${Math.abs(contentWidth - expectedContentWidth).toFixed(2)}px`);
+  console.log(`   高度差异: ${Math.abs(contentHeight - expectedContentHeight).toFixed(2)}px`);
+  
   // 第一步：确定坐标系原点（棋盘中心点）
-  const boardCenterX = contentWidth / 2;  // 内容区中心X
-  const boardCenterY = contentHeight / 2; // 内容区中心Y
+  // 使用实际的内容区尺寸，而不是传入的可能错误的尺寸
+  const actualContentWidth = tilesRectWidth + 2 * padding;
+  const actualContentHeight = tilesRectHeight + 2 * padding;
+  
+  const boardCenterX = actualContentWidth / 2;  // 内容区中心X
+  const boardCenterY = actualContentHeight / 2; // 内容区中心Y
   
   console.log('🎯 坐标系建立:');
-  console.log(`   内容区尺寸: ${contentWidth} × ${contentHeight}px`);
+  console.log(`   实际内容区尺寸: ${actualContentWidth} × ${actualContentHeight}px`);
   console.log(`   坐标系原点: (${boardCenterX.toFixed(2)}, ${boardCenterY.toFixed(2)})`);
   
   // 第二步：计算数字方块矩形的实际尺寸

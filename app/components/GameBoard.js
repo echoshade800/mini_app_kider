@@ -637,16 +637,16 @@ const GameBoard = ({
               position: 'absolute',
               left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
               top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
-              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
+              width: layoutConfig.tilesRectWidth,
+              height: layoutConfig.tilesRectHeight,
             }}
             pointerEvents={itemMode ? "auto" : "auto"}
           >
             {/* 🎯 数字方块容器 - 使用统一中心点精确定位 */}
             <View
               style={{
-                width: '100%',
-                height: '100%',
+                width: layoutConfig.tilesRectWidth,
+                height: layoutConfig.tilesRectHeight,
                 position: 'relative',
               }}
             >

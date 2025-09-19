@@ -61,7 +61,26 @@ const GameBoard = ({
   console.log(`   布局配置存在: ${!!layoutConfig}`);
   console.log(`   棋盘位置: (${layoutConfig.boardLeft}, ${layoutConfig.boardTop})`);
   console.log(`   棋盘尺寸: ${layoutConfig.boardWidth} × ${layoutConfig.boardHeight}px`);
+  console.log(`   内容区位置: (${layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding}, ${layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding})`);
+  console.log(`   内容区尺寸: ${layoutConfig.contentWidth - layoutConfig.boardPadding * 2} × ${layoutConfig.contentHeight - layoutConfig.boardPadding * 2}px`);
   console.log('🎮 ========================');
+  
+  // 🔍 调试：验证实际渲染的方块位置
+  console.log('🔍 实际方块渲染位置验证:');
+  let renderedTileCount = 0;
+  for (let i = 0; i < tiles.length; i++) {
+    if (tiles[i] > 0) {
+      const row = Math.floor(i / width);
+      const col = i % width;
+      const tilePos = layoutConfig.getTilePosition(row, col);
+      if (tilePos && (row === 0 || row === height - 1) && (col === 0 || col === width - 1)) {
+        console.log(`   方块[${row},${col}](值=${tiles[i]}): 位置(${tilePos.x}, ${tilePos.y}), 尺寸${tilePos.width}×${tilePos.height}`);
+      }
+      renderedTileCount++;
+    }
+  }
+  console.log(`   总共渲染方块数: ${renderedTileCount}`);
+  console.log('🔍 ========================');
 
   const initTileScale = (index) => {
     if (!tileScales.has(index)) {

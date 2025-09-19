@@ -142,7 +142,6 @@ const GameBoard = ({
       // 重置重排计数
       setReshuffleCount(0);
       setCalibrationAttempts(0);
-     setIsCalibrating(false); // 确保校准状态被重置
       
       // Success - create explosion effect with yellow "10" note
       if (settings?.hapticsEnabled !== false) {
@@ -235,12 +234,6 @@ const GameBoard = ({
   const checkForValidCombinations = async () => {
     if (!tiles || !width || !height) return;
     
-   // 如果正在校准中，不要重复检查
-   if (isCalibrating) {
-     console.log('Already calibrating, skipping check');
-     return;
-   }
-   
     const hasValidMoves = hasValidCombinations(tiles, width, height);
     
     if (!hasValidMoves) {
@@ -252,14 +245,12 @@ const GameBoard = ({
       } else {
         // 已经尝试3次，显示救援弹窗
         console.log('Maximum calibration attempts reached, showing rescue modal');
-       setCalibrationAttempts(0); // 重置计数
         if (onRescueNeeded) {
           onRescueNeeded();
         }
       }
     } else {
       console.log('Board has valid combinations, no calibration needed');
-     setCalibrationAttempts(0); // 重置校准计数
     }
   };
 
@@ -382,11 +373,9 @@ const GameBoard = ({
             const hasValidMovesAfterShuffle = hasValidCombinations(newTilesData, width, height);
             
             if (hasValidMovesAfterShuffle) {
-               setCalibrationAttempts(0); // 重置校准计数
-               setIsCalibrating(false); // 停止校准状态，让玩家继续游戏
+              console.log('Calibration successful, valid combinations found');
               setCalibrationAttempts(0);
             } else {
-               setIsCalibrating(false); // 先停止当前校准状态
               console.log('Calibration failed, trying again');
               // 继续尝试重排（如果还有次数）
               setTimeout(() => {
@@ -404,21 +393,6 @@ const GameBoard = ({
           onTilesClear([], newTilesData);
         }
         setCalibrationAnimations(new Map());
-       
-       // 检查是否有解
-       const hasValidMovesAfterShuffle = hasValidCombinations(newTilesData, width, height);
-       if (hasValidMovesAfterShuffle) {
-         console.log('Calibration successful, valid combinations found');
-         setCalibrationAttempts(0);
-         setIsCalibrating(false);
-       } else {
-         console.log('Calibration failed, trying again');
-         setIsCalibrating(false);
-         setTimeout(() => {
-           checkForValidCombinations();
-         }, 500);
-       }
-       
         resolve();
       }
     });
@@ -803,7 +777,9 @@ const GameBoard = ({
             {/* 校准状态提示 */}
             {isCalibrating && (
               <View style={styles.calibrationOverlay}>
-                <Text style={styles.calibrationText}>Calibrating...</Text>
+                <Text style={styles.calibrationText}>
+                  Calibrating... ({calibrationAttempts}/3)
+                </Text>
               </View>
             )}
             

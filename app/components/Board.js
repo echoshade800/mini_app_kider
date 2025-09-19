@@ -64,9 +64,12 @@ const Board = ({
   };
 
   const handleTilePress = (row, col, value) => {
+    console.log('🎯 handleTilePress called:', { row, col, value, disabled, itemMode });
+    
     if (disabled || value === 0) return;
     
     if (itemMode && onTileClick) {
+      console.log('🎯 Calling onTileClick with:', { row, col, value });
       onTileClick(row, col, value);
     }
     
@@ -81,6 +84,8 @@ const Board = ({
     const selectedTiles = getSelectedTiles();
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
+
+    console.log('🎯 Selection complete:', { selectedTiles: selectedTiles.length, sum });
 
     if (sum === 10 && selectedTiles.length > 0) {
       // Success - create explosion effect
@@ -97,6 +102,7 @@ const Board = ({
       const centerX = centerCol * (cellSize + GAP) + cellSize / 2;
       const centerY = centerRow * (cellSize + GAP) + cellSize / 2;
       
+      console.log('🎯 Explosion at:', { centerX, centerY });
       setExplosionAnimation({ x: centerX, y: centerY });
       
       // Explosion animation - yellow "10" note
@@ -193,6 +199,12 @@ const Board = ({
       
       const { locationX, locationY } = evt.nativeEvent;
       
+      console.log('🎯 Touch Start Debug:', {
+        locationX, locationY,
+        cellSize, GAP,
+        boardDimensions: { width, height }
+      });
+      
       // 计算相对于棋盘内容区的坐标
       const relativeX = locationX;
       const relativeY = locationY;
@@ -200,6 +212,13 @@ const Board = ({
       // 转换为网格位置
       const col = Math.floor(relativeX / (cellSize + GAP));
       const row = Math.floor(relativeY / (cellSize + GAP));
+      
+      console.log('🎯 Grid Calculation:', {
+        relativeX, relativeY,
+        calculatedRow: row, calculatedCol: col,
+        cellPlusGap: cellSize + GAP,
+        boardSize: { width, height }
+      });
       
       if (row >= 0 && row < height && col >= 0 && col < width) {
         setSelection({
@@ -276,7 +295,8 @@ const Board = ({
   const renderTile = (value, row, col) => {
     const index = row * width + col;
     
-      return (
+    // 空位不渲染任何内容
+    if (value === 0) {
       return (
         <View 
           key={`${row}-${col}`}
@@ -287,17 +307,6 @@ const Board = ({
               height: cellSize,
             }
           ]}
-        />
-      );
-          key={`${row}-${col}`}
-          style={[
-            styles.cell,
-            {
-              width: cellSize,
-              height: cellSize,
-            }
-          ]}
-        />
         />
       );
     }
@@ -333,8 +342,17 @@ const Board = ({
           }
         ]}
         onStartShouldSetResponder={itemMode ? () => true : () => false}
-        onResponderGrant={itemMode ? () => handleTilePress(row, col, value) : undefined}
+        onResponderGrant={itemMode ? () => {
+          console.log('🎯 Tile touch granted:', { row, col, value, itemMode });
+          handleTilePress(row, col, value);
+        } : undefined}
         pointerEvents={itemMode ? "auto" : "box-none"}
+      >
+        <Text 
+          style={[
+            styles.tileText,
+            { 
+              fontSize: Math.max(12, fontSize),
               fontWeight: isInSelection ? 'bold' : 'normal',
             }
           ]}

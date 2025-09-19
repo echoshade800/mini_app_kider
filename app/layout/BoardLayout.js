@@ -431,8 +431,8 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
     const relativeY = row * (tileSize + gap);
     
     // 最终位置：数字方块矩形起始位置 + 方块相对位置
-    let x = tileRectStartX + relativeX;
-    let y = tileRectStartY + relativeY;
+    let x = tilesRectStartX + relativeX;
+    let y = tilesRectStartY + relativeY;
     
     // 注意：这里返回的是相对于棋盘内容区域的坐标
     // 在GameBoard中渲染时会加上棋盘的绝对位置

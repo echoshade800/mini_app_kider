@@ -562,7 +562,7 @@ const GameBoard = ({
       <View style={styles.container}>
         <View 
           style={[
-            styles.greenBackground,
+            styles.chalkboard,
             {
               position: 'absolute',
               left: layoutConfig.boardLeft,
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  greenBackground: {
+  chalkboard: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
     borderRadius: 16,
     borderWidth: 8,

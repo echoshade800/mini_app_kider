@@ -406,8 +406,8 @@ export default function LevelDetailScreen() {
       </View>
     </View>
 
-      {/* Completion Modal */}
-      <Modal 
+    {/* Completion Modal */}
+    <Modal 
         visible={showCompletionModal} 
         transparent 
         animationType="fade"
@@ -450,8 +450,8 @@ export default function LevelDetailScreen() {
         </View>
       </Modal>
 
-      {/* Rescue Modal */}
-      <RescueModal
+    {/* Rescue Modal */}
+    <RescueModal
         visible={showRescueModal}
         onContinue={() => {
           setShowRescueModal(false);

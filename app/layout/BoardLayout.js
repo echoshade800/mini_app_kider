@@ -310,8 +310,8 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
     const offsetY = (contentHeight - tilesRectHeight) / 2;
     
     // 计算方块位置（相对于内容区左上角）
-    const x = offsetX + col * (tileSize + gap);
-    const y = offsetY + row * (tileSize + gap);
+    const x = col * (tileSize + gap);
+    const y = row * (tileSize + gap);
     
     return {
       x,

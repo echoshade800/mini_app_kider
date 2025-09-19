@@ -778,8 +778,18 @@ const GameBoard = ({
               top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
               width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
               height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
+            {/* 数字方块容器 - 居中显示 */}
+            <View
+              style={{
+                width: layoutConfig.tilesRectWidth,
+                height: layoutConfig.tilesRectHeight,
+                position: 'relative',
+              }}
+            >
             {/* 渲染所有方块 */}
             {tiles.map((value, index) => {
               const row = Math.floor(index / width);
@@ -822,6 +832,7 @@ const GameBoard = ({
                 </View>
               </Animated.View>
             )}
+            </View>
           </View>
         </View>
       </View>

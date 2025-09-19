@@ -272,6 +272,7 @@ export default function LevelDetailScreen() {
           ]}
           onPress={handleUseSwapMaster}
           disabled={(gameData?.swapMasterItems || 0) <= 0}
+          activeOpacity={0.7}
         >
           <Ionicons 
             name="swap-horizontal" 
@@ -305,6 +306,7 @@ export default function LevelDetailScreen() {
           ]}
           onPress={handleUseFractalSplit}
           disabled={(gameData?.splitItems || 0) <= 0}
+          activeOpacity={0.7}
         >
           <Ionicons 
             name="cut" 
@@ -451,6 +453,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    gap: 20,
   },
   toolButton: {
     flexDirection: 'row',
@@ -460,6 +463,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     gap: 8,
+    minWidth: 120,
+    justifyContent: 'center',
   },
   toolButtonActive: {
     backgroundColor: '#2196F3',

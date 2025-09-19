@@ -61,9 +61,9 @@ const Board = ({
   };
 
   const handleTilePress = (row, col, value) => {
-    if (!itemMode || disabled || value === 0) return;
+    if (disabled || value === 0) return;
     
-    if (onTileClick) {
+    if (itemMode && onTileClick) {
       onTileClick(row, col, value);
     }
     
@@ -156,11 +156,17 @@ const Board = ({
     onMoveShouldSetPanResponder: () => !itemMode && !disabled,
 
     onPanResponderGrant: (evt) => {
+      if (itemMode) return; // 道具模式下不处理拖拽
+      
       const { locationX, locationY } = evt.nativeEvent;
       
-      // Convert touch coordinates to grid position
-      const col = Math.floor(locationX / (cellSize + GAP));
-      const row = Math.floor(locationY / (cellSize + GAP));
+      // 计算相对于棋盘内容区的坐标
+      const relativeX = locationX;
+      const relativeY = locationY;
+      
+      // 转换为网格位置
+      const col = Math.floor(relativeX / (cellSize + GAP));
+      const row = Math.floor(relativeY / (cellSize + GAP));
       
       if (row >= 0 && row < height && col >= 0 && col < width) {
         setSelection({
@@ -180,10 +186,17 @@ const Board = ({
 
     onPanResponderMove: (evt) => {
       if (!selection) return;
+      if (itemMode) return; // 道具模式下不处理拖拽
       
       const { locationX, locationY } = evt.nativeEvent;
-      const col = Math.floor(locationX / (cellSize + GAP));
-      const row = Math.floor(locationY / (cellSize + GAP));
+      
+      // 计算相对于棋盘内容区的坐标
+      const relativeX = locationX;
+      const relativeY = locationY;
+      
+      // 转换为网格位置
+      const col = Math.floor(relativeX / (cellSize + GAP));
+      const row = Math.floor(relativeY / (cellSize + GAP));
       
       if (row >= 0 && row < height && col >= 0 && col < width) {
         setSelection(prev => ({
@@ -242,8 +255,12 @@ const Board = ({
             }
           ]}
         />
-      );
-    }
+          onStartShouldSetResponder={() => itemMode}
+          onResponderGrant={() => {
+            if (itemMode) {
+              handleTilePress(row, col, value);
+            }
+          }}
 
     const tileScale = initTileScale(index);
     const isSelected = selectedSwapTile && selectedSwapTile.index === index;

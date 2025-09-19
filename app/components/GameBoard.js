@@ -763,6 +763,7 @@ const GameBoard = ({
               height: layoutConfig.boardHeight,
             }
           ]}
+          pointerEvents="box-none"
         >
           {/* 数字方块内容区 */}
           <View
@@ -776,6 +777,7 @@ const GameBoard = ({
               alignItems: 'center',
               justifyContent: 'center',
             }}
+            pointerEvents={itemMode ? "auto" : "auto"}
           >
             {/* 数字方块容器 - 居中显示 */}
             <View

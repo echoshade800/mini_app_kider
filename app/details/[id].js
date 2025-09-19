@@ -203,6 +203,7 @@ export default function LevelDetailScreen() {
     });
     
     if ((gameData?.swapMasterItems || 0) <= 0) {
+      console.log('❌ No SwapMaster items available');
       Alert.alert('No Items', 'You don\'t have any SwapMaster items.');
       return;
     }
@@ -211,6 +212,9 @@ export default function LevelDetailScreen() {
     console.log('🔧 Setting itemMode to:', newMode);
     setItemMode(newMode);
     setSelectedSwapTile(null);
+    
+    // 强制重新渲染
+    console.log('🔧 ItemMode changed to:', newMode);
   };
 
   const handleUseFractalSplit = () => {
@@ -220,6 +224,7 @@ export default function LevelDetailScreen() {
     });
     
     if ((gameData?.splitItems || 0) <= 0) {
+      console.log('❌ No FractalSplit items available');
       Alert.alert('No Items', 'You don\'t have any Split items.');
       return;
     }
@@ -228,6 +233,9 @@ export default function LevelDetailScreen() {
     console.log('✂️ Setting itemMode to:', newMode);
     setItemMode(newMode);
     setSelectedSwapTile(null);
+    
+    // 强制重新渲染
+    console.log('✂️ ItemMode changed to:', newMode);
   };
 
   const stageName = STAGE_NAMES[level] || `Level ${level}`;
@@ -263,6 +271,7 @@ export default function LevelDetailScreen() {
         </View>
       </View>
 
+      {/* 道具工具栏 - 确保在GameBoard之前渲染 */}
       {/* Game Board */}
       <GameBoard
         tiles={board.tiles}
@@ -292,9 +301,11 @@ export default function LevelDetailScreen() {
             (gameData?.swapMasterItems || 0) <= 0 && styles.toolButtonDisabled
           ]}
           onPress={handleUseSwapMaster}
+          onPressIn={() => console.log('🔧 SwapMaster button pressed IN')}
+          onPressOut={() => console.log('🔧 SwapMaster button pressed OUT')}
           disabled={(gameData?.swapMasterItems || 0) <= 0}
           activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
           <Ionicons 
             name="swap-horizontal" 
@@ -327,9 +338,11 @@ export default function LevelDetailScreen() {
             (gameData?.splitItems || 0) <= 0 && styles.toolButtonDisabled
           ]}
           onPress={handleUseFractalSplit}
+          onPressIn={() => console.log('✂️ FractalSplit button pressed IN')}
+          onPressOut={() => console.log('✂️ FractalSplit button pressed OUT')}
           disabled={(gameData?.splitItems || 0) <= 0}
           activeOpacity={0.7}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
         >
           <Ionicons 
             name="cut" 
@@ -477,6 +490,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
     gap: 40,
+    zIndex: 1000,
+    elevation: 1000,
   },
   topToolButton: {
     flexDirection: 'row',
@@ -488,6 +503,8 @@ const styles = StyleSheet.create({
     gap: 6,
     minWidth: 100,
     justifyContent: 'center',
+    zIndex: 1001,
+    elevation: 1001,
   },
   topToolButtonActive: {
     backgroundColor: 'rgba(33, 150, 243, 0.1)',

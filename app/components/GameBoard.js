@@ -467,7 +467,6 @@ const GameBoard = ({
     }
 
     const tilePos = layoutConfig.getTilePosition(row, col);
-    const tilePos = getTilePosition(row, col);
     if (!tilePos) return null;
 
     const tileScale = initTileScale(index);

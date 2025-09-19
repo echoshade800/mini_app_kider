@@ -188,6 +188,8 @@ const Board = ({
           }
         }
       }
+    }
+  }
   // 检查方块是否与选择框有交集（边缘触碰即可）
   const isTileIntersectingSelection = (tileRow, tileCol, selection) => {
     if (!selection) return false;

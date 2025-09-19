@@ -24,9 +24,11 @@ function getNumberDistribution(level, isChallenge = false) {
   // 挑战模式使用特殊的数字分布
   if (isChallenge) {
     return {
-      smallNumbers: 0.10,  // 极少1-2，需要更大框组合
-      mediumNumbers: 0.50, // 中等数字3-6
-      largeNumbers: 0.40   // 大量7-9，需要复杂组合
+      smallNumbers: 0.15,  // 少量1-3，需要更大框组合
+      mediumNumbers: 0.45, // 中等数字4-6
+      largeNumbers: 0.40,  // 大量7-9，需要复杂组合
+      requireMultipleTiles: true, // 需要多方块组合
+      minTilesForTen: Math.random() < 0.5 ? 3 : 4 // 随机需要3或4个方块
     };
   }
   

@@ -39,35 +39,62 @@ function getEffectiveGameArea() {
  * 根据关卡获取数字方块数量
  */
 function getTileCount(level, isChallenge = false) {
+  // 首先计算屏幕最大容量
+  const gameArea = getEffectiveGameArea();
+  const maxCapacity = calculateMaxTileCapacity(gameArea.width, gameArea.height);
+  const targetCapacity = Math.floor(maxCapacity * 0.85); // 使用85%容量保证游戏体验
+  
   if (isChallenge) {
-    return 120; // 挑战模式固定数量
+    return targetCapacity; // 挑战模式使用最大容量
   }
   
-  // 关卡模式：渐进式增长
+  // 关卡模式：渐进式增长，但不超过屏幕容量
   if (level >= 1 && level <= 10) {
-    return Math.floor(12 + level * 2); // 14-32个方块
+    return Math.min(Math.floor(12 + level * 2), targetCapacity); // 14-32个方块
   }
   if (level >= 11 && level <= 20) {
-    return Math.floor(30 + (level - 10) * 3); // 33-60个方块
+    return Math.min(Math.floor(30 + (level - 10) * 3), targetCapacity); // 33-60个方块
   }
   if (level >= 21 && level <= 30) {
-    return Math.floor(60 + (level - 20) * 4); // 64-100个方块
+    return Math.min(Math.floor(60 + (level - 20) * 4), targetCapacity); // 64-100个方块
   }
   if (level >= 31 && level <= 50) {
-    return Math.floor(100 + (level - 30) * 3); // 103-160个方块
+    return Math.min(Math.floor(100 + (level - 30) * 3), targetCapacity); // 103-160个方块
   }
   if (level >= 51 && level <= 80) {
-    return Math.floor(160 + (level - 50) * 2); // 162-220个方块
+    return Math.min(Math.floor(160 + (level - 50) * 2), targetCapacity); // 162-220个方块
   }
   if (level >= 81 && level <= 120) {
-    return Math.floor(220 + (level - 80) * 1.5); // 221-280个方块
+    return Math.min(Math.floor(220 + (level - 80) * 1.5), targetCapacity); // 221-280个方块
   }
   if (level >= 121 && level <= 200) {
-    return Math.floor(280 + (level - 120) * 1); // 281-360个方块
+    return Math.min(Math.floor(280 + (level - 120) * 1), targetCapacity); // 281-360个方块
   }
   
-  // 200关以后继续增长
-  return Math.floor(360 + (level - 200) * 0.5);
+  // 200关以后不再增长，保持最大容量
+  return targetCapacity;
+}
+
+/**
+ * 计算屏幕最大能容纳的方块数量
+ */
+function calculateMaxTileCapacity(availableWidth, availableHeight) {
+  // 计算可用空间（减去木框和间距）
+  const usableWidth = availableWidth - WOOD_FRAME_WIDTH * 2 - FRAME_PADDING * 2;
+  const usableHeight = availableHeight - WOOD_FRAME_WIDTH * 2 - FRAME_PADDING * 2;
+  
+  // 计算最大可能的行列数
+  const maxCols = Math.floor((usableWidth + TILE_GAP) / (TILE_SIZE + TILE_GAP));
+  const maxRows = Math.floor((usableHeight + TILE_GAP) / (TILE_SIZE + TILE_GAP));
+  const maxCapacity = maxRows * maxCols;
+  
+  console.log('📊 屏幕容量计算:');
+  console.log(`   可用空间: ${usableWidth}x${usableHeight}`);
+  console.log(`   最大网格: ${maxRows}行 x ${maxCols}列`);
+  console.log(`   最大容量: ${maxCapacity}个方块`);
+  console.log(`   推荐容量: ${Math.floor(maxCapacity * 0.85)}个方块 (85%)`);
+  
+  return maxCapacity;
 }
 
 /**
@@ -141,11 +168,14 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
   console.log('🎯 新布局系统计算结果:');
   console.log(`   屏幕尺寸: ${screenWidth}x${screenHeight}`);
   console.log(`   有效游戏区域: ${gameArea.width}x${gameArea.height}`);
+  console.log(`   最大方块容量: ${gridInfo.maxTiles}个`);
+  console.log(`   目标方块数: ${tileCount}个`);
   console.log(`   棋盘尺寸: ${boardWidth}x${boardHeight}`);
   console.log(`   数字方块网格: ${rows}行 x ${cols}列`);
   console.log(`   数字方块矩形: ${tilesRectWidth}x${tilesRectHeight}`);
   console.log(`   矩形位置: (${tilesRectLeft.toFixed(1)}, ${tilesRectTop.toFixed(1)})`);
   console.log(`   实际方块数: ${actualTileCount}/${tileCount}`);
+  console.log(`   容量利用率: ${(actualTileCount / gridInfo.maxTiles * 100).toFixed(1)}%`);
   
   return {
     // 棋盘信息

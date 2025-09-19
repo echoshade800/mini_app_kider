@@ -31,8 +31,11 @@ const Board = ({
   
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
+  const [explosionAnimation, setExplosionAnimation] = useState(null);
   
   const selectionOpacity = useRef(new Animated.Value(0)).current;
+  const explosionScale = useRef(new Animated.Value(0)).current;
+  const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef(new Map()).current;
 
   // Early return if sizing not ready
@@ -80,11 +83,42 @@ const Board = ({
     const tilePositions = selectedTiles.map(tile => ({ row: tile.row, col: tile.col }));
 
     if (sum === 10 && selectedTiles.length > 0) {
-      // Success
+      // Success - create explosion effect
       if (settings?.hapticsEnabled !== false) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       
+      // Calculate explosion center position
+      const { startRow, startCol, endRow, endCol } = selection;
+      const centerRow = (startRow + endRow) / 2;
+      const centerCol = (startCol + endCol) / 2;
+      
+      // Convert grid position to pixel position
+      const centerX = centerCol * (cellSize + GAP) + cellSize / 2;
+      const centerY = centerRow * (cellSize + GAP) + cellSize / 2;
+      
+      setExplosionAnimation({ x: centerX, y: centerY });
+      
+      // Explosion animation - yellow "10" note
+      explosionScale.setValue(0.5);
+      explosionOpacity.setValue(1);
+      
+      Animated.parallel([
+        Animated.timing(explosionScale, {
+          toValue: 2.0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(explosionOpacity, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setExplosionAnimation(null);
+      });
+      
+      // Selection box animation - bright green glow
       Animated.sequence([
         Animated.timing(selectionOpacity, {
           toValue: 0.8,
@@ -98,12 +132,11 @@ const Board = ({
         }),
       ]).start(() => {
         setSelection(null);
-        if (onTilesClear) {
-          onTilesClear(tilePositions);
-        }
+        onTilesClear(tilePositions);
       });
+      
     } else if (selectedTiles.length > 0) {
-      // Failure
+      // Failure - blue feedback
       if (settings?.hapticsEnabled !== false) {
         Haptics.selectionAsync();
       }
@@ -338,6 +371,8 @@ const Board = ({
 
   // Selection overlay calculation
   let selectionOverlay = null;
+  let selectionSum = null;
+  
   if (selection) {
     const { startRow, startCol, endRow, endCol } = selection;
     const minRow = Math.min(startRow, endRow);
@@ -371,6 +406,34 @@ const Board = ({
         pointerEvents="none"
       />
     );
+    
+    // Selection sum display
+    if (selectedTiles.length > 0) {
+      const centerX = overlayLeft + overlayWidth / 2;
+      const centerY = overlayTop + overlayHeight / 2;
+      
+      selectionSum = (
+        <View
+          style={[
+            styles.selectionSum,
+            {
+              left: centerX - 25,
+              top: centerY - 20,
+              backgroundColor: isSuccess ? '#FFEB3B' : '#2196F3',
+              borderColor: isSuccess ? '#F57F17' : '#1976D2',
+            }
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={[
+            styles.sumText,
+            { color: isSuccess ? '#333' : '#fff' }
+          ]}>
+            {sum}
+          </Text>
+        </View>
+      );
+    }
   }
 
   return (
@@ -398,6 +461,27 @@ const Board = ({
         >
           {rows}
           {selectionOverlay}
+          {selectionSum}
+          
+          {/* Explosion effect */}
+          {explosionAnimation && (
+            <Animated.View
+              style={[
+                styles.explosion,
+                {
+                  left: explosionAnimation.x - 40,
+                  top: explosionAnimation.y - 30,
+                  transform: [{ scale: explosionScale }],
+                  opacity: explosionOpacity,
+                }
+              ]}
+              pointerEvents="none"
+            >
+              <View style={styles.explosionNote}>
+                <Text style={styles.explosionText}>10</Text>
+              </View>
+            </Animated.View>
+          )}
         </View>
       </View>
     </View>
@@ -482,6 +566,52 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
+  },
+  selectionSum: {
+    position: 'absolute',
+    width: 50,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  sumText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  explosion: {
+    position: 'absolute',
+    width: 80,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  explosionNote: {
+    width: 80,
+    height: 60,
+    backgroundColor: '#FFEB3B', // Yellow sticky note
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#F57F17',
+    shadowColor: '#000',
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  explosionText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
   },
 });
 

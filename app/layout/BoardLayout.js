@@ -86,19 +86,28 @@ function calibrateTileRectangleCenter(layout) {
     boardPadding: BOARD_PADDING
   });
   
-  // 计算数字方块矩形的实际屏幕位置
-  const tilesRectLeft = layout.boardLeft + WOOD_FRAME_WIDTH + BOARD_PADDING + 
-    (layout.contentWidth - 2 * BOARD_PADDING - layout.tilesRectWidth) / 2;
+  // 🎯 重新计算数字方块矩形的实际屏幕位置
+  // 数字方块矩形应该在内容区域中居中
+  const contentLeft = layout.boardLeft + WOOD_FRAME_WIDTH + BOARD_PADDING;
+  const contentTop = layout.boardTop + WOOD_FRAME_WIDTH + BOARD_PADDING;
+  const contentWidth = layout.contentWidth - 2 * BOARD_PADDING;
+  const contentHeight = layout.contentHeight - 2 * BOARD_PADDING;
+  
+  // 数字方块矩形在内容区域中居中
+  const tilesRectLeft = contentLeft + (contentWidth - layout.tilesRectWidth) / 2;
+  const tilesRectTop = contentTop + (contentHeight - layout.tilesRectHeight) / 2;
   const tilesRectRight = tilesRectLeft + layout.tilesRectWidth;
+  const tilesRectBottom = tilesRectTop + layout.tilesRectHeight;
   
   console.log('🎯 数字方块矩形计算过程:');
-  console.log('   boardLeft:', layout.boardLeft);
-  console.log('   + woodFrameWidth:', WOOD_FRAME_WIDTH);
-  console.log('   + boardPadding:', BOARD_PADDING);
-  console.log('   + 居中偏移:', (layout.contentWidth - 2 * BOARD_PADDING - layout.tilesRectWidth) / 2);
+  console.log('   contentLeft:', contentLeft);
+  console.log('   contentWidth:', contentWidth);
+  console.log('   tilesRectWidth:', layout.tilesRectWidth);
+  console.log('   居中偏移:', (contentWidth - layout.tilesRectWidth) / 2);
   console.log('   = tilesRectLeft:', tilesRectLeft);
   console.log('   tilesRectRight:', tilesRectRight);
-  console.log('   tilesRectWidth:', layout.tilesRectWidth);
+  console.log('   tilesRectTop:', tilesRectTop);
+  console.log('   tilesRectBottom:', tilesRectBottom);
   
   // 计算与屏幕左右边缘的距离
   const leftDistance = tilesRectLeft - gameArea.left; // 距离游戏区域左边缘
@@ -109,7 +118,6 @@ function calibrateTileRectangleCenter(layout) {
   console.log(`   矩形右边距: ${tilesRectRight.toFixed(2)}px`);
   console.log(`   游戏区域左边缘: ${gameArea.left}px`);
   console.log(`   游戏区域右边缘: ${gameArea.left + gameArea.width}px`);
-  console.log(`   矩形右边距: ${rightDistance.toFixed(2)}px`);
   console.log(`   左侧距离: ${leftDistance.toFixed(2)}px`);
   console.log(`   右侧距离: ${rightDistance.toFixed(2)}px`);
   console.log(`   左右距离差: ${Math.abs(leftDistance - rightDistance).toFixed(2)}px`);
@@ -127,8 +135,8 @@ function calibrateTileRectangleCenter(layout) {
     console.log(`   校准后棋盘左边距: ${newBoardLeft.toFixed(2)}px`);
     
     // 验证校准后的位置
-    const newTilesRectLeft = newBoardLeft + WOOD_FRAME_WIDTH + BOARD_PADDING + 
-      (layout.contentWidth - 2 * BOARD_PADDING - layout.tilesRectWidth) / 2;
+    const newContentLeft = newBoardLeft + WOOD_FRAME_WIDTH + BOARD_PADDING;
+    const newTilesRectLeft = newContentLeft + (contentWidth - layout.tilesRectWidth) / 2;
     const newTilesRectRight = newTilesRectLeft + layout.tilesRectWidth;
     const newLeftDistance = newTilesRectLeft - gameArea.left;
     const newRightDistance = (gameArea.left + gameArea.width) - newTilesRectRight;
@@ -409,31 +417,25 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
       return null;
     }
     
-    // 🎯 统一中心点计算：内容区的几何中心
-    const contentCenterX = contentWidth / 2;
-    const contentCenterY = contentHeight / 2;
+    // 🎯 重新设计方块位置计算逻辑
+    // 数字方块矩形应该在可用内容区域中居中
+    const availableContentWidth = contentWidth - 2 * padding;
+    const availableContentHeight = contentHeight - 2 * padding;
     
-    // 🎯 数字方块矩形的几何中心
-    const tileRectCenterX = tilesRectWidth / 2;
-    const tileRectCenterY = tilesRectHeight / 2;
+    // 数字方块矩形在可用区域中的起始位置（居中）
+    const tilesRectStartX = padding + (availableContentWidth - tilesRectWidth) / 2;
+    const tilesRectStartY = padding + (availableContentHeight - tilesRectHeight) / 2;
     
-    // 🎯 计算数字方块矩形左上角位置，使其中心与内容区中心重合
-    const tileRectStartX = contentCenterX - tileRectCenterX;
-    const tileRectStartY = contentCenterY - tileRectCenterY;
-    
-    // 🎯 计算单个方块位置（相对于数字方块矩形左上角）
+    // 计算单个方块在数字方块矩形中的相对位置
     const relativeX = col * (tileSize + gap);
     const relativeY = row * (tileSize + gap);
     
-    // 🎯 最终位置：数字方块矩形起始位置 + 方块相对位置
+    // 最终位置：数字方块矩形起始位置 + 方块相对位置
     let x = tileRectStartX + relativeX;
     let y = tileRectStartY + relativeY;
     
-    // 🎯 如果提供了校准后的棋盘位置，则加上偏移量
-    if (boardLeft !== null && boardTop !== null) {
-      x += boardLeft + WOOD_FRAME_WIDTH + padding;
-      y += boardTop + WOOD_FRAME_WIDTH + padding;
-    }
+    // 注意：这里返回的是相对于棋盘内容区域的坐标
+    // 在GameBoard中渲染时会加上棋盘的绝对位置
     
     return {
       x,

@@ -64,6 +64,28 @@ const GameBoard = ({
     calibrated: layoutConfig.calibrated,
     calibrationOffset: layoutConfig.calibrationOffset
   });
+  
+  // 🎯 添加数字方块实际渲染位置的调试信息
+  if (tiles && tiles.length > 0) {
+    // 找到第一个非零方块的位置作为参考
+    let firstTileIndex = tiles.findIndex(tile => tile > 0);
+    if (firstTileIndex >= 0) {
+      const firstTileRow = Math.floor(firstTileIndex / width);
+      const firstTileCol = firstTileIndex % width;
+      const firstTilePos = layoutConfig.getTilePosition(firstTileRow, firstTileCol);
+      
+      if (firstTilePos) {
+        console.log('🎯 第一个方块实际渲染位置:', {
+          row: firstTileRow,
+          col: firstTileCol,
+          x: firstTilePos.x,
+          y: firstTilePos.y,
+          screenX: layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding + firstTilePos.x,
+          screenY: layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding + firstTilePos.y
+        });
+      }
+    }
+  }
 
   const initTileScale = (index) => {
     if (!tileScales.has(index)) {
@@ -477,6 +499,10 @@ const GameBoard = ({
     const tilePos = layoutConfig.getTilePosition(row, col);
     if (!tilePos) return null;
 
+    // 🎯 计算方块在屏幕上的绝对位置
+    const absoluteX = layoutConfig.boardLeft + layoutConfig.woodFrameWidth + layoutConfig.boardPadding + tilePos.x;
+    const absoluteY = layoutConfig.boardTop + layoutConfig.woodFrameWidth + layoutConfig.boardPadding + tilePos.y;
+
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
     
@@ -531,8 +557,8 @@ const GameBoard = ({
         key={`${row}-${col}`}
         style={{
           position: 'absolute',
-          left: tilePos.x,
-          top: tilePos.y,
+          left: absoluteX,
+          top: absoluteY,
           width: tilePos.width,
           height: tilePos.height,
           alignItems: 'center',

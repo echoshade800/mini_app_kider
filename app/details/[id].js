@@ -468,6 +468,9 @@ export default function LevelDetailScreen() {
         }}
       />
     </>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   boardFrame: {
     backgroundColor: '#1E5A3C', // Deep green chalkboard
     borderRadius: 16,
-    borderWidth: layoutConfig?.woodFrameWidth || 8,
+    borderWidth: 8,
     borderColor: '#8B5A2B',
     shadowColor: '#000',
     shadowOffset: {

@@ -369,7 +369,7 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
   console.log('🎯 BoardLayout Debug:', {
     gameArea: { width: gameArea.width, height: gameArea.height, top: gameArea.top },
     boardSize: { width: layout.boardWidth, height: layout.boardHeight },
-    boardPosition: { left: boardLeft, top: boardTop },
+    boardPosition: { left: layout.boardLeft, top: layout.boardTop },
     tileSize: layout.tileSize,
     rows: layout.rows,
     cols: layout.cols

@@ -14,8 +14,9 @@ import {
   Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { generateBoard } from '../utils/boardGenerator';
 import { STAGE_NAMES } from '../utils/stageNames';
@@ -56,13 +57,36 @@ export default function LevelDetailScreen() {
   const [selectedSwapTile, setSelectedSwapTile] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
   const [fractalAnimations, setFractalAnimations] = useState(new Map());
+  const [boardKey, setBoardKey] = useState(0); // 用于强制重新生成棋盘
 
-  useEffect(() => {
+  // 生成新棋盘的函数
+  const generateNewBoard = useCallback(() => {
     if (level && !isNaN(level)) {
+      console.log(`🔄 生成新棋盘 - 关卡 ${level}`);
       const newBoard = generateBoard(level);
       setBoard(newBoard);
+      setBoardKey(prev => prev + 1); // 更新key强制重新渲染
+      
+      // 重置游戏状态
+      setItemMode(null);
+      setSelectedSwapTile(null);
+      setSwapAnimations(new Map());
+      setFractalAnimations(new Map());
     }
   }, [level]);
+
+  // 初始化棋盘
+  useEffect(() => {
+    generateNewBoard();
+  }, [generateNewBoard]);
+
+  // 页面获得焦点时刷新棋盘
+  useFocusEffect(
+    useCallback(() => {
+      console.log(`📱 页面获得焦点 - 关卡 ${level}`);
+      generateNewBoard();
+    }, [generateNewBoard])
+  );
 
   const handleTilesClear = (clearedPositions, newTilesData = null) => {
     if (!board) return;
@@ -261,6 +285,7 @@ export default function LevelDetailScreen() {
       {/* 道具工具栏 - 确保在GameBoard之前渲染 */}
       {/* Game Board */}
       <GameBoard
+        key={boardKey}
         tiles={board.tiles}
         width={board.width}
         height={board.height}

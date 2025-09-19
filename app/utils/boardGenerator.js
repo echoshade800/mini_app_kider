@@ -172,21 +172,98 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     }
   }
   
-  for (let i = 0; i < Math.min(remainingCount, availablePositions.length); i++) {
-    const pos = availablePositions[i];
-    const rand = random();
+  // Calculate current sum from placed pairs
+  let currentSum = 0;
+  for (let i = 0; i < totalSlots; i++) {
+    if (tiles[i] > 0) {
+      currentSum += tiles[i];
+    }
+  }
+  
+  // Calculate target sum to make total sum a multiple of 10
+  const remainingTilesToPlace = Math.min(remainingCount, availablePositions.length);
+  let targetRemainingSum = 0;
+  
+  if (remainingTilesToPlace > 0) {
+    // Find the next multiple of 10 that's achievable
+    const minPossibleSum = currentSum + remainingTilesToPlace; // All 1s
+    const maxPossibleSum = currentSum + remainingTilesToPlace * 9; // All 9s
     
-    let value;
-    if (rand < distribution.smallNumbers) {
-      value = Math.floor(random() * 3) + 1; // 1-3
-    } else if (rand < distribution.smallNumbers + distribution.mediumNumbers) {
-      value = Math.floor(random() * 3) + 4; // 4-6
-    } else {
-      value = Math.floor(random() * 3) + 7; // 7-9
+    // Find the closest multiple of 10 within range
+    let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
+    if (targetTotalSum > maxPossibleSum) {
+      targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
     }
     
-    tiles[pos] = value;
+    targetRemainingSum = targetTotalSum - currentSum;
   }
+  
+  // Generate remaining tiles to achieve target sum
+  const remainingTiles = [];
+  for (let i = 0; i < Math.min(remainingCount, availablePositions.length); i++) {
+    const pos = availablePositions[i];
+    remainingTiles.push(0); // Placeholder
+  }
+  
+  // Fill remaining tiles to achieve target sum
+  if (remainingTiles.length > 0) {
+    // Start with average distribution
+    const avgValue = Math.max(1, Math.min(9, Math.round(targetRemainingSum / remainingTiles.length)));
+    
+    for (let i = 0; i < remainingTiles.length; i++) {
+      remainingTiles[i] = avgValue;
+    }
+    
+    // Adjust to match exact target sum
+    let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
+    let difference = targetRemainingSum - currentRemainingSum;
+    
+    // Distribute the difference
+    let attempts = 0;
+    while (difference !== 0 && attempts < 100) {
+      for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+        if (difference > 0 && remainingTiles[i] < 9) {
+          remainingTiles[i]++;
+          difference--;
+        } else if (difference < 0 && remainingTiles[i] > 1) {
+          remainingTiles[i]--;
+          difference++;
+        }
+      }
+      attempts++;
+    }
+    
+    // Apply some randomization while maintaining sum
+    for (let i = 0; i < remainingTiles.length - 1; i++) {
+      if (random() < 0.3) { // 30% chance to randomize
+        const maxIncrease = Math.min(9 - remainingTiles[i], remainingTiles[i + 1] - 1);
+        const maxDecrease = Math.min(remainingTiles[i] - 1, 9 - remainingTiles[i + 1]);
+        
+        if (maxIncrease > 0 && random() < 0.5) {
+          const change = Math.floor(random() * maxIncrease) + 1;
+          remainingTiles[i] += change;
+          remainingTiles[i + 1] -= change;
+        } else if (maxDecrease > 0) {
+          const change = Math.floor(random() * maxDecrease) + 1;
+          remainingTiles[i] -= change;
+          remainingTiles[i + 1] += change;
+        }
+      }
+    }
+  }
+  
+  // Place the calculated remaining tiles
+  for (let i = 0; i < remainingTiles.length; i++) {
+    const pos = availablePositions[i];
+    tiles[pos] = remainingTiles[i];
+  }
+  
+  // Verify the sum is a multiple of 10 (for debugging)
+  const finalSum = tiles.reduce((sum, val) => sum + val, 0);
+  if (finalSum % 10 !== 0) {
+    console.warn(`Board sum ${finalSum} is not a multiple of 10 for level ${level}`);
+  }
+    
   
   return {
     seed,

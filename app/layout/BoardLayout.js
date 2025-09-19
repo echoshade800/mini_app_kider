@@ -51,7 +51,7 @@ const WOOD_FRAME_WIDTH = 8; // 木框厚度
 // 有效游戏区域配置
 const EFFECTIVE_AREA = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+  BOTTOM_RESERVED: 20,   // 底部保留区域（安全边距）
 };
 
 /**

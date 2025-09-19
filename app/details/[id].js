@@ -185,25 +185,28 @@ export default function LevelDetailScreen() {
             }
           }
           
-          // If no different number combinations possible, allow same numbers
-          if (splitOptions.length === 0) {
+          // Need at least 2 empty positions for splitting
+          if (emptyPositions.length >= 2) {
             const half = Math.floor(value / 2);
             const remainder = value - half;
             splitOptions.push([half, remainder]);
           }
           
-          // Choose a random split option
-          const [num1, num2] = splitOptions[Math.floor(Math.random() * splitOptions.length)];
+            // Original tile becomes empty (cleared)
+            newTiles[index] = 0;
           
-          // Original tile becomes the first split number
+            // Place both split numbers in random empty positions
+            const pos1 = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
+            const remainingPositions = emptyPositions.filter(p => p !== pos1);
           newTiles[index] = num1;
           
+            newTiles[pos1] = num1;
           // Place the second number in a random empty position
           const pos2 = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
           
           newTiles[pos2] = num2;
           
-          console.log('✅ Splitting tile:', {
+                { value: num1, position: pos1 },
             original: { value, position: index },
             split: [
               { value: num1, position: index, note: 'original position' },
@@ -217,7 +220,7 @@ export default function LevelDetailScreen() {
           setItemMode(null);
           
           // Consume item
-          const newSplitItems = Math.max(0, (gameData?.splitItems || 0) - 1);
+            Alert.alert('Insufficient Space', 'Need at least 2 empty positions (previously cleared tiles) to split.');
           updateGameData({ splitItems: newSplitItems });
         } else {
           Alert.alert('Insufficient Space', 'Need at least 1 empty position (previously cleared tile) to split.');

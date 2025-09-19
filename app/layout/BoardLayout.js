@@ -50,8 +50,8 @@ const WOOD_FRAME_WIDTH = 8; // 木框厚度
 
 // 有效游戏区域配置
 const EFFECTIVE_AREA = {
-  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+  TOP_RESERVED: 80,      // 顶部保留区域（HUD）
+  BOTTOM_RESERVED: 80,   // 底部保留区域（道具栏）
 };
 
 /**
@@ -61,9 +61,27 @@ function getEffectiveGameArea() {
   const effectiveHeight = screenHeight - EFFECTIVE_AREA.TOP_RESERVED - EFFECTIVE_AREA.BOTTOM_RESERVED;
   const effectiveWidth = screenWidth;
   
+  // 🔍 调试：有效游戏区域计算
+  console.log('🔍 有效游戏区域计算:');
+  console.log(`   屏幕尺寸: ${screenWidth} × ${screenHeight}px`);
+  console.log(`   顶部保留: ${EFFECTIVE_AREA.TOP_RESERVED}px`);
+  console.log(`   底部保留: ${EFFECTIVE_AREA.BOTTOM_RESERVED}px`);
+  console.log(`   有效高度: ${effectiveHeight}px`);
+  console.log(`   有效宽度: ${effectiveWidth}px`);
+  
+  // 确保有效区域不会是负数
+  const safeHeight = Math.max(effectiveHeight, 200); // 最小200px高度
+  const safeWidth = Math.max(effectiveWidth, 200);   // 最小200px宽度
+  
+  if (effectiveHeight !== safeHeight || effectiveWidth !== safeWidth) {
+    console.log('⚠️  有效区域调整:');
+    console.log(`   调整前: ${effectiveWidth} × ${effectiveHeight}px`);
+    console.log(`   调整后: ${safeWidth} × ${safeHeight}px`);
+  }
+  
   return {
-    width: effectiveWidth,
-    height: effectiveHeight,
+    width: safeWidth,
+    height: safeHeight,
     top: EFFECTIVE_AREA.TOP_RESERVED,
     left: 0,
   };

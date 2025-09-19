@@ -110,6 +110,9 @@ export default function LevelDetailScreen() {
       // 成功消除后重置重排计数
       setReshuffleCount(0);
       
+     // 重置校准相关状态
+     // 注意：这些状态在GameBoard组件内部管理，这里不需要额外处理
+     
       // 成功消除后检查是否还有可消除组合
       setTimeout(() => {
         const { hasValidCombinations } = require('../utils/gameLogic');
@@ -117,8 +120,8 @@ export default function LevelDetailScreen() {
         
         if (!hasValidMoves) {
           console.log('No valid combinations detected, starting calibration...');
-          // 这里可以触发校准逻辑或显示救援弹窗
-          setShowRescueModal(true);
+         // 校准逻辑现在由GameBoard组件自动处理
+         // 不需要在这里手动触发救援弹窗
         }
       }, 500);
     }

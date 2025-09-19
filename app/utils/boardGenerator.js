@@ -23,7 +23,7 @@ function seededRandom(seed) {
 function getTileCount(level, isChallenge = false) {
   if (isChallenge) {
     // 挑战模式：使用高数量提供最大挑战
-    return 200; // 固定高数量
+    return 120; // 固定中等数量，通过复杂组合增加难度
   }
   
   // 关卡模式：前几关保证可完全消除，后续渐进式增长
@@ -40,18 +40,9 @@ function getTileCount(level, isChallenge = false) {
   if (level >= 31 && level <= 50) {
     return Math.floor(80 + (level - 30) * 2.5); // 82.5-130个方块
   }
-  if (level >= 51 && level <= 80) {
-    return Math.floor(130 + (level - 50) * 2); // 132-190个方块
-  }
-  if (level >= 81 && level <= 120) {
-    return Math.floor(190 + (level - 80) * 1.5); // 191.5-250个方块
-  }
-  if (level >= 121 && level <= 200) {
-    return Math.floor(250 + (level - 120) * 1); // 251-330个方块
-  }
   
-  // 200关以后继续增长
-  return Math.floor(330 + (level - 200) * 0.5);
+  // 51关以后固定在120个方块，通过数字分布和组合复杂度增加难度
+  return 120;
 }
 
 // Get number distribution strategy based on level
@@ -59,9 +50,9 @@ function getNumberDistribution(level) {
   // 挑战模式使用特殊的数字分布
   if (level === -1) { // 挑战模式标识
     return {
-      smallNumbers: 0.15,  // 大幅减少1-2的比例 (原来0.4)
-      mediumNumbers: 0.65, // 大幅增加3-6的比例 (原来0.4) 
-      largeNumbers: 0.20   // 略微增加7-9的比例 (原来0.2)
+      smallNumbers: 0.10,  // 极少1-2，需要更大框组合
+      mediumNumbers: 0.50, // 中等数字3-6
+      largeNumbers: 0.40   // 大量7-9，需要复杂组合
     };
   }
   
@@ -92,7 +83,8 @@ function getNumberDistribution(level) {
     };
   }
   
-  if (level <= 80) {
+  // 31-50关：平衡分布
+  if (level <= 50) {
     return {
       smallNumbers: 0.5,
       mediumNumbers: 0.4,
@@ -100,10 +92,29 @@ function getNumberDistribution(level) {
     };
   }
   
+  // 51-100关：减少小数字，增加大数字，需要更大框
+  if (level <= 100) {
+    return {
+      smallNumbers: 0.3,  // 减少1-3
+      mediumNumbers: 0.4, // 保持4-6
+      largeNumbers: 0.3   // 增加7-9，需要更复杂组合
+    };
+  }
+  
+  // 101-150关：进一步减少小数字
+  if (level <= 150) {
+    return {
+      smallNumbers: 0.2,  // 更少1-3
+      mediumNumbers: 0.4, // 保持4-6
+      largeNumbers: 0.4   // 更多7-9
+    };
+  }
+  
+  // 151关以后：极端分布，主要是大数字
   return {
-    smallNumbers: 0.4,
-    mediumNumbers: 0.4,
-    largeNumbers: 0.2
+    smallNumbers: 0.1,  // 极少1-3
+    mediumNumbers: 0.3, // 少量4-6
+    largeNumbers: 0.6   // 大量7-9，需要非常大的框
   };
 }
 
@@ -120,9 +131,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   
   if (isChallenge) {
     // 挑战模式：固定14行11列
-    rows = 14;
-    cols = 11;
-    tileCount = rows * cols; // 154个方块
+    rows = 10;
+    cols = 12;
+    tileCount = 120; // 固定120个方块
   } else {
     // 关卡模式：使用原有逻辑
     tileCount = getTileCount(level, isChallenge);
@@ -180,10 +191,14 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     targetPairRatio = 0.7;  // 11-20关：70%有效配对
   } else if (level <= 40) {
     targetPairRatio = 0.6;  // 21-40关：60%有效配对
-  } else if (level <= 80) {
-    targetPairRatio = 0.4;  // 41-80关：40%有效配对
+  } else if (level <= 50) {
+    targetPairRatio = 0.5;  // 41-50关：50%有效配对
+  } else if (level <= 100) {
+    targetPairRatio = 0.3;  // 51-100关：30%有效配对，需要更大框
+  } else if (level <= 150) {
+    targetPairRatio = 0.2;  // 101-150关：20%有效配对，需要很大框
   } else {
-    targetPairRatio = 0.25; // 81+关：25%有效配对，高难度
+    targetPairRatio = 0.1;  // 151+关：10%有效配对，需要极大框
   }
   
   const pairCount = Math.floor((finalTileCount / 2) * targetPairRatio);

@@ -95,6 +95,22 @@ export default function ChallengeScreen() {
 
   const generateNewBoard = () => {
     const newBoard = generateBoard(100, true, true); // 挑战模式：高数量方块
+    
+    // 🎯 调试命令：计算并记录棋盘格尺寸数据
+    if (newBoard && newBoard.layoutConfig) {
+      const { rows, cols, boardWidth, boardHeight, tileSize, tilesRectWidth, tilesRectHeight } = newBoard.layoutConfig;
+      console.log('📏 挑战模式棋盘格尺寸数据:');
+      console.log(`   棋盘格行数: ${rows}`);
+      console.log(`   棋盘格列数: ${cols}`);
+      console.log(`   棋盘总宽度: ${boardWidth}px`);
+      console.log(`   棋盘总高度: ${boardHeight}px`);
+      console.log(`   单个方块尺寸: ${tileSize}px`);
+      console.log(`   数字方块矩形宽度: ${tilesRectWidth}px`);
+      console.log(`   数字方块矩形高度: ${tilesRectHeight}px`);
+      console.log(`   棋盘格总数: ${rows * cols}`);
+      console.log('📏 ========================');
+    }
+    
     setBoard(newBoard);
   };
 

@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { hasValidCombinations } from '../lib/gameLogic';
-import RescueModal from './RescueModal';
 import { computeWithDebug } from '../lib/computeWithDebug';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

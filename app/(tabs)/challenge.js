@@ -97,7 +97,7 @@ export default function ChallengeScreen() {
 
   const generateNewBoard = () => {
     console.log('🔄 挑战模式生成新棋盘');
-    const newBoard = generateBoard(100, true, true); // 挑战模式：高数量方块
+    const newBoard = generateBoard(100, true, true); // 挑战模式：使用统一参数
     setBoardKey(prev => prev + 1); // 更新key强制重新渲染
     
     // 🎯 调试命令：计算并记录棋盘格尺寸数据
@@ -112,6 +112,7 @@ export default function ChallengeScreen() {
       console.log(`   数字方块矩形宽度: ${tilesRectWidth}px`);
       console.log(`   数字方块矩形高度: ${tilesRectHeight}px`);
       console.log(`   棋盘格总数: ${rows * cols}`);
+      console.log(`   实际方块数量: ${newBoard.tiles.filter(t => t > 0).length}`);
       console.log('📏 ========================');
     }
     

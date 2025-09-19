@@ -151,60 +151,12 @@ export function computeTileSize(containerWidth, containerHeight, rows, cols, gap
  * 自适应棋盘布局计算
  * @param {number} N - 数字方块数量
  * @param {number} targetAspect - 期望宽高比（可选）
- * @param {number} level - 关卡等级（用于特殊处理）
+ * @param {number} level - 关卡等级（保留参数但不做特殊处理）
  * @returns {Object} 完整布局信息
  */
 export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
   const gameArea = getEffectiveGameArea();
   let { rows, cols } = computeGridRC(N, targetAspect);
-  
-  // 前35关：使用第35关的方块尺寸作为基准
-  if (level && level <= 35) {
-    const level35TileCount = getTileCount(35, false);
-    const level35Layout = computeGridRC(level35TileCount, targetAspect);
-    const level35TileSize = computeTileSize(
-      gameArea.width, 
-      gameArea.height, 
-      level35Layout.rows, 
-      level35Layout.cols
-    );
-    
-    if (level35TileSize.isValid) {
-      const targetTileSize = level35TileSize.tileSize;
-      
-      // 计算数字方块矩形尺寸
-      const tilesRectWidth = cols * targetTileSize + (cols - 1) * TILE_GAP;
-      const tilesRectHeight = rows * targetTileSize + (rows - 1) * TILE_GAP;
-      
-      // 计算棋盘内容区和总尺寸
-      const contentWidth = tilesRectWidth + 2 * BOARD_PADDING;
-      const contentHeight = tilesRectHeight + 2 * BOARD_PADDING;
-      const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
-      const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
-      
-      // 检查是否能放入有效区域
-      if (boardWidth <= gameArea.width && boardHeight <= gameArea.height) {
-        const boardLeft = (gameArea.width - boardWidth) / 2;
-        const boardTop = gameArea.top + (gameArea.height - boardHeight) / 2;
-        
-        return {
-          tileSize: targetTileSize,
-          tilesRectWidth,
-          tilesRectHeight,
-          boardWidth,
-          boardHeight,
-          contentWidth,
-          contentHeight,
-          rows,
-          cols,
-          boardLeft,
-          boardTop,
-          gameArea,
-          isValid: true,
-        };
-      }
-    }
-  }
   
   // 策略a: 尝试在有效区域内放大棋盘
   let layout = computeTileSize(gameArea.width, gameArea.height, rows, cols);

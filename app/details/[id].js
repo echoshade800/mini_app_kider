@@ -57,6 +57,9 @@ export default function LevelDetailScreen() {
         ...prev,
         tiles: newTiles
       }));
+      
+      // 重置校准计数
+      setReshuffleCount(0);
     } else {
       // 更新棋盘：将被清除的方块设为0（空位）
       const newTiles = [...board.tiles];

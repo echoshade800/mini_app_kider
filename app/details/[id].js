@@ -20,7 +20,7 @@ import { useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { generateBoard } from '../utils/boardGenerator';
 import { STAGE_NAMES } from '../utils/stageNames';
-import GameBoard from '../components/GameBoard';
+import Board from '../components/Board';
 import RescueModal from '../components/RescueModal';
 
 // 提取关卡名称（去掉Grade前缀部分）
@@ -320,21 +320,10 @@ export default function LevelDetailScreen() {
 
       {/* 道具工具栏 - 确保在GameBoard之前渲染 */}
       {/* Game Board */}
-      <GameBoard
-        key={boardKey}
-        tiles={board.tiles}
-        width={board.width}
-        height={board.height}
+      <Board
+        tiles={board?.tiles || []}
         onTilesClear={handleTilesClear}
-        disabled={false}
-        itemMode={itemMode}
-        onTileClick={handleTileClick}
-        selectedSwapTile={selectedSwapTile}
-        swapAnimations={swapAnimations}
-        fractalAnimations={fractalAnimations}
-        settings={settings}
-        isChallenge={false}
-        layoutConfig={board.layoutConfig}
+        headerHeight={120}
       />
 
       {/* Bottom Toolbar - 移到GameBoard下方确保不被覆盖 */}

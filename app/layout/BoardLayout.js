@@ -43,7 +43,8 @@ function getTileCount(level, isChallenge = false) {
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // 布局常量
-const MIN_TILE_SIZE = 28; // 最小方块尺寸
+const MIN_TILE_SIZE = 30; // 最小方块尺寸
+const MAX_TILE_SIZE = 36; // 最大方块尺寸
 const TILE_GAP = 4; // 方块间距
 const BOARD_PADDING = 5; // 棋盘内边距（方块矩形到木框的留白）
 const WOOD_FRAME_WIDTH = 8; // 木框厚度
@@ -81,13 +82,13 @@ export function computeGridRC(N, targetAspect = null) {
   const gameArea = getEffectiveGameArea();
   const defaultAspect = targetAspect || (gameArea.width / gameArea.height);
   
-  // 寻找最接近目标宽高比的 (R, C) 组合
+  // 寻找最接近目标宽高比的 (R, C) 组合，确保 R * C = N（完美矩形）
   let bestR = 1, bestC = N;
   let bestDiff = Infinity;
   
   for (let r = 1; r <= N; r++) {
-    const c = Math.ceil(N / r);
-    if (r * c >= N) {
+    if (N % r === 0) { // 只考虑能整除的情况，确保完美矩形
+      const c = N / r;
       const currentAspect = c / r;
       const diff = Math.abs(currentAspect - defaultAspect);
       
@@ -111,9 +112,10 @@ export function computeGridRC(N, targetAspect = null) {
  * @param {number} gap - 方块间距
  * @param {number} padding - 内边距
  * @param {number} minTile - 最小方块尺寸
+ * @param {number} maxTile - 最大方块尺寸
  * @returns {Object} 布局信息
  */
-export function computeTileSize(containerWidth, containerHeight, rows, cols, gap = TILE_GAP, padding = BOARD_PADDING, minTile = MIN_TILE_SIZE) {
+export function computeTileSize(containerWidth, containerHeight, rows, cols, gap = TILE_GAP, padding = BOARD_PADDING, minTile = MIN_TILE_SIZE, maxTile = MAX_TILE_SIZE) {
   // 计算可用空间（减去木框厚度和内边距）
   const availableWidth = containerWidth - WOOD_FRAME_WIDTH * 2 - padding * 2;
   const availableHeight = containerHeight - WOOD_FRAME_WIDTH * 2 - padding * 2;
@@ -121,7 +123,10 @@ export function computeTileSize(containerWidth, containerHeight, rows, cols, gap
   // 计算方块尺寸上限
   const tileW = (availableWidth - (cols - 1) * gap) / cols;
   const tileH = (availableHeight - (rows - 1) * gap) / rows;
-  const tileSize = Math.floor(Math.min(tileW, tileH));
+  const calculatedSize = Math.floor(Math.min(tileW, tileH));
+  
+  // 限制方块尺寸在30-36px之间
+  const tileSize = Math.max(minTile, Math.min(maxTile, calculatedSize));
   
   // 计算数字方块矩形的实际尺寸
   const tilesRectWidth = cols * tileSize + (cols - 1) * gap;
@@ -151,60 +156,12 @@ export function computeTileSize(containerWidth, containerHeight, rows, cols, gap
  * 自适应棋盘布局计算
  * @param {number} N - 数字方块数量
  * @param {number} targetAspect - 期望宽高比（可选）
- * @param {number} level - 关卡等级（用于特殊处理）
+ * @param {number} level - 关卡等级（保留参数但不做特殊处理）
  * @returns {Object} 完整布局信息
  */
 export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
   const gameArea = getEffectiveGameArea();
   let { rows, cols } = computeGridRC(N, targetAspect);
-  
-  // 前35关：使用第35关的方块尺寸作为基准
-  if (level && level <= 35) {
-    const level35TileCount = getTileCount(35, false);
-    const level35Layout = computeGridRC(level35TileCount, targetAspect);
-    const level35TileSize = computeTileSize(
-      gameArea.width, 
-      gameArea.height, 
-      level35Layout.rows, 
-      level35Layout.cols
-    );
-    
-    if (level35TileSize.isValid) {
-      const targetTileSize = level35TileSize.tileSize;
-      
-      // 计算数字方块矩形尺寸
-      const tilesRectWidth = cols * targetTileSize + (cols - 1) * TILE_GAP;
-      const tilesRectHeight = rows * targetTileSize + (rows - 1) * TILE_GAP;
-      
-      // 计算棋盘内容区和总尺寸
-      const contentWidth = tilesRectWidth + 2 * BOARD_PADDING;
-      const contentHeight = tilesRectHeight + 2 * BOARD_PADDING;
-      const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
-      const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
-      
-      // 检查是否能放入有效区域
-      if (boardWidth <= gameArea.width && boardHeight <= gameArea.height) {
-        const boardLeft = (gameArea.width - boardWidth) / 2;
-        const boardTop = gameArea.top + (gameArea.height - boardHeight) / 2;
-        
-        return {
-          tileSize: targetTileSize,
-          tilesRectWidth,
-          tilesRectHeight,
-          boardWidth,
-          boardHeight,
-          contentWidth,
-          contentHeight,
-          rows,
-          cols,
-          boardLeft,
-          boardTop,
-          gameArea,
-          isValid: true,
-        };
-      }
-    }
-  }
   
   // 策略a: 尝试在有效区域内放大棋盘
   let layout = computeTileSize(gameArea.width, gameArea.height, rows, cols);
@@ -361,5 +318,6 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
     boardPadding: BOARD_PADDING,
     woodFrameWidth: WOOD_FRAME_WIDTH,
     minTileSize: MIN_TILE_SIZE,
+    maxTileSize: MAX_TILE_SIZE,
   };
 }

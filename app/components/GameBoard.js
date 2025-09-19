@@ -207,7 +207,6 @@ const GameBoard = ({
       ]).start(() => {
         setSelection(null);
         onTilesClear(tilePositions);
-        
       });
 
     } else if (selectedTiles.length > 0) {
@@ -234,12 +233,6 @@ const GameBoard = ({
       setSelection(null);
     }
 
-    // 消除成功后检查是否还有可消除组合
-    if (sum === 10 && selectedTiles.length > 0) {
-      setTimeout(() => {
-        checkForValidCombinations();
-      }, 1000);
-    }
   };
 
   // 检查是否有可消除的组合，如果没有则进行校准

@@ -90,14 +90,14 @@ const GameBoard = ({
     }).start();
   };
 
-  const isInsideBoard = (pageX, pageY) => {
-    const { gameArea } = layoutConfig;
+  const isInsideGridBorder = (pageX, pageY) => {
+    const { gridBorder } = layoutConfig;
     
-    // 🎯 统一坐标系：检查是否在有效游戏区域内
-    return pageX >= gameArea.left && 
-           pageX <= gameArea.left + gameArea.width && 
-           pageY >= gameArea.top && 
-           pageY <= gameArea.top + gameArea.height;
+    // 检查是否在棋盘格边框内
+    return pageX >= gridBorder.left && 
+           pageX <= gridBorder.left + gridBorder.width && 
+           pageY >= gridBorder.top && 
+           pageY <= gridBorder.top + gridBorder.height;
   };
 
   const getSelectedTiles = () => {
@@ -220,33 +220,33 @@ const GameBoard = ({
     onStartShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
       const { pageX, pageY } = evt.nativeEvent;
-      return !disabled && isInsideBoard(pageX, pageY);
+      return !disabled && isInsideGridBorder(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
       const { pageX, pageY } = evt.nativeEvent;
-      return !disabled && isInsideBoard(pageX, pageY);
+      return !disabled && isInsideGridBorder(pageX, pageY);
     },
 
     onPanResponderGrant: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
       
-      if (!isInsideBoard(pageX, pageY)) return;
+      if (!isInsideGridBorder(pageX, pageY)) return;
       
-      // 🎯 统一坐标系：转换为游戏区域相对坐标
-      const { gameArea, tileSize, tileGap } = layoutConfig;
+      // 转换为棋盘格边框相对坐标
+      const { gridBorder, tileSize, tileGap } = layoutConfig;
       const tilesRectWidth = width * tileSize + (width - 1) * tileGap;
       const tilesRectHeight = height * tileSize + (height - 1) * tileGap;
       
-      const gameAreaRelativeX = pageX - gameArea.left;
-      const gameAreaRelativeY = pageY - gameArea.top;
+      const borderRelativeX = pageX - gridBorder.left;
+      const borderRelativeY = pageY - gridBorder.top;
       
-      // 转换为数字方块矩形内的相对坐标
-      const tilesRectStartX = (gameArea.width - tilesRectWidth) / 2;
-      const tilesRectStartY = (gameArea.height - tilesRectHeight) / 2;
+      // 计算数字方块矩形在边框内的起始位置
+      const tilesRectStartX = (gridBorder.width - tilesRectWidth) / 2;
+      const tilesRectStartY = (gridBorder.height - tilesRectHeight) / 2;
       
-      const relativeX = gameAreaRelativeX - tilesRectStartX;
-      const relativeY = gameAreaRelativeY - tilesRectStartY;
+      const relativeX = borderRelativeX - tilesRectStartX;
+      const relativeY = borderRelativeY - tilesRectStartY;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -275,20 +275,20 @@ const GameBoard = ({
       
       const { pageX, pageY } = evt.nativeEvent;
       
-      // 🎯 统一坐标系：转换为游戏区域相对坐标
-      const { gameArea, tileSize, tileGap } = layoutConfig;
+      // 转换为棋盘格边框相对坐标
+      const { gridBorder, tileSize, tileGap } = layoutConfig;
       const tilesRectWidth = width * tileSize + (width - 1) * tileGap;
       const tilesRectHeight = height * tileSize + (height - 1) * tileGap;
       
-      const gameAreaRelativeX = pageX - gameArea.left;
-      const gameAreaRelativeY = pageY - gameArea.top;
+      const borderRelativeX = pageX - gridBorder.left;
+      const borderRelativeY = pageY - gridBorder.top;
       
-      // 转换为数字方块矩形内的相对坐标
-      const tilesRectStartX = (gameArea.width - tilesRectWidth) / 2;
-      const tilesRectStartY = (gameArea.height - tilesRectHeight) / 2;
+      // 计算数字方块矩形在边框内的起始位置
+      const tilesRectStartX = (gridBorder.width - tilesRectWidth) / 2;
+      const tilesRectStartY = (gridBorder.height - tilesRectHeight) / 2;
       
-      const relativeX = gameAreaRelativeX - tilesRectStartX;
-      const relativeY = gameAreaRelativeY - tilesRectStartY;
+      const relativeX = borderRelativeX - tilesRectStartX;
+      const relativeY = borderRelativeY - tilesRectStartY;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -390,20 +390,20 @@ const GameBoard = ({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    // 🎯 统一坐标系：选择框位置基于游戏区域坐标
-    const { gameArea, tileSize, tileGap } = layoutConfig;
+    // 选择框位置基于棋盘格边框坐标
+    const { gridBorder, tileSize, tileGap } = layoutConfig;
     const tilesRectWidth = width * tileSize + (width - 1) * tileGap;
     const tilesRectHeight = height * tileSize + (height - 1) * tileGap;
     
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
     
-    // 计算选择框在游戏区域中的位置
-    const tilesRectStartX = (gameArea.width - tilesRectWidth) / 2;
-    const tilesRectStartY = (gameArea.height - tilesRectHeight) / 2;
+    // 计算选择框在棋盘格边框中的位置
+    const tilesRectStartX = (gridBorder.width - tilesRectWidth) / 2;
+    const tilesRectStartY = (gridBorder.height - tilesRectHeight) / 2;
     
-    const left = gameArea.left + tilesRectStartX + minCol * cellWidth;
-    const top = gameArea.top + tilesRectStartY + minRow * cellHeight;
+    const left = gridBorder.left + tilesRectStartX + minCol * cellWidth;
+    const top = gridBorder.top + tilesRectStartY + minRow * cellHeight;
     const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileGap;
     const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileGap;
     
@@ -444,20 +444,20 @@ const GameBoard = ({
     const centerRow = (minRow + maxRow) / 2;
     const centerCol = (minCol + maxCol) / 2;
     
-    // 🎯 统一坐标系：数字显示位置基于游戏区域坐标
-    const { gameArea, tileSize, tileGap } = layoutConfig;
+    // 数字显示位置基于棋盘格边框坐标
+    const { gridBorder, tileSize, tileGap } = layoutConfig;
     const tilesRectWidth = width * tileSize + (width - 1) * tileGap;
     const tilesRectHeight = height * tileSize + (height - 1) * tileGap;
     
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
     
-    // 计算数字显示在游戏区域中的位置
-    const tilesRectStartX = (gameArea.width - tilesRectWidth) / 2;
-    const tilesRectStartY = (gameArea.height - tilesRectHeight) / 2;
+    // 计算数字显示在棋盘格边框中的位置
+    const tilesRectStartX = (gridBorder.width - tilesRectWidth) / 2;
+    const tilesRectStartY = (gridBorder.height - tilesRectHeight) / 2;
     
-    const centerX = gameArea.left + tilesRectStartX + centerCol * cellWidth + tileSize / 2;
-    const centerY = gameArea.top + tilesRectStartY + centerRow * cellHeight + tileSize / 2;
+    const centerX = gridBorder.left + tilesRectStartX + centerCol * cellWidth + tileSize / 2;
+    const centerY = gridBorder.top + tilesRectStartY + centerRow * cellHeight + tileSize / 2;
     
     return {
       sum,
@@ -590,7 +590,7 @@ const GameBoard = ({
 
   return (
     <View style={styles.fullScreenContainer}>
-      {/* 🎯 统一坐标系：棋盘背景 */}
+      {/* 棋盘背景 */}
       <View 
         style={[
           styles.chalkboard,
@@ -604,15 +604,15 @@ const GameBoard = ({
         ]}
       />
       
-      {/* 🎯 统一坐标系：游戏区域容器 */}
+      {/* 棋盘格边框容器 */}
       <View
         {...panResponder.panHandlers}
         style={{
           position: 'absolute',
-          left: layoutConfig.gameArea.left,
-          top: layoutConfig.gameArea.top,
-          width: layoutConfig.gameArea.width,
-          height: layoutConfig.gameArea.height,
+          left: layoutConfig.gridBorder.left,
+          top: layoutConfig.gridBorder.top,
+          width: layoutConfig.gridBorder.width,
+          height: layoutConfig.gridBorder.height,
         }}
         pointerEvents="auto"
       >

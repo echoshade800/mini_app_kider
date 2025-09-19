@@ -288,54 +288,51 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
 
 /**
  * 计算每个方块的位置
- * @param {Object} gameArea - 有效游戏区域信息
+ * @param {Object} gridBorder - 棋盘格边框信息
  * @param {number} rows - 行数
  * @param {number} cols - 列数
  * @param {number} tileSize - 方块尺寸
  * @param {number} gap - 间距
  * @returns {Function} 位置计算函数
  */
-export function layoutTiles(gameArea, rows, cols, tileSize, gap = TILE_GAP) {
-  // 🎯 统一坐标系：以有效游戏区域为基准
-  const gameAreaCenterX = gameArea.width / 2;
-  const gameAreaCenterY = gameArea.height / 2;
-  
+export function layoutTiles(gridBorder, rows, cols, tileSize, gap = TILE_GAP) {
   // 计算数字方块矩形尺寸
   const tilesRectWidth = cols * tileSize + (cols - 1) * gap;
   const tilesRectHeight = rows * tileSize + (rows - 1) * gap;
   
-  console.log('🎯 统一坐标系建立:');
-  console.log(`   有效游戏区域: ${gameArea.width} × ${gameArea.height}px`);
-  console.log(`   坐标系原点（游戏区域中心）: (${gameAreaCenterX.toFixed(2)}, ${gameAreaCenterY.toFixed(2)})`);
-  console.log(`   数字方块矩形尺寸: ${tilesRectWidth} × ${tilesRectHeight}px`);
-  console.log(`   棋盘格规格: ${rows}行 × ${cols}列，方块尺寸: ${tileSize}px`);
+  // 计算数字方块矩形在棋盘格边框内的居中位置
+  const horizontalPadding = (gridBorder.width - tilesRectWidth) / 2;
+  const verticalPadding = (gridBorder.height - tilesRectHeight) / 2;
+  
+  // 数字方块矩形在棋盘格边框内的起始位置
+  const tilesRectStartX = gridBorder.left + horizontalPadding;
+  const tilesRectStartY = gridBorder.top + verticalPadding;
+  
+  console.log('🎯 棋盘格边框布局系统:');
+  console.log(`   棋盘格边框: ${gridBorder.width} × ${gridBorder.height}px`);
+  console.log(`   边框位置: (${gridBorder.left}, ${gridBorder.top})`);
+  console.log(`   数字方块矩形: ${tilesRectWidth} × ${tilesRectHeight}px`);
+  console.log(`   水平间距: ${horizontalPadding.toFixed(2)}px，垂直间距: ${verticalPadding.toFixed(2)}px`);
+  console.log(`   矩形起始位置: (${tilesRectStartX.toFixed(2)}, ${tilesRectStartY.toFixed(2)})`);
   
   return function getTilePosition(row, col) {
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
       return null;
     }
     
-    // 🎯 计算方块在数字方块矩形中的相对位置
+    // 计算方块在数字方块矩形中的相对位置
     const relativeX = col * (tileSize + gap);
     const relativeY = row * (tileSize + gap);
     
-    // 🎯 计算方块在游戏区域坐标系中的位置
-    // 数字方块矩形中心对齐游戏区域中心
-    const x = gameAreaCenterX - tilesRectWidth/2 + relativeX;
-    const y = gameAreaCenterY - tilesRectHeight/2 + relativeY;
-    
-    // 🎯 转换为屏幕绝对坐标（加上游戏区域的偏移）
-    const screenX = gameArea.left + x;
-    const screenY = gameArea.top + y;
+    // 计算方块的屏幕绝对位置
+    const screenX = tilesRectStartX + relativeX;
+    const screenY = tilesRectStartY + relativeY;
     
     return {
       x: screenX,
       y: screenY,
       width: tileSize,
       height: tileSize,
-      // 调试信息
-      gameAreaRelativeX: x,
-      gameAreaRelativeY: y,
     };
   };
 }
@@ -351,35 +348,42 @@ export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
   const layout = computeAdaptiveLayout(N, targetAspect, level);
   const gameArea = getEffectiveGameArea();
   
+  // 创建棋盘格边框（与有效游戏区域相同）
+  const gridBorder = {
+    left: gameArea.left,
+    top: gameArea.top,
+    width: gameArea.width,
+    height: gameArea.height,
+  };
+  
   const getTilePosition = layoutTiles(
-    gameArea,
+    gridBorder,
     layout.rows,
     layout.cols,
     layout.tileSize
   );
   
-  // 🎯 计算棋盘在游戏区域中的位置（用于背景显示）
+  // 计算棋盘背景在游戏区域中的位置
   const tilesRectWidth = layout.cols * layout.tileSize + (layout.cols - 1) * TILE_GAP;
   const tilesRectHeight = layout.rows * layout.tileSize + (layout.rows - 1) * TILE_GAP;
   const boardWidth = tilesRectWidth + 2 * BOARD_PADDING + 2 * WOOD_FRAME_WIDTH;
   const boardHeight = tilesRectHeight + 2 * BOARD_PADDING + 2 * WOOD_FRAME_WIDTH;
   
-  // 棋盘背景居中在游戏区域
+  // 棋盘背景居中在有效游戏区域
   const boardLeft = gameArea.left + (gameArea.width - boardWidth) / 2;
   const boardTop = gameArea.top + (gameArea.height - boardHeight) / 2;
   
   return {
     ...layout,
     gameArea,
+    gridBorder,
     getTilePosition,
-    // 重新计算的棋盘位置
     boardLeft,
     boardTop,
     boardWidth,
     boardHeight,
     tilesRectWidth,
     tilesRectHeight,
-    // 布局常量
     tileGap: TILE_GAP,
     boardPadding: BOARD_PADDING,
     woodFrameWidth: WOOD_FRAME_WIDTH,

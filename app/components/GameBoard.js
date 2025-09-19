@@ -242,7 +242,7 @@ const GameBoard = ({
     } else {
       setSelection(null);
     }
-  }
+  };
 
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (evt) => {
@@ -400,12 +400,12 @@ const GameBoard = ({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    const { tile, gap } = layoutResult;
-    const cellWidth = tile + gap;
-    const cellHeight = tile + gap;
+    const { tileSize, tileGap } = layoutConfig;
+    const cellWidth = tileSize + tileGap;
+    const cellHeight = tileSize + tileGap;
 
-    const left = R(layoutResult.startX - layoutResult.inner.left + minCol * cellWidth);
-    const top = R(layoutResult.startY - layoutResult.inner.top + minRow * cellHeight);
+    const left = minCol * cellWidth;
+    const top = minRow * cellHeight;
     const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileGap;
     const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileGap;
     
@@ -446,13 +446,13 @@ const GameBoard = ({
     const centerRow = (minRow + maxRow) / 2;
     const centerCol = (minCol + maxCol) / 2;
     
-    const { tile, gap } = layoutResult;
-    const cellWidth = tile + gap;
-    const cellHeight = tile + gap;
+    const { tileSize, tileGap } = layoutConfig;
+    const cellWidth = tileSize + tileGap;
+    const cellHeight = tileSize + tileGap;
 
     // 计算中心位置的坐标
-    const centerX = R(layoutResult.startX - layoutResult.inner.left + centerCol * cellWidth + tile / 2);
-    const centerY = R(layoutResult.startY - layoutResult.inner.top + centerRow * cellHeight + tile / 2);
+    const centerX = centerCol * cellWidth + tileSize / 2;
+    const centerY = centerRow * cellHeight + tileSize / 2;
     
     return {
       sum,
@@ -487,9 +487,8 @@ const GameBoard = ({
       return null; // 空位不渲染任何内容
     }
 
-    // 从布局结果中找到对应的方块位置
-    const tileLayout = layoutResult.tiles.find(t => t.row === row && t.col === col);
-    if (!tileLayout) return null;
+    const tilePos = layoutConfig.getTilePosition(row, col);
+    if (!tilePos) return null;
 
     const tileScale = initTileScale(index);
     const rotation = getTileRotation(row, col);
@@ -545,10 +544,10 @@ const GameBoard = ({
         key={`${row}-${col}`}
         style={{
           position: 'absolute',
-          left: tileLayout.left - layoutResult.inner.left,
-          top: tileLayout.top - layoutResult.inner.top,
-          width: tileLayout.size,
-          height: tileLayout.size,
+          left: tilePos.x,
+          top: tilePos.y,
+          width: tilePos.width,
+          height: tilePos.height,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -570,7 +569,7 @@ const GameBoard = ({
           <Text style={[
             styles.tileText,
             { 
-              fontSize: Math.max(12, tileLayout.size * 0.5),
+              fontSize: Math.max(12, tilePos.width * 0.5),
               fontWeight: isInSelection ? 'bold' : 'normal',
             }
           ]}>
@@ -591,11 +590,13 @@ const GameBoard = ({
           style={[
             styles.chalkboard,
             {
-              width: layoutConfig?.boardWidth || 300,
-              height: layoutConfig?.boardHeight || 300,
+              position: 'absolute',
+              left: layoutConfig.boardLeft,
+              top: layoutConfig.boardTop,
+              width: layoutConfig.boardWidth,
+              height: layoutConfig.boardHeight,
             }
           ]}
-          onLayout={handleBoardLayout}
           pointerEvents="auto"
         >
           {/* 数字方块内容区 */}
@@ -603,14 +604,14 @@ const GameBoard = ({
             {...panResponder.panHandlers}
             style={{
               position: 'absolute',
-              left: layoutConfig?.woodFrameWidth + layoutConfig?.boardPadding,
-              top: layoutConfig?.woodFrameWidth + layoutConfig?.boardPadding,
-              width: (layoutConfig?.contentWidth || 300) - (layoutConfig?.boardPadding * 2 || 10),
-              height: (layoutConfig?.contentHeight || 300) - (layoutConfig?.boardPadding * 2 || 10),
+              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
+              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
             }}
             pointerEvents={itemMode ? "auto" : "auto"}
           >
-            {/* 🎯 数字方块容器 - 使用像素级精确定位 */}
+            {/* 🎯 数字方块容器 - 使用统一中心点精确定位 */}
             <View
               style={{
                 width: '100%',
@@ -618,94 +619,68 @@ const GameBoard = ({
                 position: 'relative',
               }}
             >
-              {/* 渲染所有方块 */}
-              {tiles.map((value, index) => {
-                const row = Math.floor(index / width);
-                const col = index % width;
-                return renderTile(value, row, col);
-              })}
-              
-              {/* Selection overlay */}
-              {selectionStyle && (
-                <Animated.View style={selectionStyle} />
-              )}
-              
-              {/* Selection sum display */}
-              {selectionSum && (
-                <View style={selectionSum.style}>
-                  <Text style={[
-                    styles.sumText,
-                    { color: '#000' }
-                  ]}>
-                    {selectionSum.sum}
-                  </Text>
+            {/* 渲染所有方块 */}
+            {tiles.map((value, index) => {
+              const row = Math.floor(index / width);
+              const col = index % width;
+              return renderTile(value, row, col);
+            })}
+            
+            {/* Selection overlay */}
+            {selectionStyle && (
+              <Animated.View style={selectionStyle} />
+            )}
+            
+            {/* Selection sum display */}
+            {selectionSum && (
+              <View style={selectionSum.style}>
+                <Text style={[
+                  styles.sumText,
+                  { color: '#000' }
+                ]}>
+                  {selectionSum.sum}
+                </Text>
+              </View>
+            )}
+            
+            {/* Explosion effect */}
+            {explosionAnimation && (
+              <Animated.View
+                style={[
+                  styles.explosion,
+                  {
+                    left: explosionAnimation.x - 40,
+                    top: explosionAnimation.y - 30,
+                    transform: [{ scale: explosionScale }],
+                    opacity: explosionOpacity,
+                  }
+                ]}
+              >
+                <View style={styles.explosionNote}>
+                  <Text style={styles.explosionText}>10</Text>
                 </View>
-              )}
-              
-              {/* Explosion effect */}
-              {explosionAnimation && (
-                <Animated.View
-                  style={[
-                    styles.explosion,
-                    {
-                      left: explosionAnimation.x - 40,
-                      top: explosionAnimation.y - 30,
-                      transform: [{ scale: explosionScale }],
-                      opacity: explosionOpacity,
-                    }
-                  ]}
-                >
-                  <View style={styles.explosionNote}>
-                    <Text style={styles.explosionText}>10</Text>
-                  </View>
-                </Animated.View>
-              )}
+              </Animated.View>
+            )}
             </View>
           </View>
-          
-          {/* 🐛 Debug: 显示内容区边界（开发时启用） */}
-          {__DEV__ && layoutResult && false && (
-            <>
-              {/* 内容区边界 */}
-              <View
-                style={{
-                  position: 'absolute',
-                  left: layoutResult.inner.left - boardRect?.left,
-                  top: layoutResult.inner.top - boardRect?.top,
-                  width: layoutResult.inner.width,
-                  height: layoutResult.inner.height,
-                  borderWidth: 1,
-                  borderColor: 'red',
-                  borderStyle: 'dashed',
-                  pointerEvents: 'none',
-                }}
-              />
-              {/* 网格起点十字线 */}
-              <View
-                style={{
-                  position: 'absolute',
-                  left: layoutResult.startX - boardRect?.left - 5,
-                  top: layoutResult.startY - boardRect?.top,
-                  width: 10,
-                  height: 1,
-                  backgroundColor: 'blue',
-                  pointerEvents: 'none',
-                }}
-              />
-              <View
-                style={{
-                  position: 'absolute',
-                  left: layoutResult.startX - boardRect?.left,
-                  top: layoutResult.startY - boardRect?.top - 5,
-                  width: 1,
-                  height: 10,
-                  backgroundColor: 'blue',
-                  pointerEvents: 'none',
-                }}
-              />
-            </>
-          )}
         </View>
+        
+        {/* 🐛 Debug: 显示内容区边界（开发时可启用） */}
+        {__DEV__ && false && (
+          <View
+            style={{
+              position: 'absolute',
+              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
+              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
+              borderWidth: 1,
+              borderColor: 'red',
+              borderStyle: 'dashed',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
       </View>
     </View>
   );

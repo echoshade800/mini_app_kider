@@ -261,6 +261,8 @@ const Board = ({
               handleTilePress(row, col, value);
             }
           }}
+      )
+    }
 
     const tileScale = initTileScale(index);
     const isSelected = selectedSwapTile && selectedSwapTile.index === index;

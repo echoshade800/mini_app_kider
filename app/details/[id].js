@@ -192,24 +192,27 @@ export default function LevelDetailScreen() {
             splitOptions.push([half, remainder]);
           }
           
-            // Original tile becomes empty (cleared)
-            newTiles[index] = 0;
+          // Select a random split option
+          const selectedSplit = splitOptions[Math.floor(Math.random() * splitOptions.length)];
+          const [num1, num2] = selectedSplit;
           
-            // Place both split numbers in random empty positions
-            const pos1 = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
-            const remainingPositions = emptyPositions.filter(p => p !== pos1);
-          newTiles[index] = num1;
+          // Original tile becomes empty (cleared)
+          newTiles[index] = 0;
           
-            newTiles[pos1] = num1;
+          // Place both split numbers in random empty positions
+          const pos1 = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
+          const remainingPositions = emptyPositions.filter(p => p !== pos1);
+          newTiles[pos1] = num1;
+          
           // Place the second number in a random empty position
-          const pos2 = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
+          const pos2 = remainingPositions[Math.floor(Math.random() * remainingPositions.length)];
           
           newTiles[pos2] = num2;
           
-                { value: num1, position: pos1 },
+          console.log('✂️ Split successful:', {
             original: { value, position: index },
             split: [
-              { value: num1, position: index, note: 'original position' },
+              { value: num1, position: pos1 },
               { value: num2, position: pos2 }
             ],
             newSum: num1 + num2,
@@ -220,10 +223,10 @@ export default function LevelDetailScreen() {
           setItemMode(null);
           
           // Consume item
-            Alert.alert('Insufficient Space', 'Need at least 2 empty positions (previously cleared tiles) to split.');
+          const newSplitItems = Math.max(0, (gameData?.splitItems || 0) - 1);
           updateGameData({ splitItems: newSplitItems });
         } else {
-          Alert.alert('Insufficient Space', 'Need at least 1 empty position (previously cleared tile) to split.');
+          Alert.alert('Insufficient Space', 'Need at least 2 empty positions (previously cleared tiles) to split.');
         }
       } else {
         Alert.alert('Cannot Split', 'Cannot split a tile with value 1.');

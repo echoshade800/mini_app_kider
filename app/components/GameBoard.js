@@ -518,12 +518,15 @@ const GameBoard = ({
 
   // Handle tile click in item mode
   const handleTilePress = (row, col, value) => {
-    console.log('Tile pressed:', { row, col, value, itemMode });
+    console.log('🎯 GameBoard: Tile pressed:', { row, col, value, itemMode });
     
     if (!itemMode || disabled) return;
     
     if (onTileClick) {
+      console.log('🎯 GameBoard: Calling onTileClick');
       onTileClick(row, col, value);
+    } else {
+      console.log('❌ GameBoard: onTileClick is null');
     }
     
     if (settings?.hapticsEnabled !== false) {
@@ -714,7 +717,8 @@ const GameBoard = ({
           alignItems: 'center',
           justifyContent: 'center',
         }}
-        onTouchStart={handleTileTouch}
+        onStartShouldSetResponder={itemMode ? () => true : () => false}
+        onResponderGrant={itemMode ? () => handleTilePress(row, col, value) : undefined}
         pointerEvents={itemMode ? "auto" : "box-none"}
       >
         <Animated.View

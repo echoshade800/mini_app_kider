@@ -130,7 +130,7 @@ export default function LevelDetailScreen() {
   };
 
   const handleTileClick = (row, col, value) => {
-    console.log('handleTileClick called:', { row, col, value, itemMode });
+    console.log('🎯 handleTileClick called:', { row, col, value, itemMode, selectedSwapTile });
     
     if (!itemMode || !board || value === 0) return;
 
@@ -139,15 +139,15 @@ export default function LevelDetailScreen() {
     if (itemMode === 'swapMaster') {
       if (!selectedSwapTile) {
         // Select first tile
-        console.log('Selecting first tile for swap:', { row, col, value, index });
+        console.log('🔵 Selecting first tile for swap:', { row, col, value, index });
         setSelectedSwapTile({ row, col, value, index });
       } else if (selectedSwapTile.index === index) {
         // Deselect same tile
-        console.log('Deselecting tile');
+        console.log('❌ Deselecting tile');
         setSelectedSwapTile(null);
       } else {
         // Swap tiles
-        console.log('Swapping tiles:', selectedSwapTile, 'with', { row, col, value, index });
+        console.log('🔄 Swapping tiles:', selectedSwapTile, 'with', { row, col, value, index });
         const newTiles = [...board.tiles];
         newTiles[selectedSwapTile.index] = value;
         newTiles[index] = selectedSwapTile.value;
@@ -162,7 +162,7 @@ export default function LevelDetailScreen() {
       }
     } else if (itemMode === 'fractalSplit') {
       // Split the selected tile into two tiles with value 1 and (value-1)
-      console.log('Attempting to split tile:', { row, col, value });
+      console.log('✂️ Attempting to split tile:', { row, col, value });
       if (value > 1) {
         const newTiles = [...board.tiles];
         
@@ -177,7 +177,7 @@ export default function LevelDetailScreen() {
         
         if (emptyIndex !== -1) {
           // Split: original tile becomes 1, new tile gets (value-1)
-          console.log('Splitting tile: original becomes 1, new tile gets', value - 1, 'at index', emptyIndex);
+          console.log('✅ Splitting tile: original becomes 1, new tile gets', value - 1, 'at index', emptyIndex);
           newTiles[index] = 1;
           newTiles[emptyIndex] = value - 1;
           
@@ -197,24 +197,36 @@ export default function LevelDetailScreen() {
   };
 
   const handleUseSwapMaster = () => {
+    console.log('🔧 SwapMaster button clicked, current state:', { 
+      itemMode, 
+      swapMasterItems: gameData?.swapMasterItems 
+    });
+    
     if ((gameData?.swapMasterItems || 0) <= 0) {
       Alert.alert('No Items', 'You don\'t have any SwapMaster items.');
       return;
     }
     
-    console.log('SwapMaster button clicked, current mode:', itemMode);
-    setItemMode(itemMode === 'swapMaster' ? null : 'swapMaster');
+    const newMode = itemMode === 'swapMaster' ? null : 'swapMaster';
+    console.log('🔧 Setting itemMode to:', newMode);
+    setItemMode(newMode);
     setSelectedSwapTile(null);
   };
 
   const handleUseFractalSplit = () => {
+    console.log('✂️ FractalSplit button clicked, current state:', { 
+      itemMode, 
+      splitItems: gameData?.splitItems 
+    });
+    
     if ((gameData?.splitItems || 0) <= 0) {
       Alert.alert('No Items', 'You don\'t have any Split items.');
       return;
     }
     
-    console.log('FractalSplit button clicked, current mode:', itemMode);
-    setItemMode(itemMode === 'fractalSplit' ? null : 'fractalSplit');
+    const newMode = itemMode === 'fractalSplit' ? null : 'fractalSplit';
+    console.log('✂️ Setting itemMode to:', newMode);
+    setItemMode(newMode);
     setSelectedSwapTile(null);
   };
 

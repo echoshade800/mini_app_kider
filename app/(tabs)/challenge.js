@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { generateBoard } from '../utils/boardGenerator';
-import Board from '../components/Board';
+import GameBoard from '../components/GameBoard';
 import RescueModal from '../components/RescueModal';
 
 const CHALLENGE_TIME = 60; // 60 seconds
@@ -284,7 +284,7 @@ export default function ChallengeScreen() {
 
         {/* Game Board */}
         {board && (
-          <Board
+          <GameBoard
             key={boardKey}
             tiles={board.tiles}
             width={board.width}
@@ -292,7 +292,8 @@ export default function ChallengeScreen() {
             onTilesClear={handleTilesClear}
             disabled={false}
             settings={settings}
-            headerHeight={80}
+            isChallenge={true}
+            layoutConfig={board.layoutConfig}
           />
         )}
 

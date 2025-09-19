@@ -90,13 +90,13 @@ const GameBoard = ({
     }).start();
   };
 
-  const isInsideBoard = (pageX, pageY) => {
-    const { boardLeft, boardTop, boardWidth, boardHeight } = layoutConfig;
+  const isInsideTilesArea = (pageX, pageY) => {
+    const { tilesRect } = layoutConfig;
     
-    return pageX >= boardLeft && 
-           pageX <= boardLeft + boardWidth && 
-           pageY >= boardTop && 
-           pageY <= boardTop + boardHeight;
+    return pageX >= tilesRect.x && 
+           pageX <= tilesRect.x + tilesRect.width && 
+           pageY >= tilesRect.y && 
+           pageY <= tilesRect.y + tilesRect.height;
   };
 
   const getSelectedTiles = () => {
@@ -219,29 +219,26 @@ const GameBoard = ({
     onStartShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
       const { pageX, pageY } = evt.nativeEvent;
-      return !disabled && isInsideBoard(pageX, pageY);
+      return !disabled && isInsideTilesArea(pageX, pageY);
     },
     onMoveShouldSetPanResponder: (evt) => {
       if (itemMode) return false;
       const { pageX, pageY } = evt.nativeEvent;
-      return !disabled && isInsideBoard(pageX, pageY);
+      return !disabled && isInsideTilesArea(pageX, pageY);
     },
 
     onPanResponderGrant: (evt) => {
       const { pageX, pageY } = evt.nativeEvent;
       
-      if (!isInsideBoard(pageX, pageY)) return;
+      if (!isInsideTilesArea(pageX, pageY)) return;
       
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
+      const { tilesRect, tileSize, gap } = layoutConfig;
+      
+      const relativeX = pageX - tilesRect.x;
+      const relativeY = pageY - tilesRect.y;
 
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
-
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
-
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
+      const cellWidth = tileSize + gap;
+      const cellHeight = tileSize + gap;
 
       const startCol = Math.floor(relativeX / cellWidth);
       const startRow = Math.floor(relativeY / cellHeight);
@@ -266,16 +263,13 @@ const GameBoard = ({
       if (!selection) return;
       
       const { pageX, pageY } = evt.nativeEvent;
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
+      const { tilesRect, tileSize, gap } = layoutConfig;
+      
+      const relativeX = pageX - tilesRect.x;
+      const relativeY = pageY - tilesRect.y;
 
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
-
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
-
-      const cellWidth = tileSize + tileGap;
-      const cellHeight = tileSize + tileGap;
+      const cellWidth = tileSize + gap;
+      const cellHeight = tileSize + gap;
 
       const endCol = Math.floor(relativeX / cellWidth);
       const endRow = Math.floor(relativeY / cellHeight);
@@ -374,14 +368,14 @@ const GameBoard = ({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    const { tileSize, tileGap } = layoutConfig;
-    const cellWidth = tileSize + tileGap;
-    const cellHeight = tileSize + tileGap;
+    const { tileSize, gap, tilesRect } = layoutConfig;
+    const cellWidth = tileSize + gap;
+    const cellHeight = tileSize + gap;
 
-    const left = minCol * cellWidth;
-    const top = minRow * cellHeight;
-    const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileGap;
-    const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileGap;
+    const left = tilesRect.x + minCol * cellWidth;
+    const top = tilesRect.y + minRow * cellHeight;
+    const selectionWidth = (maxCol - minCol + 1) * cellWidth - gap;
+    const selectionHeight = (maxRow - minRow + 1) * cellHeight - gap;
     
     return {
       position: 'absolute',
@@ -420,13 +414,13 @@ const GameBoard = ({
     const centerRow = (minRow + maxRow) / 2;
     const centerCol = (minCol + maxCol) / 2;
     
-    const { tileSize, tileGap } = layoutConfig;
-    const cellWidth = tileSize + tileGap;
-    const cellHeight = tileSize + tileGap;
+    const { tileSize, gap, tilesRect } = layoutConfig;
+    const cellWidth = tileSize + gap;
+    const cellHeight = tileSize + gap;
 
     // 计算中心位置的坐标
-    const centerX = centerCol * cellWidth + tileSize / 2;
-    const centerY = centerRow * cellHeight + tileSize / 2;
+    const centerX = tilesRect.x + centerCol * cellWidth + tileSize / 2;
+    const centerY = tilesRect.y + centerRow * cellHeight + tileSize / 2;
     
     return {
       sum,
@@ -559,85 +553,75 @@ const GameBoard = ({
 
   return (
     <View style={styles.fullScreenContainer} pointerEvents="box-none">
-      <View style={styles.container}>
-        <View 
-          style={[
-            styles.chalkboard,
-            {
-              position: 'absolute',
-              left: layoutConfig.boardLeft,
-              top: layoutConfig.boardTop,
-              width: layoutConfig.boardWidth,
-              height: layoutConfig.boardHeight,
-            }
-          ]}
-          pointerEvents="auto"
-        >
-          {/* 数字方块内容区 */}
-          <View
-            {...panResponder.panHandlers}
-            style={{
-              position: 'absolute',
-              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
-              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
-            }}
-            pointerEvents={itemMode ? "auto" : "auto"}
-          >
-            {/* 🎯 数字方块容器 - 使用统一中心点精确定位 */}
-            <View
-              style={{
-                width: '100%',
-                height: '100%',
-                position: 'relative',
-              }}
-            >
-            {/* 渲染所有方块 */}
-            {tiles.map((value, index) => {
-              const row = Math.floor(index / width);
-              const col = index % width;
-              return renderTile(value, row, col);
-            })}
-            
-            {/* Selection overlay */}
-            {selectionStyle && (
-              <Animated.View style={selectionStyle} />
-            )}
-            
-            {/* Selection sum display */}
-            {selectionSum && (
-              <View style={selectionSum.style}>
-                <Text style={[
-                  styles.sumText,
-                  { color: '#000' }
-                ]}>
-                  {selectionSum.sum}
-                </Text>
-              </View>
-            )}
-            
-            {/* Explosion effect */}
-            {explosionAnimation && (
-              <Animated.View
-                style={[
-                  styles.explosion,
-                  {
-                    left: explosionAnimation.x - 40,
-                    top: explosionAnimation.y - 30,
-                    transform: [{ scale: explosionScale }],
-                    opacity: explosionOpacity,
-                  }
-                ]}
-              >
-                <View style={styles.explosionNote}>
-                  <Text style={styles.explosionText}>10</Text>
-                </View>
-              </Animated.View>
-            )}
-            </View>
+      {/* 棋盘背景 - 由数字方块矩形外扩2px得到 */}
+      <View 
+        style={[
+          styles.chalkboard,
+          {
+            position: 'absolute',
+            left: layoutConfig.boardRect.x,
+            top: layoutConfig.boardRect.y,
+            width: layoutConfig.boardRect.width,
+            height: layoutConfig.boardRect.height,
+          }
+        ]}
+        pointerEvents="none"
+      />
+      
+      {/* 数字方块和交互层 */}
+      <View
+        {...panResponder.panHandlers}
+        style={{
+          position: 'absolute',
+          left: layoutConfig.tilesRect.x,
+          top: layoutConfig.tilesRect.y,
+          width: layoutConfig.tilesRect.width,
+          height: layoutConfig.tilesRect.height,
+        }}
+        pointerEvents="auto"
+      >
+        {/* 渲染所有方块 */}
+        {tiles.map((value, index) => {
+          const row = Math.floor(index / width);
+          const col = index % width;
+          return renderTile(value, row, col);
+        })}
+        
+        {/* Selection overlay */}
+        {selectionStyle && (
+          <Animated.View style={selectionStyle} />
+        )}
+        
+        {/* Selection sum display */}
+        {selectionSum && (
+          <View style={selectionSum.style}>
+            <Text style={[
+              styles.sumText,
+              { color: '#000' }
+            ]}>
+              {selectionSum.sum}
+            </Text>
           </View>
-        </View>
+        )}
+        
+        {/* Explosion effect */}
+        {explosionAnimation && (
+          <Animated.View
+            style={[
+              styles.explosion,
+              {
+                left: explosionAnimation.x - layoutConfig.tilesRect.x - 40,
+                top: explosionAnimation.y - layoutConfig.tilesRect.y - 30,
+                transform: [{ scale: explosionScale }],
+                opacity: explosionOpacity,
+              }
+            ]}
+          >
+            <View style={styles.explosionNote}>
+              <Text style={styles.explosionText}>10</Text>
+            </View>
+          </Animated.View>
+        )}
       </View>
     </View>
   );
@@ -651,11 +635,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 1,
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   loadingContainer: {
     height: 200,

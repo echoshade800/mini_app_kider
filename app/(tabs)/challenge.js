@@ -1,353 +1,425 @@
-/**
- * 棋盘自适应布局系统 - 唯一布局规则来源
- * Purpose: 根据数字方块数量动态计算棋盘尺寸和布局
- * Features: 自适应尺寸、最小28px限制、棋盘比矩形大一圈
- */
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet,
+  Alert,
+  Modal
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useGameStore } from '../store/gameStore';
+import { generateBoard } from '../utils/boardGenerator';
+import GameBoard from '../components/GameBoard';
 
-import { Dimensions } from 'react-native';
+export default function ChallengeScreen() {
+  const { gameData, updateGameData } = useGameStore();
+  const [board, setBoard] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentScore, setCurrentScore] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
 
-// 根据关卡获取数字方块数量（从boardGenerator复制过来避免循环依赖）
-function getTileCount(level, isChallenge = false) {
-  if (isChallenge) {
-    // 挑战模式：使用高数量提供最大挑战
-    return 200; // 固定高数量
-  }
-  
-  // 关卡模式：渐进式增长
-  if (level >= 1 && level <= 10) {
-    return Math.floor(12 + level * 2); // 14-32个方块
-  }
-  if (level >= 11 && level <= 20) {
-    return Math.floor(30 + (level - 10) * 3); // 33-60个方块
-  }
-  if (level >= 21 && level <= 30) {
-    return Math.floor(60 + (level - 20) * 4); // 64-100个方块
-  }
-  if (level >= 31 && level <= 50) {
-    return Math.floor(100 + (level - 30) * 3); // 103-160个方块
-  }
-  if (level >= 51 && level <= 80) {
-    return Math.floor(160 + (level - 50) * 2); // 162-220个方块
-  }
-  if (level >= 81 && level <= 120) {
-    return Math.floor(220 + (level - 80) * 1.5); // 221-280个方块
-  }
-  if (level >= 121 && level <= 200) {
-    return Math.floor(280 + (level - 120) * 1); // 281-360个方块
-  }
-  
-  // 200关以后继续增长
-  return Math.floor(360 + (level - 200) * 0.5);
-}
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-// 布局常量
-const MIN_TILE_SIZE = 28; // 最小方块尺寸
-const TILE_GAP = 4; // 方块间距
-const BOARD_PADDING = 5; // 棋盘内边距（方块矩形到木框的留白）
-const WOOD_FRAME_WIDTH = 8; // 木框厚度
-
-// 有效游戏区域配置
-const EFFECTIVE_AREA = {
-  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
-};
-
-/**
- * 获取有效游戏区域尺寸
- */
-function getEffectiveGameArea() {
-  const effectiveHeight = screenHeight - EFFECTIVE_AREA.TOP_RESERVED - EFFECTIVE_AREA.BOTTOM_RESERVED;
-  const effectiveWidth = screenWidth;
-  
-  return {
-    width: effectiveWidth,
-    height: effectiveHeight,
-    top: EFFECTIVE_AREA.TOP_RESERVED,
-    left: 0,
+  // 生成新棋盘
+  const generateNewBoard = () => {
+    const newBoard = generateBoard(100, true, true); // 挑战模式：高数量方块
+    
+    // 🎯 调试命令：计算并记录棋盘格尺寸数据
+    if (newBoard && newBoard.layoutConfig) {
+      console.log('🎯 挑战模式棋盘格尺寸数据:');
+      console.log(`- 棋盘总尺寸: ${newBoard.layoutConfig.boardWidth}px × ${newBoard.layoutConfig.boardHeight}px`);
+      console.log(`- 行数: ${newBoard.layoutConfig.rows}, 列数: ${newBoard.layoutConfig.cols}`);
+      console.log(`- 方块尺寸: ${newBoard.layoutConfig.tileSize}px`);
+      console.log(`- 数字方块矩形: ${newBoard.layoutConfig.tilesRectWidth}px × ${newBoard.layoutConfig.tilesRectHeight}px`);
+      console.log(`- 内容区尺寸: ${newBoard.layoutConfig.contentWidth}px × ${newBoard.layoutConfig.contentHeight}px`);
+    }
+    
+    setBoard(newBoard);
   };
-}
 
-/**
- * 根据数字方块数量计算最佳矩形行列数
- * @param {number} N - 数字方块数量
- * @param {number} targetAspect - 期望宽高比（可选，默认根据屏幕比例）
- * @returns {Object} { rows, cols }
- */
-export function computeGridRC(N, targetAspect = null) {
-  if (N <= 0) return { rows: 1, cols: 1 };
-  
-  const gameArea = getEffectiveGameArea();
-  const defaultAspect = targetAspect || (gameArea.width / gameArea.height);
-  
-  // 寻找最接近目标宽高比的 (R, C) 组合
-  let bestR = 1, bestC = N;
-  let bestDiff = Infinity;
-  
-  for (let r = 1; r <= N; r++) {
-    const c = Math.ceil(N / r);
-    if (r * c >= N) {
-      const currentAspect = c / r;
-      const diff = Math.abs(currentAspect - defaultAspect);
+  // 开始游戏
+  const startGame = () => {
+    setIsPlaying(true);
+    setGameStarted(true);
+    setTimeLeft(60);
+    setCurrentScore(0);
+    generateNewBoard();
+  };
+
+  // 计时器
+  useEffect(() => {
+    let timer;
+    if (isPlaying && timeLeft > 0) {
+      timer = setTimeout(() => {
+        setTimeLeft(timeLeft - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && isPlaying) {
+      // 游戏结束
+      setIsPlaying(false);
+      setShowResult(true);
       
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestR = r;
-        bestC = c;
+      // 更新最高分
+      const currentBest = gameData?.maxScore || 0;
+      if (currentScore > currentBest) {
+        updateGameData({ maxScore: currentScore });
       }
     }
-  }
-  
-  return { rows: bestR, cols: bestC };
-}
-
-/**
- * 计算在给定容器内能放下的最大方块尺寸
- * @param {number} containerWidth - 容器宽度
- * @param {number} containerHeight - 容器高度
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} gap - 方块间距
- * @param {number} padding - 内边距
- * @param {number} minTile - 最小方块尺寸
- * @returns {Object} 布局信息
- */
-export function computeTileSize(containerWidth, containerHeight, rows, cols, gap = TILE_GAP, padding = BOARD_PADDING, minTile = MIN_TILE_SIZE) {
-  // 计算可用空间（减去木框厚度和内边距）
-  const availableWidth = containerWidth - WOOD_FRAME_WIDTH * 2 - padding * 2;
-  const availableHeight = containerHeight - WOOD_FRAME_WIDTH * 2 - padding * 2;
-  
-  // 计算方块尺寸上限
-  const tileW = (availableWidth - (cols - 1) * gap) / cols;
-  const tileH = (availableHeight - (rows - 1) * gap) / rows;
-  const tileSize = Math.floor(Math.min(tileW, tileH));
-  
-  // 计算数字方块矩形的实际尺寸
-  const tilesRectWidth = cols * tileSize + (cols - 1) * gap;
-  const tilesRectHeight = rows * tileSize + (rows - 1) * gap;
-  
-  // 计算棋盘内容区尺寸（数字方块矩形 + 内边距）
-  const contentWidth = tilesRectWidth + 2 * padding;
-  const contentHeight = tilesRectHeight + 2 * padding;
-  
-  // 棋盘总尺寸（内容区 + 木框）
-  const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
-  const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
-  
-  return {
-    tileSize,
-    tilesRectWidth,
-    tilesRectHeight,
-    boardWidth,
-    boardHeight,
-    contentWidth,
-    contentHeight,
-    isValid: tileSize >= minTile,
-  };
-}
-
-/**
- * 自适应棋盘布局计算
- * @param {number} N - 数字方块数量
- * @param {number} targetAspect - 期望宽高比（可选）
- * @param {number} level - 关卡等级（用于特殊处理）
- * @returns {Object} 完整布局信息
- */
-export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
-  const gameArea = getEffectiveGameArea();
-  let { rows, cols } = computeGridRC(N, targetAspect);
-  
-  // 前35关：使用第35关的方块尺寸作为基准
-  if (level && level <= 35) {
-    const level35TileCount = getTileCount(35, false);
-    const level35Layout = computeGridRC(level35TileCount, targetAspect);
-    const level35TileSize = computeTileSize(
-      gameArea.width, 
-      gameArea.height, 
-      level35Layout.rows, 
-      level35Layout.cols
-    );
     
-    if (level35TileSize.isValid) {
-      const targetTileSize = level35TileSize.tileSize;
-      
-      // 计算数字方块矩形尺寸
-      const tilesRectWidth = cols * targetTileSize + (cols - 1) * TILE_GAP;
-      const tilesRectHeight = rows * targetTileSize + (rows - 1) * TILE_GAP;
-      
-      // 计算棋盘内容区和总尺寸
-      const contentWidth = tilesRectWidth + 2 * BOARD_PADDING;
-      const contentHeight = tilesRectHeight + 2 * BOARD_PADDING;
-      const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
-      const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
-      
-      // 检查是否能放入有效区域
-      if (boardWidth <= gameArea.width && boardHeight <= gameArea.height) {
-        const boardLeft = (gameArea.width - boardWidth) / 2;
-        const boardTop = gameArea.top + (gameArea.height - boardHeight) / 2;
+    return () => clearTimeout(timer);
+  }, [isPlaying, timeLeft, currentScore, gameData, updateGameData]);
+
+  // 处理方块清除
+  const handleTilesClear = (clearedPositions) => {
+    // 每次清除获得3分
+    const points = 3;
+    setCurrentScore(prev => prev + points);
+    
+    // 立即生成新棋盘
+    setTimeout(() => {
+      generateNewBoard();
+    }, 500);
+  };
+
+  // 获取IQ等级标题
+  const getIQTitle = (iq) => {
+    if (iq >= 145) return 'Cosmic Genius';
+    if (iq >= 130) return 'Puzzle Master';
+    if (iq >= 115) return 'Rising Star';
+    if (iq >= 100) return 'Everyday Scholar';
+    if (iq >= 85) return 'Hardworking Student';
+    if (iq >= 70) return 'Slow but Steady';
+    if (iq >= 65) return 'Little Explorer';
+    if (iq >= 55) return 'Learning Hatchling';
+    if (iq >= 40) return 'Tiny Adventurer';
+    return 'Newborn Dreamer';
+  };
+
+  // 重新开始
+  const handleRestart = () => {
+    setShowResult(false);
+    setGameStarted(false);
+    setIsPlaying(false);
+    setCurrentScore(0);
+    setTimeLeft(60);
+    setBoard(null);
+  };
+
+  // 返回主页
+  const handleGoHome = () => {
+    router.replace('/');
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* 头部 */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleGoHome}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
         
-        return {
-          tileSize: targetTileSize,
-          tilesRectWidth,
-          tilesRectHeight,
-          boardWidth,
-          boardHeight,
-          contentWidth,
-          contentHeight,
-          rows,
-          cols,
-          boardLeft,
-          boardTop,
-          gameArea,
-          isValid: true,
-        };
-      }
-    }
-  }
-  
-  // 策略a: 尝试在有效区域内放大棋盘
-  let layout = computeTileSize(gameArea.width, gameArea.height, rows, cols);
-  
-  if (layout.isValid) {
-    // 计算棋盘在有效区域内的居中位置
-    const boardLeft = (gameArea.width - layout.boardWidth) / 2;
-    const boardTop = gameArea.top + (gameArea.height - layout.boardHeight) / 2;
-    
-    return {
-      ...layout,
-      rows,
-      cols,
-      boardLeft,
-      boardTop,
-      gameArea,
-    };
-  }
-  
-  // 策略b: 调整 (R, C) 比例
-  const alternatives = [];
-  for (let r = 1; r <= N; r++) {
-    const c = Math.ceil(N / r);
-    if (r * c >= N && (r !== rows || c !== cols)) {
-      const testLayout = computeTileSize(gameArea.width, gameArea.height, r, c);
-      if (testLayout.isValid) {
-        alternatives.push({ rows: r, cols: c, ...testLayout });
-      }
-    }
-  }
-  
-  if (alternatives.length > 0) {
-    // 选择方块尺寸最大的方案
-    const bestAlt = alternatives.reduce((best, current) => 
-      current.tileSize > best.tileSize ? current : best
-    );
-    
-    const boardLeft = (gameArea.width - bestAlt.boardWidth) / 2;
-    const boardTop = gameArea.top + (gameArea.height - bestAlt.boardHeight) / 2;
-    
-    return {
-      ...bestAlt,
-      boardLeft,
-      boardTop,
-      gameArea,
-    };
-  }
-  
-  // 策略c: 使用最小尺寸，允许N向上取整
-  const finalRows = Math.ceil(Math.sqrt(N));
-  const finalCols = Math.ceil(N / finalRows);
-  
-  // 强制使用最小尺寸
-  const forcedTileSize = MIN_TILE_SIZE;
-  const forcedTilesRectWidth = finalCols * forcedTileSize + (finalCols - 1) * TILE_GAP;
-  const forcedTilesRectHeight = finalRows * forcedTileSize + (finalRows - 1) * TILE_GAP;
-  const forcedContentWidth = forcedTilesRectWidth + 2 * BOARD_PADDING;
-  const forcedContentHeight = forcedTilesRectHeight + 2 * BOARD_PADDING;
-  const forcedBoardWidth = forcedContentWidth + WOOD_FRAME_WIDTH * 2;
-  const forcedBoardHeight = forcedContentHeight + WOOD_FRAME_WIDTH * 2;
-  
-  const boardLeft = (gameArea.width - forcedBoardWidth) / 2;
-  const boardTop = gameArea.top + (gameArea.height - forcedBoardHeight) / 2;
-  
-  return {
-    tileSize: forcedTileSize,
-    tilesRectWidth: forcedTilesRectWidth,
-    tilesRectHeight: forcedTilesRectHeight,
-    boardWidth: forcedBoardWidth,
-    boardHeight: forcedBoardHeight,
-    contentWidth: forcedContentWidth,
-    contentHeight: forcedContentHeight,
-    rows: finalRows,
-    cols: finalCols,
-    boardLeft,
-    boardTop,
-    gameArea,
-    isValid: true,
-  };
-}
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Challenge Mode</Text>
+          {gameStarted && (
+            <View style={styles.gameInfo}>
+              <Text style={styles.timeText}>⏱ {timeLeft}s</Text>
+              <Text style={styles.scoreText}>IQ: {currentScore}</Text>
+            </View>
+          )}
+        </View>
+        
+        <View style={styles.placeholder} />
+      </View>
 
-/**
- * 计算每个方块的位置
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} tileSize - 方块尺寸
- * @param {number} tilesRectWidth - 数字方块矩形宽度
- * @param {number} tilesRectHeight - 数字方块矩形高度
- * @param {number} contentWidth - 棋盘内容区宽度
- * @param {number} contentHeight - 棋盘内容区高度
- * @param {number} gap - 间距
- * @param {number} padding - 内边距
- * @returns {Function} 位置计算函数
- */
-export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING) {
-  return function getTilePosition(row, col) {
-    if (row < 0 || row >= rows || col < 0 || col >= cols) {
-      return null;
-    }
-    
-    // 计算数字方块矩形在内容区中的居中偏移
-    const offsetX = (contentWidth - tilesRectWidth) / 2;
-    const offsetY = (contentHeight - tilesRectHeight) / 2;
-    
-    // 计算方块位置（相对于内容区左上角）
-    const x = col * (tileSize + gap);
-    const y = row * (tileSize + gap);
-    
-    return {
-      x,
-      y,
-      width: tileSize,
-      height: tileSize,
-    };
-  };
-}
+      {/* 游戏区域 */}
+      <View style={styles.gameArea}>
+        {!gameStarted ? (
+          // 开始界面
+          <View style={styles.startContainer}>
+            <Ionicons name="timer" size={80} color="#FF9800" />
+            <Text style={styles.startTitle}>60-Second Challenge</Text>
+            <Text style={styles.startDescription}>
+              Clear as many rectangles as possible in 60 seconds!{'\n'}
+              Each successful clear awards +3 IQ points.
+            </Text>
+            
+            <View style={styles.bestScoreContainer}>
+              <Text style={styles.bestScoreLabel}>Your Best IQ</Text>
+              <Text style={styles.bestScoreValue}>{gameData?.maxScore || 0}</Text>
+              <Text style={styles.bestScoreTitle}>
+                {getIQTitle(gameData?.maxScore || 0)}
+              </Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.startButton}
+              onPress={startGame}
+            >
+              <Text style={styles.startButtonText}>Start Challenge</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // 游戏界面
+          <View style={styles.gameContainer}>
+            {/* Game Board */}
+            {board && (
+              <GameBoard
+                tiles={board.tiles}
+                width={board.width}
+                height={board.height}
+                layoutConfig={board.layoutConfig}
+                onTilesClear={handleTilesClear}
+                showItemButtons={false}
+              />
+            )}
+          </View>
+        )}
+      </View>
 
-/**
- * 获取完整的棋盘布局配置
- * @param {number} N - 数字方块数量
- * @param {number} targetAspect - 期望宽高比（可选）
- * @param {number} level - 关卡等级（可选）
- * @returns {Object} 完整布局配置
- */
-export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
-  const layout = computeAdaptiveLayout(N, targetAspect, level);
-  const getTilePosition = layoutTiles(
-    layout.rows, 
-    layout.cols, 
-    layout.tileSize, 
-    layout.tilesRectWidth, 
-    layout.tilesRectHeight, 
-    layout.contentWidth, 
-    layout.contentHeight
+      {/* 结果弹窗 */}
+      <Modal 
+        visible={showResult} 
+        transparent 
+        animationType="fade"
+        onRequestClose={handleRestart}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.resultModal}>
+            <Ionicons name="trophy" size={60} color="#FFD700" />
+            
+            <Text style={styles.resultTitle}>Challenge Complete!</Text>
+            
+            <View style={styles.resultStats}>
+              <Text style={styles.resultLabel}>Final IQ Score</Text>
+              <Text style={styles.resultScore}>{currentScore}</Text>
+              <Text style={styles.resultTitle}>{getIQTitle(currentScore)}</Text>
+              
+              {currentScore > (gameData?.maxScore || 0) && (
+                <Text style={styles.newRecordText}>🎉 New Personal Best!</Text>
+              )}
+            </View>
+            
+            <View style={styles.resultButtons}>
+              <TouchableOpacity 
+                style={[styles.resultButton, styles.restartButton]}
+                onPress={handleRestart}
+              >
+                <Ionicons name="refresh" size={20} color="white" />
+                <Text style={styles.resultButtonText}>Try Again</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.resultButton, styles.homeButton]}
+                onPress={handleGoHome}
+              >
+                <Ionicons name="home" size={20} color="white" />
+                <Text style={styles.resultButtonText}>Home</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
-  
-  return {
-    ...layout,
-    getTilePosition,
-    // 布局常量
-    tileGap: TILE_GAP,
-    boardPadding: BOARD_PADDING,
-    woodFrameWidth: WOOD_FRAME_WIDTH,
-    minTileSize: MIN_TILE_SIZE,
-  };
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f0f8ff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+  },
+  gameInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 16,
+  },
+  timeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF9800',
+  },
+  scoreText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4CAF50',
+  },
+  placeholder: {
+    width: 40,
+  },
+  gameArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  startContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+  startTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  startDescription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 30,
+  },
+  bestScoreContainer: {
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    minWidth: 200,
+  },
+  bestScoreLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  bestScoreValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FF9800',
+    marginBottom: 4,
+  },
+  bestScoreTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  startButton: {
+    backgroundColor: '#FF9800',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  startButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  gameContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  resultModal: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    minWidth: 300,
+  },
+  resultTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  resultStats: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  resultLabel: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 8,
+  },
+  resultScore: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#FF9800',
+    marginBottom: 8,
+  },
+  resultTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  newRecordText: {
+    fontSize: 16,
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  resultButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  resultButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  restartButton: {
+    backgroundColor: '#4CAF50',
+  },
+  homeButton: {
+    backgroundColor: '#FF9800',
+  },
+  resultButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

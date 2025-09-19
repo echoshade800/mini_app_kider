@@ -106,7 +106,7 @@ export default function LevelDetailScreen() {
         const hasValidMoves = hasValidCombinations(newTiles, board.width, board.height);
         
         if (!hasValidMoves) {
-          console.log('检测到无可消除组合，开始校准...');
+          console.log('No valid combinations detected, starting calibration...');
           // 这里可以触发校准逻辑或显示救援弹窗
           setShowRescueModal(true);
         }

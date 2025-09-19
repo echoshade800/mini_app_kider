@@ -32,9 +32,9 @@ const RescueModal = ({
             <Ionicons name="help-circle" size={60} color="#FF9800" />
           </View>
           
-          <Text style={styles.title}>无解状态</Text>
+          <Text style={styles.title}>No Valid Moves</Text>
           <Text style={styles.message}>
-            经过3次自动校准后，当前棋盘仍无可消除的组合。您可以选择：
+            After 3 automatic calibrations, no valid combinations remain on the board. You can choose to:
           </Text>
           
           <View style={styles.buttonContainer}>
@@ -43,7 +43,7 @@ const RescueModal = ({
               onPress={onContinue}
             >
               <Ionicons name="construct" size={20} color="white" />
-              <Text style={styles.buttonText}>使用道具继续</Text>
+              <Text style={styles.buttonText}>Use Items to Continue</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -51,7 +51,7 @@ const RescueModal = ({
               onPress={onReturn}
             >
               <Ionicons name="home" size={20} color="white" />
-              <Text style={styles.buttonText}>返回主页</Text>
+              <Text style={styles.buttonText}>Return to Home</Text>
             </TouchableOpacity>
           </View>
           

@@ -190,6 +190,56 @@ const Board = ({
     return selectedTiles;
   };
 
+  const getSelectionSum = () => {
+    if (!selection) return null;
+    
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    
+    if (selectedTiles.length === 0) return null;
+    
+    const { startRow, startCol, endRow, endCol } = selection;
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    
+    // 计算选择框的中心位置
+    const centerRow = (minRow + maxRow) / 2;
+    const centerCol = (minCol + maxCol) / 2;
+    
+    const cellWidth = layoutConfig.tileSize + layoutConfig.tileGap;
+    const cellHeight = layoutConfig.tileSize + layoutConfig.tileGap;
+
+    // 计算中心位置的坐标
+    const centerX = centerCol * cellWidth + layoutConfig.tileSize / 2;
+    const centerY = centerRow * cellHeight + layoutConfig.tileSize / 2;
+    
+    return {
+      sum,
+      isSuccess: sum === 10,
+      style: {
+        position: 'absolute',
+        left: centerX - 25,
+        top: centerY - 20,
+        width: 50,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: sum === 10 ? '#FFEB3B' : '#2196F3',
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: sum === 10 ? '#F57F17' : '#1976D2',
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 6,
+        transform: [{ rotate: '0deg' }],
+      }
+    };
+  };
+
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => !itemMode && !disabled,
     onMoveShouldSetPanResponder: () => !itemMode && !disabled,

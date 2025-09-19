@@ -1,7 +1,7 @@
 /**
- * Board Generator - 使用新的自适应布局系统
- * Purpose: 根据难度生成数字方块，布局由BoardLayout统一管理
- * Features: 只负责数字生成，不涉及布局计算
+ * Board Generator - 使用新的固定32px布局系统
+ * Purpose: 生成数字方块，支持后期3-4个方块凑10的难度
+ * Features: 固定方块尺寸、平衡的数字分布、渐进式难度
  */
 
 import { getBoardLayoutConfig } from '../layout/BoardLayout';
@@ -19,40 +19,35 @@ function seededRandom(seed) {
   };
 }
 
-// 根据关卡获取数字方块数量
-function getTileCount(level, isChallenge = false) {
-  if (isChallenge) {
-    // 挑战模式：使用高数量提供最大挑战
-    return 120; // 固定中等数量，通过复杂组合增加难度
-  }
-  
-  // 关卡模式：前几关保证可完全消除，后续渐进式增长
-  if (level >= 1 && level <= 10) {
-    // 前10关：使用较少方块，确保可完全消除
-    return Math.floor(8 + level * 1.5); // 9.5-23个方块，向下取整为9-22个
-  }
-  if (level >= 11 && level <= 20) {
-    return Math.floor(25 + (level - 10) * 2.5); // 27.5-50个方块
-  }
-  if (level >= 21 && level <= 30) {
-    return Math.floor(50 + (level - 20) * 3); // 53-80个方块
-  }
-  if (level >= 31 && level <= 50) {
-    return Math.floor(80 + (level - 30) * 2.5); // 82.5-130个方块
-  }
-  
-  // 51关以后固定在120个方块，通过数字分布和组合复杂度增加难度
-  return 120;
-}
-
 // Get number distribution strategy based on level
-function getNumberDistribution(level) {
+function getNumberDistribution(level, isChallenge = false) {
   // 挑战模式使用特殊的数字分布
-  if (level === -1) { // 挑战模式标识
+  if (isChallenge) {
     return {
       smallNumbers: 0.10,  // 极少1-2，需要更大框组合
       mediumNumbers: 0.50, // 中等数字3-6
       largeNumbers: 0.40   // 大量7-9，需要复杂组合
+    };
+  }
+  
+  // 后期关卡：需要3-4个方块凑10
+  if (level > 150) {
+    return {
+      smallNumbers: 0.15,  // 更少小数字
+      mediumNumbers: 0.35, // 中等数字
+      largeNumbers: 0.50,  // 大量大数字，需要多个方块组合
+      requireMultipleTiles: true, // 标记需要多方块组合
+      minTilesForTen: Math.random() < 0.5 ? 3 : 4 // 随机需要3或4个方块
+    };
+  }
+  
+  if (level > 100) {
+    return {
+      smallNumbers: 0.20,
+      mediumNumbers: 0.40,
+      largeNumbers: 0.40,
+      requireMultipleTiles: Math.random() < 0.3, // 30%概率需要多方块
+      minTilesForTen: 3
     };
   }
   
@@ -129,51 +124,20 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   // 获取数字方块数量和布局
   let tileCount, rows, cols;
   
-  if (isChallenge) {
-    // 挑战模式：固定14行11列
-    rows = 10;
-    cols = 12;
-    tileCount = 120; // 固定120个方块
-  } else {
-    // 关卡模式：使用原有逻辑
-    tileCount = getTileCount(level, isChallenge);
-    const layoutConfig = getBoardLayoutConfig(tileCount, null, level);
-    rows = layoutConfig.rows;
-    cols = layoutConfig.cols;
-  }
-  
-  // 为挑战模式创建布局配置
-  const layoutConfig = isChallenge ? 
-    getBoardLayoutConfig(tileCount, cols / rows, null) : 
-    getBoardLayoutConfig(tileCount, null, level);
-    
-  // 确保使用布局配置中的实际行列数
+  // 使用新的布局系统
+  const layoutConfig = getBoardLayoutConfig(null, null, isChallenge ? null : level);
   rows = layoutConfig.rows;
   cols = layoutConfig.cols;
+  tileCount = layoutConfig.actualTileCount;
+    
   const totalSlots = rows * cols;
-  
-  // 计算实际数字方块数量和矩形尺寸
-  const actualTileCount = Math.min(tileCount, totalSlots);
-  const actualTileRows = Math.ceil(Math.sqrt(actualTileCount));
-  const actualTileCols = Math.ceil(actualTileCount / actualTileRows);
-  
-  // 确保矩形不超出棋盘边界
-  const maxTileRows = Math.min(actualTileRows, rows);
-  const maxTileCols = Math.min(actualTileCols, cols);
-  const finalTileCount = maxTileRows * maxTileCols;
-  
-  // 计算数字方块矩形在棋盘中的起始位置（居中）
-  const startRow = Math.floor((rows - maxTileRows) / 2);
-  const startCol = Math.floor((cols - maxTileCols) / 2);
+  const finalTileCount = tileCount;
   
   // Initialize empty board
   const tiles = new Array(totalSlots).fill(0);
   
-  // 创建数字方块数组（用于生成数字）
-  const numberTiles = new Array(finalTileCount).fill(0);
-  
   // Get difficulty parameters
-  const distribution = getNumberDistribution(isChallenge ? -1 : level);
+  const distribution = getNumberDistribution(level, isChallenge);
   
   // Target pairs that sum to 10
   const targetPairs = [
@@ -215,6 +179,42 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const placedPositions = new Set();
   let pairsPlaced = 0;
   
+  // 后期关卡的特殊处理：生成需要多个方块的组合
+  if (distribution.requireMultipleTiles) {
+    const minTiles = distribution.minTilesForTen || 3;
+    console.log(`🎯 Level ${level}: 需要${minTiles}个方块凑10`);
+    
+    // 生成一些需要多方块的组合
+    const multiTileCombinations = [
+      [1, 1, 8], [1, 2, 7], [1, 3, 6], [1, 4, 5],
+      [2, 2, 6], [2, 3, 5], [2, 4, 4], [3, 3, 4],
+      [1, 1, 1, 7], [1, 1, 2, 6], [1, 1, 3, 5], [1, 1, 4, 4],
+      [1, 2, 2, 5], [1, 2, 3, 4], [2, 2, 2, 4], [2, 2, 3, 3]
+    ];
+    
+    const suitableCombos = multiTileCombinations.filter(combo => combo.length >= minTiles);
+    const multiTileCount = Math.floor(finalTileCount * 0.3); // 30%使用多方块组合
+    
+    for (let i = 0; i < multiTileCount && suitableCombos.length > 0; i++) {
+      const combo = suitableCombos[Math.floor(random() * suitableCombos.length)];
+      const availablePositions = [];
+      
+      for (let j = 0; j < finalTileCount; j++) {
+        if (!placedPositions.has(j)) {
+          availablePositions.push(j);
+        }
+      }
+      
+      if (availablePositions.length >= combo.length) {
+        for (let k = 0; k < combo.length; k++) {
+          const pos = availablePositions[k];
+          tiles[pos] = combo[k];
+          placedPositions.add(pos);
+        }
+      }
+    }
+  }
+  
   // 首先放置相邻的目标配对（容易找到的）
   let adjacentPairsPlaced = 0;
   while (adjacentPairsPlaced < adjacentPairCount && pairsPlaced < pairCount) {
@@ -225,7 +225,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     let attempts = 0;
     let placed = false;
     
-    while (attempts < 100 && !placed) {
+    while (attempts < 50 && !placed) {
       const pos1 = Math.floor(random() * finalTileCount);
       const row1 = Math.floor(pos1 / maxTileCols);
       const col1 = pos1 % maxTileCols;
@@ -302,7 +302,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   // Fill remaining spots with random numbers based on distribution
   const remainingCount = finalTileCount - (pairsPlaced * 2);
   const availablePositions = [];
-  for (let i = 0; i < finalTileCount; i++) {
+  for (let i = 0; i < totalSlots; i++) {
     if (!placedPositions.has(i) && numberTiles[i] === 0) {
       availablePositions.push(i);
     }
@@ -554,27 +554,27 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     }
   }
   
-  // 将数字方块矩形放置到棋盘的居中位置
-  for (let tileRow = 0; tileRow < maxTileRows; tileRow++) {
-    for (let tileCol = 0; tileCol < maxTileCols; tileCol++) {
-      const tileIndex = tileRow * maxTileCols + tileCol;
-      if (tileIndex < finalTileCount) {
-        const boardRow = startRow + tileRow;
-        const boardCol = startCol + tileCol;
-        const boardIndex = boardRow * cols + boardCol;
-        tiles[boardIndex] = numberTiles[tileIndex];
+  // 直接在网格中放置方块（不需要额外的矩形映射）
+  for (let i = 0; i < finalTileCount; i++) {
+    if (tiles[i] === 0) {
+      // 根据分布生成随机数字
+      if (random() < distribution.smallNumbers) {
+        tiles[i] = Math.floor(random() * 3) + 1; // 1-3
+      } else if (random() < distribution.smallNumbers + distribution.mediumNumbers) {
+        tiles[i] = Math.floor(random() * 3) + 4; // 4-6
+      } else {
+        tiles[i] = Math.floor(random() * 3) + 7; // 7-9
       }
     }
   }
   
-  // Verify the sum is a multiple of 10 (for debugging)
-  const finalSum = numberTiles.filter(val => val > 0).reduce((sum, val) => sum + val, 0);
+  // 验证总和是否为10的倍数
+  const finalSum = tiles.filter(val => val > 0).reduce((sum, val) => sum + val, 0);
   if (finalSum % 10 !== 0) {
-    console.warn(`Number tiles sum ${finalSum} is not a multiple of 10 for level ${level}`);
+    console.warn(`⚠️ Level ${level}: 总和 ${finalSum} 不是10的倍数`);
   } else {
-    console.log(`✅ Level ${level}: Total sum = ${finalSum} (${finalSum/10} × 10)`);
+    console.log(`✅ Level ${level}: 总和 = ${finalSum} (${finalSum/10} × 10)`);
   }
-    
   
   return {
     seed,

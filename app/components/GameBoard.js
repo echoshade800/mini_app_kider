@@ -1,7 +1,7 @@
 /**
- * GameBoard Component - 使用新的自适应布局系统
- * Purpose: 渲染自适应棋盘，所有布局由BoardLayout统一管理
- * Features: 完全响应式、最小28px方块、棋盘比矩形大一圈
+ * GameBoard Component - 使用新的固定32px布局系统
+ * Purpose: 渲染固定尺寸棋盘，数字方块32px居中对齐
+ * Features: 固定方块尺寸、居中对齐、2px间距
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -15,6 +15,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { hasValidCombinations } from '../utils/gameLogic';
 import RescueModal from './RescueModal';
+import { layoutTiles } from '../layout/BoardLayout';
 
 const GameBoard = ({ 
   tiles, 
@@ -43,8 +44,11 @@ const GameBoard = ({
   const explosionOpacity = useRef(new Animated.Value(0)).current;
   const tileScales = useRef(new Map()).current;
 
+  // 获取方块位置计算函数
+  const getTilePosition = layoutConfig ? layoutTiles(layoutConfig) : null;
+
   // 如果没有布局配置，显示加载状态
-  if (!layoutConfig) {
+  if (!layoutConfig || !getTilePosition) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
@@ -232,13 +236,14 @@ const GameBoard = ({
       
       if (!isInsideBoard(pageX, pageY)) return;
       
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
+      const { boardLeft, boardTop, woodFrameWidth, tilesRectLeft, tilesRectTop, tileSize, tileGap } = layoutConfig;
 
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
+      // 计算相对于数字方块矩形的坐标
+      const tilesRectAbsLeft = boardLeft + woodFrameWidth + tilesRectLeft;
+      const tilesRectAbsTop = boardTop + woodFrameWidth + tilesRectTop;
 
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
+      const relativeX = pageX - tilesRectAbsLeft;
+      const relativeY = pageY - tilesRectAbsTop;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -266,13 +271,13 @@ const GameBoard = ({
       if (!selection) return;
       
       const { pageX, pageY } = evt.nativeEvent;
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
+      const { boardLeft, boardTop, woodFrameWidth, tilesRectLeft, tilesRectTop, tileSize, tileGap } = layoutConfig;
 
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
+      const tilesRectAbsLeft = boardLeft + woodFrameWidth + tilesRectLeft;
+      const tilesRectAbsTop = boardTop + woodFrameWidth + tilesRectTop;
 
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
+      const relativeX = pageX - tilesRectAbsLeft;
+      const relativeY = pageY - tilesRectAbsTop;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -370,10 +375,6 @@ const GameBoard = ({
     const minCol = Math.min(startCol, endCol);
     const maxCol = Math.max(startCol, endCol);
     
-    const selectedTiles = getSelectedTiles();
-    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
-    const isSuccess = sum === 10;
-    
     const { tileSize, tileGap } = layoutConfig;
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
@@ -382,6 +383,10 @@ const GameBoard = ({
     const top = minRow * cellHeight;
     const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileGap;
     const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileGap;
+    
+    const selectedTiles = getSelectedTiles();
+    const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
+    const isSuccess = sum === 10;
     
     return {
       position: 'absolute',
@@ -462,6 +467,7 @@ const GameBoard = ({
     }
 
     const tilePos = layoutConfig.getTilePosition(row, col);
+    const tilePos = getTilePosition(row, col);
     if (!tilePos) return null;
 
     const tileScale = initTileScale(index);
@@ -518,8 +524,8 @@ const GameBoard = ({
         key={`${row}-${col}`}
         style={{
           position: 'absolute',
-          left: tilePos.x,
-          top: tilePos.y,
+          left: layoutConfig.boardLeft + layoutConfig.woodFrameWidth + tilePos.x,
+          top: layoutConfig.boardTop + layoutConfig.woodFrameWidth + tilePos.y,
           width: tilePos.width,
           height: tilePos.height,
           alignItems: 'center',
@@ -554,6 +560,10 @@ const GameBoard = ({
     );
   };
 
+  console.log('🎮 GameBoard 渲染信息:');
+  console.log(`   棋盘位置: (${layoutConfig.boardLeft}, ${layoutConfig.boardTop})`);
+  console.log(`   棋盘尺寸: ${layoutConfig.boardWidth}x${layoutConfig.boardHeight}`);
+
   const selectionStyle = getSelectionStyle();
   const selectionSum = getSelectionSum();
 
@@ -564,7 +574,6 @@ const GameBoard = ({
           style={[
             styles.chalkboard,
             {
-              position: 'absolute',
               left: layoutConfig.boardLeft,
               top: layoutConfig.boardTop,
               width: layoutConfig.boardWidth,
@@ -577,11 +586,10 @@ const GameBoard = ({
           <View
             {...panResponder.panHandlers}
             style={{
-              position: 'absolute',
-              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
-              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
+              left: layoutConfig.woodFrameWidth,
+              top: layoutConfig.woodFrameWidth,
+              width: layoutConfig.boardWidth - layoutConfig.woodFrameWidth * 2,
+              height: layoutConfig.boardHeight - layoutConfig.woodFrameWidth * 2,
             }}
             pointerEvents={itemMode ? "auto" : "auto"}
           >
@@ -667,6 +675,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   chalkboard: {
+    position: 'absolute',
     backgroundColor: '#1E5A3C', // Deep green chalkboard
     borderRadius: 16,
     borderWidth: 8,

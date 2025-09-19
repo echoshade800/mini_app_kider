@@ -250,6 +250,3 @@ export function getStageGroup(level) {
   }
   return level > 200 ? 'Beyond Reality' : 'Unknown';
 }
-
-// Add default export to prevent routing warning
-export default STAGE_NAMES;

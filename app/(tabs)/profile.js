@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useGameStore } from '../lib/gameStore';
+import { useGameStore } from '../store/gameStore';
 
 export default function ProfileScreen() {
   const { 
@@ -49,10 +49,6 @@ export default function ProfileScreen() {
     router.push('/about');
   };
 
-  const handleBackPress = () => {
-    router.replace('/');
-  };
-
   const getIQTitle = (iq) => {
     if (iq >= 145) return 'Cosmic Genius';
     if (iq >= 130) return 'Puzzle Master';
@@ -78,16 +74,9 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
-        {/* Header with Back Button */}
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={handleBackPress}
-          >
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
           <Text style={styles.title}>Profile & Settings</Text>
-          <View style={styles.placeholder} />
         </View>
 
         {/* User Stats */}
@@ -216,26 +205,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  backButton: {
-    padding: 8,
-  },
   title: {
-    flex: 1,
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
-    textAlign: 'center',
-  },
-  placeholder: {
-    width: 40,
   },
   section: {
     marginTop: 20,

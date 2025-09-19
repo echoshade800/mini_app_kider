@@ -305,19 +305,25 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
       return null;
     }
     
-    // 🎯 单一版面引擎：所有坐标从内容区中心推导，避免累积误差
+    // 🎯 统一中心点计算：内容区的几何中心
+    const contentCenterX = contentWidth / 2;
+    const contentCenterY = contentHeight / 2;
     
-    // 1) 计算网格总尺寸（整数化避免累积误差）
-    const gridWidth = cols * tileSize + (cols - 1) * gap;
-    const gridHeight = rows * tileSize + (rows - 1) * gap;
+    // 🎯 数字方块矩形的几何中心
+    const tileRectCenterX = tilesRectWidth / 2;
+    const tileRectCenterY = tilesRectHeight / 2;
     
-    // 2) 网格在内容区内居中的起始点（四舍五入到整数像素）
-    const startX = Math.round((contentWidth - gridWidth) / 2);
-    const startY = Math.round((contentHeight - gridHeight) / 2);
+    // 🎯 计算数字方块矩形左上角位置，使其中心与内容区中心重合
+    const tileRectStartX = contentCenterX - tileRectCenterX;
+    const tileRectStartY = contentCenterY - tileRectCenterY;
     
-    // 3) 单个方块的精确位置（每个坐标都四舍五入）
-    const x = Math.round(startX + col * (tileSize + gap));
-    const y = Math.round(startY + row * (tileSize + gap));
+    // 🎯 计算单个方块位置（相对于数字方块矩形左上角）
+    const relativeX = col * (tileSize + gap);
+    const relativeY = row * (tileSize + gap);
+    
+    // 🎯 最终位置：数字方块矩形起始位置 + 方块相对位置
+    const x = tileRectStartX + relativeX;
+    const y = tileRectStartY + relativeY;
     
     return {
       x,

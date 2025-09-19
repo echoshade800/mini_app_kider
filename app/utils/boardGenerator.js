@@ -1,116 +1,285 @@
 /**
- * 棋盘自适应布局系统 - 唯一布局规则来源
- * Purpose: 根据数字方块数量动态计算棋盘尺寸和布局
- * Features: 自适应尺寸、最小28px限制、棋盘比矩形大一圈
+ * Board Generator - 使用新的自适应布局系统
+ * Purpose: 根据难度生成数字方块，布局由BoardLayout统一管理
+ * Features: 只负责数字生成，不涉及布局计算
  */
 
-import { Dimensions } from 'react-native';
+import { getBoardLayoutConfig } from '../layout/BoardLayout';
 
-// 根据关卡获取数字方块数量（从boardGenerator复制过来避免循环依赖）
-function getTileCount(level, isChallenge = false) {
-  if (isChallenge) {
-    // 挑战模式：使用高数量提供最大挑战
-    return 200; // 固定高数量
+// Deterministic random number generator for consistent board generation
+function seededRandom(seed) {
+  let state = 0;
+  for (let i = 0; i < seed.length; i++) {
+    state = ((state << 5) - state + seed.charCodeAt(i)) & 0xffffffff;
   }
   
-  // 关卡模式：渐进式增长
-  if (level >= 1 && level <= 10) {
-    return Math.floor(12 + level * 2); // 14-32个方块
-  }
-  if (level >= 11 && level <= 20) {
-    return Math.floor(30 + (level - 10) * 3); // 33-60个方块
-  }
-  if (level >= 21 && level <= 30) {
-    return Math.floor(60 + (level - 20) * 4); // 64-100个方块
-  }
-  if (level >= 31 && level <= 50) {
-    return Math.floor(100 + (level - 30) * 3); // 103-160个方块
-  }
-  if (level >= 51 && level <= 80) {
-    return Math.floor(160 + (level - 50) * 2); // 162-220个方块
-  }
-  if (level >= 81 && level <= 120) {
-    return Math.floor(220 + (level - 80) * 1.5); // 221-280个方块
-  }
-  if (level >= 121 && level <= 200) {
-    return Math.floor(280 + (level - 120) * 1); // 281-360个方块
-  }
-  
-  // 200关以后继续增长
-  return Math.floor(360 + (level - 200) * 0.5);
-}
-
-/**
- * 生成游戏棋盘
- * @param {number} level - 关卡等级或数字方块数量
- * @param {boolean} isChallenge - 是否为挑战模式
- * @param {boolean} useHighCount - 是否使用高数量方块
- * @returns {Object} 棋盘数据
- */
-export function generateBoard(level, isChallenge = false, useHighCount = false) {
-  let tileCount;
-  
-  if (isChallenge || useHighCount) {
-    // 挑战模式：使用固定高数量
-    tileCount = 120;
-  } else {
-    // 关卡模式：根据等级计算数量
-    tileCount = getTileCount(level, false);
-  }
-  
-  // 使用固定的16行×9列布局
-  const layoutConfig = getBoardLayoutConfig(tileCount, null, level, 16, 9);
-  
-  // 生成数字方块数据
-  const tiles = generateTileData(tileCount, layoutConfig.rows, layoutConfig.cols, level);
-  
-  return {
-    width: layoutConfig.cols,
-    height: layoutConfig.rows,
-    tiles: tiles,
-    layoutConfig: layoutConfig,
-    level: level,
-    isChallenge: isChallenge,
-    tileCount: tileCount
+  return function() {
+    state = ((state * 1103515245) + 12345) & 0x7fffffff;
+    return state / 0x7fffffff;
   };
 }
 
-/**
- * 生成数字方块数据
- * @param {number} tileCount - 数字方块数量
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} level - 关卡等级
- * @returns {Array} 方块数据数组
- */
-function generateTileData(tileCount, rows, cols, level) {
-  const totalCells = rows * cols;
-  const tiles = new Array(totalCells).fill(0);
+// 根据关卡获取数字方块数量
+function getTileCount(level, isChallenge = false) {
+  if (isChallenge) {
+    // 挑战模式：使用高数量提供最大挑战
+    return 120; // 固定中等数量，通过复杂组合增加难度
+  }
   
-  // 生成目标对 (sum = 10)
+  // 关卡模式：前几关保证可完全消除，后续渐进式增长
+  if (level >= 1 && level <= 10) {
+    // 前10关：使用较少方块，确保可完全消除
+    return Math.floor(8 + level * 1.5); // 9.5-23个方块，向下取整为9-22个
+  }
+  if (level >= 11 && level <= 20) {
+    return Math.floor(25 + (level - 10) * 2.5); // 27.5-50个方块
+  }
+  if (level >= 21 && level <= 30) {
+    return Math.floor(50 + (level - 20) * 3); // 53-80个方块
+  }
+  if (level >= 31 && level <= 50) {
+    return Math.floor(80 + (level - 30) * 2.5); // 82.5-130个方块
+  }
+  
+  // 51关以后固定在120个方块，通过数字分布和组合复杂度增加难度
+  return 120;
+}
+
+// Get number distribution strategy based on level
+function getNumberDistribution(level) {
+  // 挑战模式使用特殊的数字分布
+  if (level === -1) { // 挑战模式标识
+    return {
+      smallNumbers: 0.10,  // 极少1-2，需要更大框组合
+      mediumNumbers: 0.50, // 中等数字3-6
+      largeNumbers: 0.40   // 大量7-9，需要复杂组合
+    };
+  }
+  
+  // 前5关：极简分布，主要是互补数字
+  if (level <= 5) {
+    return {
+      smallNumbers: 0.8,  // 80% 1-3的比例，主要是1,2,3
+      mediumNumbers: 0.2, // 20% 4-6的比例，主要是4,5,6  
+      largeNumbers: 0.0   // 0% 7-9的比例，避免复杂组合
+    };
+  }
+  
+  // 6-15关：逐步增加复杂度
+  if (level <= 15) {
+    return {
+      smallNumbers: 0.7,  // 70% 1-3的比例
+      mediumNumbers: 0.25, // 25% 4-6的比例
+      largeNumbers: 0.05   // 5% 7-9的比例
+    };
+  }
+  
+  // 16-30关：标准简单分布
+  if (level <= 30) {
+    return {
+      smallNumbers: 0.6,  // 60% 1-3的比例
+      mediumNumbers: 0.3, // 30% 4-6的比例
+      largeNumbers: 0.1   // 10% 7-9的比例
+    };
+  }
+  
+  // 31-50关：平衡分布
+  if (level <= 50) {
+    return {
+      smallNumbers: 0.5,
+      mediumNumbers: 0.4,
+      largeNumbers: 0.1
+    };
+  }
+  
+  // 51-100关：减少小数字，增加大数字，需要更大框
+  if (level <= 100) {
+    return {
+      smallNumbers: 0.3,  // 减少1-3
+      mediumNumbers: 0.4, // 保持4-6
+      largeNumbers: 0.3   // 增加7-9，需要更复杂组合
+    };
+  }
+  
+  // 101-150关：进一步减少小数字
+  if (level <= 150) {
+    return {
+      smallNumbers: 0.2,  // 更少1-3
+      mediumNumbers: 0.4, // 保持4-6
+      largeNumbers: 0.4   // 更多7-9
+    };
+  }
+  
+  // 151关以后：极端分布，主要是大数字
+  return {
+    smallNumbers: 0.1,  // 极少1-3
+    mediumNumbers: 0.3, // 少量4-6
+    largeNumbers: 0.6   // 大量7-9，需要非常大的框
+  };
+}
+
+// Generate a game board for the specified level
+export function generateBoard(level, ensureSolvable = true, isChallenge = false) {
+  const seed = isChallenge ? 
+    `challenge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : 
+    `level_${level}`;
+  
+  const random = seededRandom(seed);
+  
+  // 获取数字方块数量和布局
+  let tileCount, rows, cols;
+  
+  if (isChallenge) {
+    // 挑战模式：固定14行11列
+    rows = 10;
+    cols = 12;
+    tileCount = 120; // 固定120个方块
+  } else {
+    // 关卡模式：使用原有逻辑
+    tileCount = getTileCount(level, isChallenge);
+    const layoutConfig = getBoardLayoutConfig(tileCount, null, level);
+    rows = layoutConfig.rows;
+    cols = layoutConfig.cols;
+  }
+  
+  // 为挑战模式创建布局配置
+  const layoutConfig = isChallenge ? 
+    getBoardLayoutConfig(tileCount, cols / rows, null) : 
+    getBoardLayoutConfig(tileCount, null, level);
+    
+  // 确保使用布局配置中的实际行列数
+  rows = layoutConfig.rows;
+  cols = layoutConfig.cols;
+  const totalSlots = rows * cols;
+  
+  // 计算实际数字方块数量和矩形尺寸
+  const actualTileCount = Math.min(tileCount, totalSlots);
+  const actualTileRows = Math.ceil(Math.sqrt(actualTileCount));
+  const actualTileCols = Math.ceil(actualTileCount / actualTileRows);
+  
+  // 确保矩形不超出棋盘边界
+  const maxTileRows = Math.min(actualTileRows, rows);
+  const maxTileCols = Math.min(actualTileCols, cols);
+  const finalTileCount = maxTileRows * maxTileCols;
+  
+  // 计算数字方块矩形在棋盘中的起始位置（居中）
+  const startRow = Math.floor((rows - maxTileRows) / 2);
+  const startCol = Math.floor((cols - maxTileCols) / 2);
+  
+  // Initialize empty board
+  const tiles = new Array(totalSlots).fill(0);
+  
+  // 创建数字方块数组（用于生成数字）
+  const numberTiles = new Array(finalTileCount).fill(0);
+  
+  // Get difficulty parameters
+  const distribution = getNumberDistribution(isChallenge ? -1 : level);
+  
+  // Target pairs that sum to 10
   const targetPairs = [
     [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
   ];
   
-  // 计算要放置的对数
-  const pairCount = Math.floor(tileCount / 2);
-  const remainingCount = tileCount - (pairCount * 2);
+  // 确定目标配对的比例 - 前几关保证高比例的有效配对
+  let targetPairRatio = 0.85; // 默认85%有效配对
+  let adjacentPairRatio = 0.7; // 默认70%的配对是相邻的
   
-  // 随机放置目标对
-  const usedPositions = new Set();
-  let placedPairs = 0;
+  if (level <= 5) {
+    targetPairRatio = 0.95; // 前5关：95%有效配对
+    adjacentPairRatio = 0.9; // 90%的配对是相邻的，非常容易找到
+  } else if (level <= 10) {
+    targetPairRatio = 0.85; // 6-10关：85%有效配对
+    adjacentPairRatio = 0.8; // 80%的配对是相邻的
+  } else if (level <= 20) {
+    targetPairRatio = 0.75; // 11-20关：75%有效配对
+    adjacentPairRatio = 0.7; // 70%的配对是相邻的
+  } else if (level <= 40) {
+    targetPairRatio = 0.65; // 21-40关：65%有效配对
+    adjacentPairRatio = 0.6; // 60%的配对是相邻的
+  } else if (level <= 50) {
+    targetPairRatio = 0.55; // 41-50关：55%有效配对
+    adjacentPairRatio = 0.5; // 50%的配对是相邻的
+  } else if (level <= 100) {
+    targetPairRatio = 0.45; // 51-100关：45%有效配对
+    adjacentPairRatio = 0.4; // 40%的配对是相邻的
+  } else if (level <= 150) {
+    targetPairRatio = 0.35; // 101-150关：35%有效配对
+    adjacentPairRatio = 0.3; // 30%的配对是相邻的
+  } else {
+    targetPairRatio = 0.3;  // 151+关：30%有效配对，需要大框
+    adjacentPairRatio = 0.25; // 25%的配对是相邻的，最低不低于25%
+  }
   
-  // 使用简单的随机数生成器
-  const random = () => Math.random();
+  const pairCount = Math.floor((finalTileCount / 2) * targetPairRatio);
+  const adjacentPairCount = Math.floor(pairCount * adjacentPairRatio);
+  const placedPositions = new Set();
+  let pairsPlaced = 0;
   
-  while (placedPairs < pairCount) {
+  // 首先放置相邻的目标配对（容易找到的）
+  let adjacentPairsPlaced = 0;
+  while (adjacentPairsPlaced < adjacentPairCount && pairsPlaced < pairCount) {
     const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
     const [val1, val2] = pairType;
     
-    // 找两个空位置
+    // 寻找相邻位置
+    let attempts = 0;
+    let placed = false;
+    
+    while (attempts < 100 && !placed) {
+      const pos1 = Math.floor(random() * finalTileCount);
+      const row1 = Math.floor(pos1 / maxTileCols);
+      const col1 = pos1 % maxTileCols;
+      
+      if (placedPositions.has(pos1)) {
+        attempts++;
+        continue;
+      }
+      
+      // 尝试四个相邻方向：右、下、左、上
+      const directions = [
+        [0, 1],  // 右
+        [1, 0],  // 下
+        [0, -1], // 左
+        [-1, 0]  // 上
+      ];
+      
+      for (const [dr, dc] of directions) {
+        const row2 = row1 + dr;
+        const col2 = col1 + dc;
+        
+        if (row2 >= 0 && row2 < maxTileRows && col2 >= 0 && col2 < maxTileCols) {
+          const pos2 = row2 * maxTileCols + col2;
+          
+          if (!placedPositions.has(pos2)) {
+            numberTiles[pos1] = val1;
+            numberTiles[pos2] = val2;
+            placedPositions.add(pos1);
+            placedPositions.add(pos2);
+            adjacentPairsPlaced++;
+            pairsPlaced++;
+            placed = true;
+            break;
+          }
+        }
+      }
+      
+      attempts++;
+    }
+    
+    if (!placed) {
+      // 如果找不到相邻位置，跳出循环
+      break;
+    }
+  }
+  
+  // 然后放置剩余的非相邻目标配对
+  while (pairsPlaced < pairCount) {
+    const pairType = targetPairs[Math.floor(random() * targetPairs.length)];
+    const [val1, val2] = pairType;
+    
     const availablePositions = [];
-    for (let i = 0; i < totalCells; i++) {
-      if (!usedPositions.has(i)) {
+    for (let i = 0; i < finalTileCount; i++) {
+      if (!placedPositions.has(i)) {
         availablePositions.push(i);
       }
     }
@@ -120,449 +289,298 @@ function generateTileData(tileCount, rows, cols, level) {
       const remainingPositions = availablePositions.filter(p => p !== pos1);
       const pos2 = remainingPositions[Math.floor(random() * remainingPositions.length)];
       
-      tiles[pos1] = val1;
-      tiles[pos2] = val2;
-      usedPositions.add(pos1);
-      usedPositions.add(pos2);
-      placedPairs++;
+      numberTiles[pos1] = val1;
+      numberTiles[pos2] = val2;
+      placedPositions.add(pos1);
+      placedPositions.add(pos2);
+      pairsPlaced++;
     } else {
       break;
     }
   }
   
-  // 放置剩余的单个方块
+  // Fill remaining spots with random numbers based on distribution
+  const remainingCount = finalTileCount - (pairsPlaced * 2);
   const availablePositions = [];
-  for (let i = 0; i < totalCells; i++) {
-    if (!usedPositions.has(i)) {
+  for (let i = 0; i < finalTileCount; i++) {
+    if (!placedPositions.has(i) && numberTiles[i] === 0) {
       availablePositions.push(i);
     }
   }
   
-  for (let i = 0; i < Math.min(remainingCount, availablePositions.length); i++) {
-    const pos = availablePositions[i];
-    tiles[pos] = Math.floor(random() * 9) + 1;
+  // Generate remaining tiles to achieve target sum (multiple of 10)
+  const remainingTilesToPlace = Math.min(remainingCount, availablePositions.length);
+  const remainingTiles = [];
+  for (let i = 0; i < remainingTilesToPlace; i++) {
+    remainingTiles.push(0); // Placeholder
   }
   
-  // 应用大数字分离规则
-  applyLargeNumberSeparation(tiles, rows, cols);
+  // Calculate current sum from placed pairs
+  let currentSum = 0;
+  for (let i = 0; i < finalTileCount; i++) {
+    if (numberTiles[i] > 0) {
+      currentSum += numberTiles[i];
+    }
+  }
   
-  return tiles;
-}
-
-/**
- * 应用大数字分离规则 - 让相同的大数字(7,8,9)尽量不相邻
- * @param {Array} tiles - 方块数组
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- */
-function applyLargeNumberSeparation(tiles, rows, cols) {
-  const largeNumbers = [7, 8, 9];
-  const maxAttempts = 50;
-  
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    let hasImprovement = false;
-    
-    for (let i = 0; i < tiles.length; i++) {
-      const value = tiles[i];
+  // Fill remaining tiles to achieve target sum (multiple of 10)
+  if (remainingTiles.length > 0) {
+    // 前几关：优先确保总和是10的倍数，便于完全消除
+    if (level <= 10) {
+      // 计算需要的剩余总和使整体是10的倍数
+      const minPossibleSum = currentSum + remainingTiles.length; // All 1s
+      const maxPossibleSum = currentSum + remainingTiles.length * 6; // 限制最大为6
       
-      // 只处理大数字
-      if (!largeNumbers.includes(value)) continue;
+      // 找到范围内最接近的10的倍数
+      let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
+      if (targetTotalSum > maxPossibleSum) {
+        targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
+      }
       
-      // 检查是否与相同数字相邻
-      if (hasAdjacentSameNumber(tiles, i, rows, cols, value)) {
-        // 尝试找一个不相邻的位置交换
-        const betterPos = findNonAdjacentPosition(tiles, i, rows, cols, value);
-        if (betterPos !== -1) {
-          // 交换位置
-          const temp = tiles[i];
-          tiles[i] = tiles[betterPos];
-          tiles[betterPos] = temp;
-          hasImprovement = true;
+      const targetRemainingSum = targetTotalSum - currentSum;
+      
+      // 确保目标剩余总和是合理的
+      if (targetRemainingSum >= remainingTiles.length && targetRemainingSum <= remainingTiles.length * 6) {
+        // 使用平均值填充
+        const avgValue = Math.max(1, Math.min(6, Math.round(targetRemainingSum / remainingTiles.length)));
+        
+        for (let i = 0; i < remainingTiles.length; i++) {
+          remainingTiles[i] = avgValue;
+        }
+        
+        // 微调以达到精确的目标总和
+        let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
+        let difference = targetRemainingSum - currentRemainingSum;
+        
+        let attempts = 0;
+        while (difference !== 0 && attempts < 50) {
+          for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+            if (difference > 0 && remainingTiles[i] < 6) {
+              remainingTiles[i]++;
+              difference--;
+            } else if (difference < 0 && remainingTiles[i] > 1) {
+              remainingTiles[i]--;
+              difference++;
+            }
+          }
+          attempts++;
+        }
+      } else {
+        // 如果目标剩余总和不合理，使用简单填充
+        for (let i = 0; i < remainingTiles.length; i++) {
+          remainingTiles[i] = Math.floor(random() * 6) + 1; // 1-6
+        }
+      }
+      
+    } else if (isChallenge) {
+      // 挑战模式使用特殊的数字生成策略
+      // 根据分布比例生成数字
+      const smallCount = Math.floor(remainingTiles.length * distribution.smallNumbers);
+      const mediumCount = Math.floor(remainingTiles.length * distribution.mediumNumbers);
+      const largeCount = remainingTiles.length - smallCount - mediumCount;
+      
+      let index = 0;
+      
+      // 生成少量小数字 (1-2)
+      for (let i = 0; i < smallCount; i++) {
+        remainingTiles[index++] = Math.floor(random() * 2) + 1; // 1-2
+      }
+      
+      // 生成大量中等数字 (3-6)
+      for (let i = 0; i < mediumCount; i++) {
+        remainingTiles[index++] = Math.floor(random() * 4) + 3; // 3-6
+      }
+      
+      // 生成一些大数字 (7-9)
+      for (let i = 0; i < largeCount; i++) {
+        remainingTiles[index++] = Math.floor(random() * 3) + 7; // 7-9
+      }
+      
+      // 调整总和为10的倍数
+      let currentTotalSum = remainingTiles.reduce((sum, val) => sum + val, 0) + currentSum;
+      let targetSum = Math.ceil(currentTotalSum / 10) * 10;
+      let difference = targetSum - currentTotalSum;
+      
+      // 微调数字以达到目标总和
+      let attempts = 0;
+      while (difference !== 0 && attempts < 100) {
+        for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+          if (difference > 0 && remainingTiles[i] < 9) {
+            remainingTiles[i]++;
+            difference--;
+          } else if (difference < 0 && remainingTiles[i] > 1) {
+            remainingTiles[i]--;
+            difference++;
+          }
+        }
+        attempts++;
+      }
+      
+    } else {
+      // 关卡模式：确保总和是10的倍数
+      const minPossibleSum = currentSum + remainingTiles.length; // All 1s
+      const maxPossibleSum = currentSum + remainingTiles.length * 9; // All 9s
+      
+      // Find the closest multiple of 10 within range
+      let targetTotalSum = Math.ceil(minPossibleSum / 10) * 10;
+      if (targetTotalSum > maxPossibleSum) {
+        targetTotalSum = Math.floor(maxPossibleSum / 10) * 10;
+      }
+      
+      const targetRemainingSum = targetTotalSum - currentSum;
+      
+      // Start with average distribution
+      const avgValue = Math.max(1, Math.min(9, Math.round(targetRemainingSum / remainingTiles.length)));
+      
+      for (let i = 0; i < remainingTiles.length; i++) {
+        remainingTiles[i] = avgValue;
+      }
+      
+      // Adjust to match exact target sum
+      let currentRemainingSum = remainingTiles.reduce((sum, val) => sum + val, 0);
+      let difference = targetRemainingSum - currentRemainingSum;
+      
+      // Distribute the difference
+      let attempts = 0;
+      while (difference !== 0 && attempts < 100) {
+        for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+          if (difference > 0 && remainingTiles[i] < 9) {
+            remainingTiles[i]++;
+            difference--;
+          } else if (difference < 0 && remainingTiles[i] > 1) {
+            remainingTiles[i]--;
+            difference++;
+          }
+        }
+        attempts++;
+      }
+      
+      // Apply some randomization while maintaining sum
+      for (let i = 0; i < remainingTiles.length - 1; i++) {
+        if (random() < 0.3) { // 30% chance to randomize
+          const maxIncrease = Math.min(9 - remainingTiles[i], remainingTiles[i + 1] - 1);
+          const maxDecrease = Math.min(remainingTiles[i] - 1, 9 - remainingTiles[i + 1]);
+          
+          if (maxIncrease > 0 && random() < 0.5) {
+            const change = Math.floor(random() * maxIncrease) + 1;
+            remainingTiles[i] += change;
+            remainingTiles[i + 1] -= change;
+          } else if (maxDecrease > 0) {
+            const change = Math.floor(random() * maxDecrease) + 1;
+            remainingTiles[i] -= change;
+            remainingTiles[i + 1] += change;
+          }
         }
       }
     }
-    
-    // 如果没有改善，提前结束
-    if (!hasImprovement) break;
   }
-}
-
-/**
- * 检查指定位置是否与相同数字相邻
- * @param {Array} tiles - 方块数组
- * @param {number} pos - 位置索引
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} value - 数字值
- * @returns {boolean} 是否相邻
- */
-function hasAdjacentSameNumber(tiles, pos, rows, cols, value) {
-  const row = Math.floor(pos / cols);
-  const col = pos % cols;
   
-  // 检查四个方向
-  const directions = [
-    [-1, 0], [1, 0], [0, -1], [0, 1] // 上、下、左、右
-  ];
+  // Place the calculated remaining tiles
+  for (let i = 0; i < remainingTiles.length; i++) {
+    const pos = availablePositions[i];
+    numberTiles[pos] = remainingTiles[i];
+  }
   
-  for (const [dr, dc] of directions) {
-    const newRow = row + dr;
-    const newCol = col + dc;
+  // 应用大数字不相邻规则
+  function applyLargeNumberSeparation(remainingTiles, availablePositions, width, height, tiles) {
+    // 创建临时棋盘来模拟放置
+    const tempTiles = [...tiles];
     
-    if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
-      const newPos = newRow * cols + newCol;
-      if (tiles[newPos] === value) {
-        return true;
+    // 先将所有剩余方块放到临时棋盘上
+    for (let i = 0; i < remainingTiles.length; i++) {
+      const pos = availablePositions[i];
+      tempTiles[pos] = remainingTiles[i];
+    }
+    
+    // 找出所有大数字的位置
+    const largeNumberPositions = [];
+    for (let i = 0; i < remainingTiles.length; i++) {
+      const value = remainingTiles[i];
+      if (value >= 7) { // 大数字：7、8、9
+        largeNumberPositions.push({
+          index: i,
+          position: availablePositions[i],
+          value: value
+        });
       }
     }
-  }
-  
-  return false;
-}
-
-/**
- * 寻找一个不与相同数字相邻的位置
- * @param {Array} tiles - 方块数组
- * @param {number} currentPos - 当前位置
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} value - 数字值
- * @returns {number} 更好的位置索引，-1表示没找到
- */
-function findNonAdjacentPosition(tiles, currentPos, rows, cols, value) {
-  for (let i = 0; i < tiles.length; i++) {
-    if (i === currentPos) continue;
     
-    // 检查这个位置交换后是否会改善情况
-    const tempValue = tiles[i];
+    // 尝试重新排列大数字，避免相同数字相邻
+    let maxAttempts = 50;
+    let improved = true;
     
-    // 模拟交换
-    tiles[i] = value;
-    tiles[currentPos] = tempValue;
-    
-    // 检查新位置是否不相邻
-    const isGoodPosition = !hasAdjacentSameNumber(tiles, i, rows, cols, value);
-    
-    // 恢复原状
-    tiles[currentPos] = value;
-    tiles[i] = tempValue;
-    
-    if (isGoodPosition) {
-      return i;
-    }
-  }
-  
-  return -1;
-}
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-// 布局常量
-const MIN_TILE_SIZE = 28; // 最小方块尺寸
-const TILE_GAP = 4; // 方块间距
-const BOARD_PADDING = 5; // 棋盘内边距（方块矩形到木框的留白）
-const WOOD_FRAME_WIDTH = 8; // 木框厚度
-
-// 有效游戏区域配置
-const EFFECTIVE_AREA = {
-  TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
-};
-
-/**
- * 获取有效游戏区域尺寸
- */
-function getEffectiveGameArea() {
-  const effectiveHeight = screenHeight - EFFECTIVE_AREA.TOP_RESERVED - EFFECTIVE_AREA.BOTTOM_RESERVED;
-  const effectiveWidth = screenWidth;
-  
-  return {
-    width: effectiveWidth,
-    height: effectiveHeight,
-    top: EFFECTIVE_AREA.TOP_RESERVED,
-    left: 0,
-  };
-}
-
-/**
- * 根据数字方块数量计算最佳矩形行列数
- * @param {number} N - 数字方块数量
- * @param {number} targetAspect - 期望宽高比（可选，默认根据屏幕比例）
- * @returns {Object} { rows, cols }
- */
-export function computeGridRC(N, targetAspect = null) {
-  if (N <= 0) return { rows: 1, cols: 1 };
-  
-  const gameArea = getEffectiveGameArea();
-  const defaultAspect = targetAspect || (gameArea.width / gameArea.height);
-  
-  // 寻找最接近目标宽高比的 (R, C) 组合
-  let bestR = 1, bestC = N;
-  let bestDiff = Infinity;
-  
-  for (let r = 1; r <= N; r++) {
-    const c = Math.ceil(N / r);
-    if (r * c >= N) {
-      const currentAspect = c / r;
-      const diff = Math.abs(currentAspect - defaultAspect);
+    while (improved && maxAttempts > 0) {
+      improved = false;
+      maxAttempts--;
       
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestR = r;
-        bestC = c;
-      }
-    }
-  }
-  
-  return { rows: bestR, cols: bestC };
-}
-
-/**
- * 计算在给定容器内能放下的最大方块尺寸
- * @param {number} containerWidth - 容器宽度
- * @param {number} containerHeight - 容器高度
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} gap - 方块间距
- * @param {number} padding - 内边距
- * @param {number} minTile - 最小方块尺寸
- * @returns {Object} 布局信息
- */
-export function computeTileSize(containerWidth, containerHeight, rows, cols, gap = TILE_GAP, padding = BOARD_PADDING, minTile = MIN_TILE_SIZE) {
-  // 计算可用空间（减去木框厚度和内边距）
-  const availableWidth = containerWidth - WOOD_FRAME_WIDTH * 2 - padding * 2;
-  const availableHeight = containerHeight - WOOD_FRAME_WIDTH * 2 - padding * 2;
-  
-  // 计算方块尺寸上限
-  const tileW = (availableWidth - (cols - 1) * gap) / cols;
-  const tileH = (availableHeight - (rows - 1) * gap) / rows;
-  const tileSize = Math.floor(Math.min(tileW, tileH));
-  
-  // 计算数字方块矩形的实际尺寸
-  const tilesRectWidth = cols * tileSize + (cols - 1) * gap;
-  const tilesRectHeight = rows * tileSize + (rows - 1) * gap;
-  
-  // 计算棋盘内容区尺寸（数字方块矩形 + 内边距）
-  const contentWidth = tilesRectWidth + 2 * padding;
-  const contentHeight = tilesRectHeight + 2 * padding;
-  
-  // 棋盘总尺寸（内容区 + 木框）
-  const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
-  const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
-  
-  return {
-    tileSize,
-    tilesRectWidth,
-    tilesRectHeight,
-    boardWidth,
-    boardHeight,
-    contentWidth,
-    contentHeight,
-    isValid: tileSize >= minTile,
-  };
-}
-
-/**
- * 自适应棋盘布局计算
- * @param {number} N - 数字方块数量
- * @param {number} targetAspect - 期望宽高比（可选）
- * @param {number} level - 关卡等级（用于特殊处理）
- * @returns {Object} 完整布局信息
- */
-export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
-  const gameArea = getEffectiveGameArea();
-  let { rows, cols } = computeGridRC(N, targetAspect);
-  
-  // 前35关：使用第35关的方块尺寸作为基准
-  if (level && level <= 35) {
-    const level35TileCount = getTileCount(35, false);
-    const level35Layout = computeGridRC(level35TileCount, targetAspect);
-    const level35TileSize = computeTileSize(
-      gameArea.width, 
-      gameArea.height, 
-      level35Layout.rows, 
-      level35Layout.cols
-    );
-    
-    if (level35TileSize.isValid) {
-      const targetTileSize = level35TileSize.tileSize;
-      
-      // 计算数字方块矩形尺寸
-      const tilesRectWidth = cols * targetTileSize + (cols - 1) * TILE_GAP;
-      const tilesRectHeight = rows * targetTileSize + (rows - 1) * TILE_GAP;
-      
-      // 计算棋盘内容区和总尺寸
-      const contentWidth = tilesRectWidth + 2 * BOARD_PADDING;
-      const contentHeight = tilesRectHeight + 2 * BOARD_PADDING;
-      const boardWidth = contentWidth + WOOD_FRAME_WIDTH * 2;
-      const boardHeight = contentHeight + WOOD_FRAME_WIDTH * 2;
-      
-      // 检查是否能放入有效区域
-      if (boardWidth <= gameArea.width && boardHeight <= gameArea.height) {
-        const boardLeft = (gameArea.width - boardWidth) / 2;
-        const boardTop = gameArea.top + (gameArea.height - boardHeight) / 2;
+      for (let i = 0; i < largeNumberPositions.length; i++) {
+        const current = largeNumberPositions[i];
+        const currentPos = current.position;
         
-        return {
-          tileSize: targetTileSize,
-          tilesRectWidth,
-          tilesRectHeight,
-          boardWidth,
-          boardHeight,
-          contentWidth,
-          contentHeight,
-          rows,
-          cols,
-          boardLeft,
-          boardTop,
-          gameArea,
-          isValid: true,
-        };
+        // 检查当前位置是否与相同数字相邻
+        if (hasAdjacentSameNumber(tempTiles, width, height, currentPos, current.value)) {
+          // 尝试与其他大数字交换位置
+          for (let j = i + 1; j < largeNumberPositions.length; j++) {
+            const other = largeNumberPositions[j];
+            const otherPos = other.position;
+            
+            // 模拟交换
+            tempTiles[currentPos] = other.value;
+            tempTiles[otherPos] = current.value;
+            
+            // 检查交换后是否改善了情况
+            const currentImproved = !hasAdjacentSameNumber(tempTiles, width, height, currentPos, other.value);
+            const otherImproved = !hasAdjacentSameNumber(tempTiles, width, height, otherPos, current.value);
+            
+            if (currentImproved || otherImproved) {
+              // 交换成功，更新数组
+              remainingTiles[current.index] = other.value;
+              remainingTiles[other.index] = current.value;
+              
+              // 更新位置记录
+              current.value = other.value;
+              other.value = remainingTiles[other.index];
+              
+              improved = true;
+              break;
+            } else {
+              // 撤销交换
+              tempTiles[currentPos] = current.value;
+              tempTiles[otherPos] = other.value;
+            }
+          }
+        }
       }
     }
   }
   
-  // 策略a: 尝试在有效区域内放大棋盘
-  let layout = computeTileSize(gameArea.width, gameArea.height, rows, cols);
-  
-  if (layout.isValid) {
-    // 计算棋盘在有效区域内的居中位置
-    const boardLeft = (gameArea.width - layout.boardWidth) / 2;
-    const boardTop = gameArea.top + (gameArea.height - layout.boardHeight) / 2;
-    
-    return {
-      ...layout,
-      rows,
-      cols,
-      boardLeft,
-      boardTop,
-      gameArea,
-    };
-  }
-  
-  // 策略b: 调整 (R, C) 比例
-  const alternatives = [];
-  for (let r = 1; r <= N; r++) {
-    const c = Math.ceil(N / r);
-    if (r * c >= N && (r !== rows || c !== cols)) {
-      const testLayout = computeTileSize(gameArea.width, gameArea.height, r, c);
-      if (testLayout.isValid) {
-        alternatives.push({ rows: r, cols: c, ...testLayout });
+  // 将数字方块矩形放置到棋盘的居中位置
+  for (let tileRow = 0; tileRow < maxTileRows; tileRow++) {
+    for (let tileCol = 0; tileCol < maxTileCols; tileCol++) {
+      const tileIndex = tileRow * maxTileCols + tileCol;
+      if (tileIndex < finalTileCount) {
+        const boardRow = startRow + tileRow;
+        const boardCol = startCol + tileCol;
+        const boardIndex = boardRow * cols + boardCol;
+        tiles[boardIndex] = numberTiles[tileIndex];
       }
     }
   }
   
-  if (alternatives.length > 0) {
-    // 选择方块尺寸最大的方案
-    const bestAlt = alternatives.reduce((best, current) => 
-      current.tileSize > best.tileSize ? current : best
-    );
-    
-    const boardLeft = (gameArea.width - bestAlt.boardWidth) / 2;
-    const boardTop = gameArea.top + (gameArea.height - bestAlt.boardHeight) / 2;
-    
-    return {
-      ...bestAlt,
-      boardLeft,
-      boardTop,
-      gameArea,
-    };
+  // Verify the sum is a multiple of 10 (for debugging)
+  const finalSum = numberTiles.filter(val => val > 0).reduce((sum, val) => sum + val, 0);
+  if (finalSum % 10 !== 0) {
+    console.warn(`Number tiles sum ${finalSum} is not a multiple of 10 for level ${level}`);
+  } else {
+    console.log(`✅ Level ${level}: Total sum = ${finalSum} (${finalSum/10} × 10)`);
   }
-  
-  // 策略c: 使用最小尺寸，允许N向上取整
-  const finalRows = Math.ceil(Math.sqrt(N));
-  const finalCols = Math.ceil(N / finalRows);
-  
-  // 强制使用最小尺寸
-  const forcedTileSize = MIN_TILE_SIZE;
-  const forcedTilesRectWidth = finalCols * forcedTileSize + (finalCols - 1) * TILE_GAP;
-  const forcedTilesRectHeight = finalRows * forcedTileSize + (finalRows - 1) * TILE_GAP;
-  const forcedContentWidth = forcedTilesRectWidth + 2 * BOARD_PADDING;
-  const forcedContentHeight = forcedTilesRectHeight + 2 * BOARD_PADDING;
-  const forcedBoardWidth = forcedContentWidth + WOOD_FRAME_WIDTH * 2;
-  const forcedBoardHeight = forcedContentHeight + WOOD_FRAME_WIDTH * 2;
-  
-  const boardLeft = (gameArea.width - forcedBoardWidth) / 2;
-  const boardTop = gameArea.top + (gameArea.height - forcedBoardHeight) / 2;
+    
   
   return {
-    tileSize: forcedTileSize,
-    tilesRectWidth: forcedTilesRectWidth,
-    tilesRectHeight: forcedTilesRectHeight,
-    boardWidth: forcedBoardWidth,
-    boardHeight: forcedBoardHeight,
-    contentWidth: forcedContentWidth,
-    contentHeight: forcedContentHeight,
-    rows: finalRows,
-    cols: finalCols,
-    boardLeft,
-    boardTop,
-    gameArea,
-    isValid: true,
-  };
-}
-
-/**
- * 计算每个方块的位置
- * @param {number} rows - 行数
- * @param {number} cols - 列数
- * @param {number} tileSize - 方块尺寸
- * @param {number} tilesRectWidth - 数字方块矩形宽度
- * @param {number} tilesRectHeight - 数字方块矩形高度
- * @param {number} contentWidth - 棋盘内容区宽度
- * @param {number} contentHeight - 棋盘内容区高度
- * @param {number} gap - 间距
- * @param {number} padding - 内边距
- * @returns {Function} 位置计算函数
- */
-export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING) {
-  return function getTilePosition(row, col) {
-    if (row < 0 || row >= rows || col < 0 || col >= cols) {
-      return null;
-    }
-    
-    // 计算数字方块矩形在内容区中的居中偏移
-    const offsetX = (contentWidth - tilesRectWidth) / 2;
-    const offsetY = (contentHeight - tilesRectHeight) / 2;
-    
-    // 计算方块位置（相对于内容区左上角）
-    const x = col * (tileSize + gap);
-    const y = row * (tileSize + gap);
-    
-    return {
-      x,
-      y,
-      width: tileSize,
-      height: tileSize,
-    };
-  };
-}
-
-/**
- * 获取完整的棋盘布局配置
- * @param {number} N - 数字方块数量
- * @param {number} targetAspect - 期望宽高比（可选）
- * @param {number} level - 关卡等级（可选）
- * @returns {Object} 完整布局配置
- */
-export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
-  const layout = computeAdaptiveLayout(N, targetAspect, level);
-  const getTilePosition = layoutTiles(
-    layout.rows, 
-    layout.cols, 
-    layout.tileSize, 
-    layout.tilesRectWidth, 
-    layout.tilesRectHeight, 
-    layout.contentWidth, 
-    layout.contentHeight
-  );
-  
-  return {
-    ...layout,
-    getTilePosition,
-    // 布局常量
-    tileGap: TILE_GAP,
-    boardPadding: BOARD_PADDING,
-    woodFrameWidth: WOOD_FRAME_WIDTH,
-    minTileSize: MIN_TILE_SIZE,
+    seed,
+    width: cols,  // 棋盘总宽度
+    height: rows, // 棋盘总高度
+    tiles,
+    layoutConfig, // 包含完整的布局信息
   };
 }

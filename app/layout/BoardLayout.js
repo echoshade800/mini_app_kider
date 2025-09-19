@@ -101,6 +101,7 @@ function calibrateTileRectangleCenter(layout) {
     calibrated: false,
     calibrationOffset: 0
   };
+}
 
 /**
  * 获取有效游戏区域尺寸

@@ -16,7 +16,6 @@ import {
 import * as Haptics from 'expo-haptics';
 import { hasValidCombinations } from '../lib/gameLogic';
 import RescueModal from './RescueModal';
-import { computeLayout } from '../lib/layoutEngine';
 import { computeWithDebug } from '../lib/computeWithDebug';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -72,7 +71,6 @@ const GameBoard = ({
             sampleRef: sampleTileRef,
             safeInsets: insets,
             autoOriginFix: __DEV__, // 开发模式下自动修正
-            computeLayout,
             board: newBoardRect,
             frame: layoutConfig.woodFrameWidth || 8,
             pad: layoutConfig.boardPadding || 5,

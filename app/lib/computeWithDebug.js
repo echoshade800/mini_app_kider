@@ -1,6 +1,7 @@
 // computeWithDebug.js —— 在你现有 computeLayout 外包一层：打日志 + 可选自动修正
 import { PixelRatio } from 'react-native';
 import { measureInWindowAsync, makeDiagnosis } from './DebugProbe';
+import { computeLayout } from './layoutEngine';
 
 const R = (v) => PixelRatio.roundToNearestPixel(v);
 

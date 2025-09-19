@@ -63,18 +63,55 @@ const EFFECTIVE_AREA = {
 function calibrateTileRectangleCenter(layout) {
   const gameArea = getEffectiveGameArea();
   
+  console.log('🔧 开始数字方块矩形居中校准');
+  console.log('📱 屏幕信息:', {
+    screenWidth,
+    screenHeight,
+    gameAreaWidth: gameArea.width,
+    gameAreaHeight: gameArea.height,
+    gameAreaTop: gameArea.top,
+    gameAreaLeft: gameArea.left
+  });
+  
+  console.log('📐 原始布局信息:', {
+    boardLeft: layout.boardLeft,
+    boardTop: layout.boardTop,
+    boardWidth: layout.boardWidth,
+    boardHeight: layout.boardHeight,
+    contentWidth: layout.contentWidth,
+    contentHeight: layout.contentHeight,
+    tilesRectWidth: layout.tilesRectWidth,
+    tilesRectHeight: layout.tilesRectHeight,
+    woodFrameWidth: WOOD_FRAME_WIDTH,
+    boardPadding: BOARD_PADDING
+  });
+  
   // 计算数字方块矩形的实际屏幕位置
   const tilesRectLeft = layout.boardLeft + WOOD_FRAME_WIDTH + BOARD_PADDING + 
     (layout.contentWidth - 2 * BOARD_PADDING - layout.tilesRectWidth) / 2;
   const tilesRectRight = tilesRectLeft + layout.tilesRectWidth;
   
-  // 计算与屏幕左右边缘的距离
-  const leftDistance = tilesRectLeft - 0; // 距离屏幕左边缘
-  const rightDistance = gameArea.width - tilesRectRight; // 距离屏幕右边缘
+  console.log('🎯 数字方块矩形计算过程:');
+  console.log('   boardLeft:', layout.boardLeft);
+  console.log('   + woodFrameWidth:', WOOD_FRAME_WIDTH);
+  console.log('   + boardPadding:', BOARD_PADDING);
+  console.log('   + 居中偏移:', (layout.contentWidth - 2 * BOARD_PADDING - layout.tilesRectWidth) / 2);
+  console.log('   = tilesRectLeft:', tilesRectLeft);
+  console.log('   tilesRectRight:', tilesRectRight);
+  console.log('   tilesRectWidth:', layout.tilesRectWidth);
   
-  console.log('🎯 数字方块矩形居中校准:');
+  // 计算与屏幕左右边缘的距离
+  const leftDistance = tilesRectLeft - gameArea.left; // 距离游戏区域左边缘
+  const rightDistance = (gameArea.left + gameArea.width) - tilesRectRight; // 距离游戏区域右边缘
+  
+  console.log('📏 距离计算:');
   console.log(`   矩形左边距: ${tilesRectLeft.toFixed(2)}px`);
+  console.log(`   矩形右边距: ${tilesRectRight.toFixed(2)}px`);
+  console.log(`   游戏区域左边缘: ${gameArea.left}px`);
+  console.log(`   游戏区域右边缘: ${gameArea.left + gameArea.width}px`);
   console.log(`   矩形右边距: ${rightDistance.toFixed(2)}px`);
+  console.log(`   左侧距离: ${leftDistance.toFixed(2)}px`);
+  console.log(`   右侧距离: ${rightDistance.toFixed(2)}px`);
   console.log(`   左右距离差: ${Math.abs(leftDistance - rightDistance).toFixed(2)}px`);
   
   // 如果左右距离差超过1px，则进行校准
@@ -84,8 +121,24 @@ function calibrateTileRectangleCenter(layout) {
     const adjustment = (leftDistance - rightDistance) / 2;
     const newBoardLeft = layout.boardLeft - adjustment;
     
-    console.log(`   需要校准，调整偏移: ${adjustment.toFixed(2)}px`);
+    console.log(`⚡ 需要校准!`);
+    console.log(`   调整偏移量: ${adjustment.toFixed(2)}px`);
+    console.log(`   原始 boardLeft: ${layout.boardLeft.toFixed(2)}px`);
     console.log(`   校准后棋盘左边距: ${newBoardLeft.toFixed(2)}px`);
+    
+    // 验证校准后的位置
+    const newTilesRectLeft = newBoardLeft + WOOD_FRAME_WIDTH + BOARD_PADDING + 
+      (layout.contentWidth - 2 * BOARD_PADDING - layout.tilesRectWidth) / 2;
+    const newTilesRectRight = newTilesRectLeft + layout.tilesRectWidth;
+    const newLeftDistance = newTilesRectLeft - gameArea.left;
+    const newRightDistance = (gameArea.left + gameArea.width) - newTilesRectRight;
+    
+    console.log(`✅ 校准后验证:`)
+    console.log(`   新的矩形左边距: ${newTilesRectLeft.toFixed(2)}px`);
+    console.log(`   新的矩形右边距: ${newTilesRectRight.toFixed(2)}px`);
+    console.log(`   新的左侧距离: ${newLeftDistance.toFixed(2)}px`);
+    console.log(`   新的右侧距离: ${newRightDistance.toFixed(2)}px`);
+    console.log(`   新的距离差: ${Math.abs(newLeftDistance - newRightDistance).toFixed(2)}px`);
     
     return {
       ...layout,

@@ -45,12 +45,25 @@ const GameBoard = ({
 
   // 如果没有布局配置，显示加载状态
   if (!layoutConfig) {
+    console.log('❌ GameBoard: 没有布局配置');
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading board...</Text>
       </View>
     );
   }
+  
+  console.log('🎮 GameBoard 渲染信息:');
+  console.log('   棋盘位置:', {
+    boardLeft: layoutConfig.boardLeft,
+    boardTop: layoutConfig.boardTop,
+    boardWidth: layoutConfig.boardWidth,
+    boardHeight: layoutConfig.boardHeight
+  });
+  console.log('   校准信息:', {
+    calibrated: layoutConfig.calibrated,
+    calibrationOffset: layoutConfig.calibrationOffset
+  });
 
   const initTileScale = (index) => {
     if (!tileScales.has(index)) {

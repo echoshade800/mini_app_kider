@@ -164,22 +164,59 @@ export default function LevelDetailScreen() {
       // Split the selected tile into two tiles with value 1 and (value-1)
       console.log('✂️ Attempting to split tile:', { row, col, value });
       if (value > 1) {
-        const newTiles = [...board.tiles];
-        
-        // Find an empty position for the new tile
-        let emptyIndex = -1;
-        for (let i = 0; i < newTiles.length; i++) {
-          if (newTiles[i] === 0) {
-            emptyIndex = i;
-            break;
+        // Find all empty positions
+        const emptyPositions = [];
+        for (let i = 0; i < board.tiles.length; i++) {
+          if (board.tiles[i] === 0) {
+            emptyPositions.push(i);
           }
         }
         
-        if (emptyIndex !== -1) {
-          // Split: original tile becomes 1, new tile gets (value-1)
-          console.log('✅ Splitting tile: original becomes 1, new tile gets', value - 1, 'at index', emptyIndex);
+        // Need at least 2 empty positions for splitting
+        if (emptyPositions.length >= 2) {
+          const newTiles = [...board.tiles];
+          
+          // Generate different split combinations that sum to original value
+          const splitOptions = [];
+          for (let i = 1; i < value; i++) {
+            const remaining = value - i;
+            if (remaining > 0 && i !== remaining) { // Ensure different numbers
+              splitOptions.push([i, remaining]);
+            }
+          }
+          
+          // If no different number combinations possible, allow same numbers
+          if (splitOptions.length === 0) {
+            const half = Math.floor(value / 2);
+            const remainder = value - half;
+            splitOptions.push([half, remainder]);
+          }
+          
+          // Choose a random split option
+          const [num1, num2] = splitOptions[Math.floor(Math.random() * splitOptions.length)];
+          
+          // Remove original tile
           newTiles[index] = 1;
-          newTiles[emptyIndex] = value - 1;
+          
+          // Place the two new numbers in random empty positions
+          const pos1 = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
+          let pos2;
+          do {
+            pos2 = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
+          } while (pos2 === pos1);
+          
+          newTiles[pos1] = num1;
+          newTiles[pos2] = num2;
+          
+          console.log('✅ Splitting tile:', {
+            original: { value, position: index },
+            split: [
+              { value: num1, position: pos1 },
+              { value: num2, position: pos2 }
+            ],
+            sum: num1 + num2,
+            originalSum: value
+          });
           
           setBoard(prev => ({ ...prev, tiles: newTiles }));
           setItemMode(null);
@@ -188,7 +225,7 @@ export default function LevelDetailScreen() {
           const newSplitItems = Math.max(0, (gameData?.splitItems || 0) - 1);
           updateGameData({ splitItems: newSplitItems });
         } else {
-          Alert.alert('No Space', 'No empty space available for splitting.');
+          Alert.alert('Insufficient Space', 'Need at least 2 empty positions to split a tile.');
         }
       } else {
         Alert.alert('Cannot Split', 'Cannot split a tile with value 1.');

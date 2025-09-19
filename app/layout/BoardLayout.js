@@ -300,6 +300,14 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
  * @returns {Function} 位置计算函数
  */
 export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING) {
+  // 🎯 调试信息：布局参数
+  console.log('📐 布局参数信息:');
+  console.log(`   棋盘格: ${rows}行 × ${cols}列`);
+  console.log(`   方块尺寸: ${tileSize}px`);
+  console.log(`   方块间距: ${gap}px`);
+  console.log(`   内容区尺寸: ${contentWidth} × ${contentHeight}px`);
+  console.log(`   数字方块矩形尺寸: ${tilesRectWidth} × ${tilesRectHeight}px`);
+  
   return function getTilePosition(row, col) {
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
       return null;
@@ -317,6 +325,54 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
     const tileRectStartX = contentCenterX - tileRectCenterX;
     const tileRectStartY = contentCenterY - tileRectCenterY;
     
+    // 🎯 调试信息：中心点对齐验证（只在第一个方块时输出）
+    if (row === 0 && col === 0) {
+      console.log('🎯 中心点对齐验证:');
+      console.log(`   内容区中心点: (${contentCenterX.toFixed(2)}, ${contentCenterY.toFixed(2)})`);
+      console.log(`   数字方块矩形中心点: (${tileRectCenterX.toFixed(2)}, ${tileRectCenterY.toFixed(2)})`);
+      console.log(`   数字方块矩形左上角: (${tileRectStartX.toFixed(2)}, ${tileRectStartY.toFixed(2)})`);
+      
+      // 验证中心点是否对齐
+      const actualRectCenterX = tileRectStartX + tileRectCenterX;
+      const actualRectCenterY = tileRectStartY + tileRectCenterY;
+      console.log(`   实际矩形中心点: (${actualRectCenterX.toFixed(2)}, ${actualRectCenterY.toFixed(2)})`);
+      
+      const centerOffsetX = Math.abs(actualRectCenterX - contentCenterX);
+      const centerOffsetY = Math.abs(actualRectCenterY - contentCenterY);
+      console.log(`   中心点偏移: X=${centerOffsetX.toFixed(4)}px, Y=${centerOffsetY.toFixed(4)}px`);
+      
+      if (centerOffsetX < 0.01 && centerOffsetY < 0.01) {
+        console.log('   ✅ 中心点完美对齐！');
+      } else {
+        console.log('   ⚠️  中心点存在偏移');
+      }
+      
+      // 计算留白信息
+      const leftMargin = tileRectStartX;
+      const rightMargin = contentWidth - (tileRectStartX + tilesRectWidth);
+      const topMargin = tileRectStartY;
+      const bottomMargin = contentHeight - (tileRectStartY + tilesRectHeight);
+      
+      console.log('📏 留白分布:');
+      console.log(`   左边距: ${leftMargin.toFixed(2)}px`);
+      console.log(`   右边距: ${rightMargin.toFixed(2)}px`);
+      console.log(`   上边距: ${topMargin.toFixed(2)}px`);
+      console.log(`   下边距: ${bottomMargin.toFixed(2)}px`);
+      
+      const horizontalSymmetry = Math.abs(leftMargin - rightMargin);
+      const verticalSymmetry = Math.abs(topMargin - bottomMargin);
+      console.log(`   水平对称性: ${horizontalSymmetry.toFixed(4)}px 差异`);
+      console.log(`   垂直对称性: ${verticalSymmetry.toFixed(4)}px 差异`);
+      
+      if (horizontalSymmetry < 0.01 && verticalSymmetry < 0.01) {
+        console.log('   ✅ 留白完美对称！');
+      } else {
+        console.log('   ⚠️  留白存在不对称');
+      }
+      
+      console.log('🎯 ========================');
+    }
+    
     // 🎯 计算单个方块位置（相对于数字方块矩形左上角）
     const relativeX = col * (tileSize + gap);
     const relativeY = row * (tileSize + gap);
@@ -324,6 +380,15 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
     // 🎯 最终位置：数字方块矩形起始位置 + 方块相对位置
     const x = tileRectStartX + relativeX;
     const y = tileRectStartY + relativeY;
+    
+    // 🎯 调试信息：特定方块位置（可选择性输出）
+    if ((row === 0 && col === 0) || (row === rows - 1 && col === cols - 1)) {
+      console.log(`📍 方块位置 [${row},${col}]:`, {
+        相对位置: `(${relativeX}, ${relativeY})`,
+        绝对位置: `(${x.toFixed(2)}, ${y.toFixed(2)})`,
+        方块尺寸: `${tileSize} × ${tileSize}px`
+      });
+    }
     
     return {
       x,

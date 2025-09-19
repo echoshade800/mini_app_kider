@@ -450,8 +450,6 @@ export default function LevelDetailScreen() {
           </View>
         </View>
       </Modal>
-  );
-}
 
       {/* Rescue Modal */}
       <RescueModal

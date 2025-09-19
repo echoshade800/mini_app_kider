@@ -409,7 +409,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
         // Start with average distribution
         const avgValue = Math.max(1, Math.min(9, Math.round(targetRemainingSum / remainingTiles.length)));
         
-        for (let i = 0; i < remainingTiles.length && difference !== 0; i++) {
+        for (let i = 0; i < remainingTiles.length; i++) {
           remainingTiles[i] = avgValue;
         }
         
@@ -462,7 +462,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
         
         const currentTotal = currentSum + remainingTiles.length;
         const targetTotal = Math.ceil(currentTotal / 10) * 10;
-        const needed = targetTotal - currentTotal;
+        let needed = targetTotal - currentTotal;
         
         // 在最后几个位置添加需要的数值
         for (let i = remainingTiles.length - 1; i >= 0 && needed > 0; i--) {

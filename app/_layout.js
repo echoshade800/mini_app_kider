@@ -41,7 +41,7 @@ export default function RootLayout() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f8ff', padding: 20 }}>
         <Text style={{ fontSize: 18, color: '#f44336', textAlign: 'center', marginBottom: 20 }}>
-          Failed to start: {error}
+          {`Failed to start: ${error}`}
         </Text>
         <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
           Please restart the app

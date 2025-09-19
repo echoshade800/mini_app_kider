@@ -121,8 +121,25 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   cols = layoutConfig.cols;
   const totalSlots = rows * cols;
   
+  // 计算实际数字方块数量和矩形尺寸
+  const actualTileCount = Math.min(tileCount, totalSlots);
+  const actualTileRows = Math.ceil(Math.sqrt(actualTileCount));
+  const actualTileCols = Math.ceil(actualTileCount / actualTileRows);
+  
+  // 确保矩形不超出棋盘边界
+  const maxTileRows = Math.min(actualTileRows, rows);
+  const maxTileCols = Math.min(actualTileCols, cols);
+  const finalTileCount = maxTileRows * maxTileCols;
+  
+  // 计算数字方块矩形在棋盘中的起始位置（居中）
+  const startRow = Math.floor((rows - maxTileRows) / 2);
+  const startCol = Math.floor((cols - maxTileCols) / 2);
+  
   // Initialize empty board
   const tiles = new Array(totalSlots).fill(0);
+  
+  // 创建数字方块数组（用于生成数字）
+  const numberTiles = new Array(finalTileCount).fill(0);
   
   // Get difficulty parameters
   const distribution = getNumberDistribution(isChallenge ? -1 : level);
@@ -141,7 +158,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     targetPairRatio = 0.25; // Hard levels
   }
   
-  const pairCount = Math.floor((actualTileCount / 2) * targetPairRatio);
+  const pairCount = Math.floor((finalTileCount / 2) * targetPairRatio);
   const placedPositions = new Set();
   let pairsPlaced = 0;
   
@@ -151,7 +168,7 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     const [val1, val2] = pairType;
     
     const availablePositions = [];
-    for (let i = 0; i < actualTileCount; i++) {
+    for (let i = 0; i < finalTileCount; i++) {
       if (!placedPositions.has(i)) {
         availablePositions.push(i);
       }
@@ -173,9 +190,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   }
   
   // Fill remaining spots with random numbers based on distribution
-  const remainingCount = actualTileCount - (pairsPlaced * 2);
+  const remainingCount = finalTileCount - (pairsPlaced * 2);
   const availablePositions = [];
-  for (let i = 0; i < actualTileCount; i++) {
+  for (let i = 0; i < finalTileCount; i++) {
     if (!placedPositions.has(i) && numberTiles[i] === 0) {
       availablePositions.push(i);
     }
@@ -313,10 +330,10 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   }
   
   // 将数字方块矩形放置到棋盘的居中位置
-  for (let tileRow = 0; tileRow < actualTileRows; tileRow++) {
-    for (let tileCol = 0; tileCol < actualTileCols; tileCol++) {
-      const tileIndex = tileRow * actualTileCols + tileCol;
-      if (tileIndex < actualTileCount) {
+  for (let tileRow = 0; tileRow < maxTileRows; tileRow++) {
+    for (let tileCol = 0; tileCol < maxTileCols; tileCol++) {
+      const tileIndex = tileRow * maxTileCols + tileCol;
+      if (tileIndex < finalTileCount) {
         const boardRow = startRow + tileRow;
         const boardCol = startCol + tileCol;
         const boardIndex = boardRow * cols + boardCol;

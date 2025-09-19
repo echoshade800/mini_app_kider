@@ -288,48 +288,54 @@ export function computeAdaptiveLayout(N, targetAspect = null, level = null) {
 
 /**
  * 计算每个方块的位置
+ * @param {Object} gameArea - 有效游戏区域信息
  * @param {number} rows - 行数
  * @param {number} cols - 列数
  * @param {number} tileSize - 方块尺寸
- * @param {number} tilesRectWidth - 数字方块矩形宽度
- * @param {number} tilesRectHeight - 数字方块矩形高度
- * @param {number} contentWidth - 棋盘内容区宽度
- * @param {number} contentHeight - 棋盘内容区高度
  * @param {number} gap - 间距
- * @param {number} padding - 内边距
  * @returns {Function} 位置计算函数
  */
-export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeight, contentWidth, contentHeight, gap = TILE_GAP, padding = BOARD_PADDING) {
+export function layoutTiles(gameArea, rows, cols, tileSize, gap = TILE_GAP) {
+  // 🎯 统一坐标系：以有效游戏区域为基准
+  const gameAreaCenterX = gameArea.width / 2;
+  const gameAreaCenterY = gameArea.height / 2;
+  
+  // 计算数字方块矩形尺寸
+  const tilesRectWidth = cols * tileSize + (cols - 1) * gap;
+  const tilesRectHeight = rows * tileSize + (rows - 1) * gap;
+  
+  console.log('🎯 统一坐标系建立:');
+  console.log(`   有效游戏区域: ${gameArea.width} × ${gameArea.height}px`);
+  console.log(`   坐标系原点（游戏区域中心）: (${gameAreaCenterX.toFixed(2)}, ${gameAreaCenterY.toFixed(2)})`);
+  console.log(`   数字方块矩形尺寸: ${tilesRectWidth} × ${tilesRectHeight}px`);
+  console.log(`   棋盘格规格: ${rows}行 × ${cols}列，方块尺寸: ${tileSize}px`);
+  
   return function getTilePosition(row, col) {
     if (row < 0 || row >= rows || col < 0 || col >= cols) {
       return null;
     }
     
-    // 🎯 统一中心点计算：内容区的几何中心
-    const contentCenterX = contentWidth / 2;
-    const contentCenterY = contentHeight / 2;
-    
-    // 🎯 数字方块矩形的几何中心
-    const tileRectCenterX = tilesRectWidth / 2;
-    const tileRectCenterY = tilesRectHeight / 2;
-    
-    // 🎯 计算数字方块矩形左上角位置，使其中心与内容区中心重合
-    const tileRectStartX = contentCenterX - tileRectCenterX;
-    const tileRectStartY = contentCenterY - tileRectCenterY;
-    
-    // 🎯 计算单个方块位置（相对于数字方块矩形左上角）
+    // 🎯 计算方块在数字方块矩形中的相对位置
     const relativeX = col * (tileSize + gap);
     const relativeY = row * (tileSize + gap);
     
-    // 🎯 最终位置：数字方块矩形起始位置 + 方块相对位置
-    const x = tileRectStartX + relativeX;
-    const y = tileRectStartY + relativeY;
+    // 🎯 计算方块在游戏区域坐标系中的位置
+    // 数字方块矩形中心对齐游戏区域中心
+    const x = gameAreaCenterX - tilesRectWidth/2 + relativeX;
+    const y = gameAreaCenterY - tilesRectHeight/2 + relativeY;
+    
+    // 🎯 转换为屏幕绝对坐标（加上游戏区域的偏移）
+    const screenX = gameArea.left + x;
+    const screenY = gameArea.top + y;
     
     return {
-      x,
-      y,
+      x: screenX,
+      y: screenY,
       width: tileSize,
       height: tileSize,
+      // 调试信息
+      gameAreaRelativeX: x,
+      gameAreaRelativeY: y,
     };
   };
 }
@@ -343,19 +349,36 @@ export function layoutTiles(rows, cols, tileSize, tilesRectWidth, tilesRectHeigh
  */
 export function getBoardLayoutConfig(N, targetAspect = null, level = null) {
   const layout = computeAdaptiveLayout(N, targetAspect, level);
+  const gameArea = getEffectiveGameArea();
+  
   const getTilePosition = layoutTiles(
-    layout.rows, 
-    layout.cols, 
-    layout.tileSize, 
-    layout.tilesRectWidth, 
-    layout.tilesRectHeight, 
-    layout.contentWidth, 
-    layout.contentHeight
+    gameArea,
+    layout.rows,
+    layout.cols,
+    layout.tileSize
   );
+  
+  // 🎯 计算棋盘在游戏区域中的位置（用于背景显示）
+  const tilesRectWidth = layout.cols * layout.tileSize + (layout.cols - 1) * TILE_GAP;
+  const tilesRectHeight = layout.rows * layout.tileSize + (layout.rows - 1) * TILE_GAP;
+  const boardWidth = tilesRectWidth + 2 * BOARD_PADDING + 2 * WOOD_FRAME_WIDTH;
+  const boardHeight = tilesRectHeight + 2 * BOARD_PADDING + 2 * WOOD_FRAME_WIDTH;
+  
+  // 棋盘背景居中在游戏区域
+  const boardLeft = gameArea.left + (gameArea.width - boardWidth) / 2;
+  const boardTop = gameArea.top + (gameArea.height - boardHeight) / 2;
   
   return {
     ...layout,
+    gameArea,
     getTilePosition,
+    // 重新计算的棋盘位置
+    boardLeft,
+    boardTop,
+    boardWidth,
+    boardHeight,
+    tilesRectWidth,
+    tilesRectHeight,
     // 布局常量
     tileGap: TILE_GAP,
     boardPadding: BOARD_PADDING,

@@ -91,12 +91,13 @@ const GameBoard = ({
   };
 
   const isInsideBoard = (pageX, pageY) => {
-    const { boardLeft, boardTop, boardWidth, boardHeight } = layoutConfig;
+    const { gameArea } = layoutConfig;
     
-    return pageX >= boardLeft && 
-           pageX <= boardLeft + boardWidth && 
-           pageY >= boardTop && 
-           pageY <= boardTop + boardHeight;
+    // 🎯 统一坐标系：检查是否在有效游戏区域内
+    return pageX >= gameArea.left && 
+           pageX <= gameArea.left + gameArea.width && 
+           pageY >= gameArea.top && 
+           pageY <= gameArea.top + gameArea.height;
   };
 
   const getSelectedTiles = () => {
@@ -232,13 +233,20 @@ const GameBoard = ({
       
       if (!isInsideBoard(pageX, pageY)) return;
       
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
-
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
-
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
+      // 🎯 统一坐标系：转换为游戏区域相对坐标
+      const { gameArea, tileSize, tileGap } = layoutConfig;
+      const tilesRectWidth = width * tileSize + (width - 1) * tileGap;
+      const tilesRectHeight = height * tileSize + (height - 1) * tileGap;
+      
+      const gameAreaRelativeX = pageX - gameArea.left;
+      const gameAreaRelativeY = pageY - gameArea.top;
+      
+      // 转换为数字方块矩形内的相对坐标
+      const tilesRectStartX = (gameArea.width - tilesRectWidth) / 2;
+      const tilesRectStartY = (gameArea.height - tilesRectHeight) / 2;
+      
+      const relativeX = gameAreaRelativeX - tilesRectStartX;
+      const relativeY = gameAreaRelativeY - tilesRectStartY;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -266,13 +274,21 @@ const GameBoard = ({
       if (!selection) return;
       
       const { pageX, pageY } = evt.nativeEvent;
-      const { boardLeft, boardTop, boardPadding, tileSize, tileGap, woodFrameWidth } = layoutConfig;
-
-      const contentLeft = boardLeft + woodFrameWidth + boardPadding;
-      const contentTop = boardTop + woodFrameWidth + boardPadding;
-
-      const relativeX = pageX - contentLeft;
-      const relativeY = pageY - contentTop;
+      
+      // 🎯 统一坐标系：转换为游戏区域相对坐标
+      const { gameArea, tileSize, tileGap } = layoutConfig;
+      const tilesRectWidth = width * tileSize + (width - 1) * tileGap;
+      const tilesRectHeight = height * tileSize + (height - 1) * tileGap;
+      
+      const gameAreaRelativeX = pageX - gameArea.left;
+      const gameAreaRelativeY = pageY - gameArea.top;
+      
+      // 转换为数字方块矩形内的相对坐标
+      const tilesRectStartX = (gameArea.width - tilesRectWidth) / 2;
+      const tilesRectStartY = (gameArea.height - tilesRectHeight) / 2;
+      
+      const relativeX = gameAreaRelativeX - tilesRectStartX;
+      const relativeY = gameAreaRelativeY - tilesRectStartY;
 
       const cellWidth = tileSize + tileGap;
       const cellHeight = tileSize + tileGap;
@@ -374,12 +390,20 @@ const GameBoard = ({
     const sum = selectedTiles.reduce((acc, tile) => acc + tile.value, 0);
     const isSuccess = sum === 10;
     
-    const { tileSize, tileGap } = layoutConfig;
+    // 🎯 统一坐标系：选择框位置基于游戏区域坐标
+    const { gameArea, tileSize, tileGap } = layoutConfig;
+    const tilesRectWidth = width * tileSize + (width - 1) * tileGap;
+    const tilesRectHeight = height * tileSize + (height - 1) * tileGap;
+    
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
-
-    const left = minCol * cellWidth;
-    const top = minRow * cellHeight;
+    
+    // 计算选择框在游戏区域中的位置
+    const tilesRectStartX = (gameArea.width - tilesRectWidth) / 2;
+    const tilesRectStartY = (gameArea.height - tilesRectHeight) / 2;
+    
+    const left = gameArea.left + tilesRectStartX + minCol * cellWidth;
+    const top = gameArea.top + tilesRectStartY + minRow * cellHeight;
     const selectionWidth = (maxCol - minCol + 1) * cellWidth - tileGap;
     const selectionHeight = (maxRow - minRow + 1) * cellHeight - tileGap;
     
@@ -420,13 +444,20 @@ const GameBoard = ({
     const centerRow = (minRow + maxRow) / 2;
     const centerCol = (minCol + maxCol) / 2;
     
-    const { tileSize, tileGap } = layoutConfig;
+    // 🎯 统一坐标系：数字显示位置基于游戏区域坐标
+    const { gameArea, tileSize, tileGap } = layoutConfig;
+    const tilesRectWidth = width * tileSize + (width - 1) * tileGap;
+    const tilesRectHeight = height * tileSize + (height - 1) * tileGap;
+    
     const cellWidth = tileSize + tileGap;
     const cellHeight = tileSize + tileGap;
-
-    // 计算中心位置的坐标
-    const centerX = centerCol * cellWidth + tileSize / 2;
-    const centerY = centerRow * cellHeight + tileSize / 2;
+    
+    // 计算数字显示在游戏区域中的位置
+    const tilesRectStartX = (gameArea.width - tilesRectWidth) / 2;
+    const tilesRectStartY = (gameArea.height - tilesRectHeight) / 2;
+    
+    const centerX = gameArea.left + tilesRectStartX + centerCol * cellWidth + tileSize / 2;
+    const centerY = gameArea.top + tilesRectStartY + centerRow * cellHeight + tileSize / 2;
     
     return {
       sum,
@@ -518,8 +549,8 @@ const GameBoard = ({
         key={`${row}-${col}`}
         style={{
           position: 'absolute',
-          left: tilePos.x,
-          top: tilePos.y,
+          left: tilePos.gameAreaRelativeX,
+          top: tilePos.gameAreaRelativeY,
           width: tilePos.width,
           height: tilePos.height,
           alignItems: 'center',
@@ -558,86 +589,75 @@ const GameBoard = ({
   const selectionSum = getSelectionSum();
 
   return (
-    <View style={styles.fullScreenContainer} pointerEvents="box-none">
-      <View style={styles.container}>
-        <View 
-          style={[
-            styles.chalkboard,
-            {
-              position: 'absolute',
-              left: layoutConfig.boardLeft,
-              top: layoutConfig.boardTop,
-              width: layoutConfig.boardWidth,
-              height: layoutConfig.boardHeight,
-            }
-          ]}
-          pointerEvents="auto"
-        >
-          {/* 数字方块内容区 */}
-          <View
-            {...panResponder.panHandlers}
-            style={{
-              position: 'absolute',
-              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
-              height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
-            }}
-            pointerEvents={itemMode ? "auto" : "auto"}
-          >
-            {/* 🎯 数字方块容器 - 使用统一中心点精确定位 */}
-            <View
-              style={{
-                width: '100%',
-                height: '100%',
-                position: 'relative',
-              }}
-            >
-            {/* 渲染所有方块 */}
-            {tiles.map((value, index) => {
-              const row = Math.floor(index / width);
-              const col = index % width;
-              return renderTile(value, row, col);
-            })}
-            
-            {/* Selection overlay */}
-            {selectionStyle && (
-              <Animated.View style={selectionStyle} />
-            )}
-            
-            {/* Selection sum display */}
-            {selectionSum && (
-              <View style={selectionSum.style}>
-                <Text style={[
-                  styles.sumText,
-                  { color: '#000' }
-                ]}>
-                  {selectionSum.sum}
-                </Text>
-              </View>
-            )}
-            
-            {/* Explosion effect */}
-            {explosionAnimation && (
-              <Animated.View
-                style={[
-                  styles.explosion,
-                  {
-                    left: explosionAnimation.x - 40,
-                    top: explosionAnimation.y - 30,
-                    transform: [{ scale: explosionScale }],
-                    opacity: explosionOpacity,
-                  }
-                ]}
-              >
-                <View style={styles.explosionNote}>
-                  <Text style={styles.explosionText}>10</Text>
-                </View>
-              </Animated.View>
-            )}
-            </View>
+    <View style={styles.fullScreenContainer}>
+      {/* 🎯 统一坐标系：棋盘背景 */}
+      <View 
+        style={[
+          styles.chalkboard,
+          {
+            position: 'absolute',
+            left: layoutConfig.boardLeft,
+            top: layoutConfig.boardTop,
+            width: layoutConfig.boardWidth,
+            height: layoutConfig.boardHeight,
+          }
+        ]}
+      />
+      
+      {/* 🎯 统一坐标系：游戏区域容器 */}
+      <View
+        {...panResponder.panHandlers}
+        style={{
+          position: 'absolute',
+          left: layoutConfig.gameArea.left,
+          top: layoutConfig.gameArea.top,
+          width: layoutConfig.gameArea.width,
+          height: layoutConfig.gameArea.height,
+        }}
+        pointerEvents="auto"
+      >
+        {/* 渲染所有方块 */}
+        {tiles.map((value, index) => {
+          const row = Math.floor(index / width);
+          const col = index % width;
+          return renderTile(value, row, col);
+        })}
+        
+        {/* Selection overlay */}
+        {selectionStyle && (
+          <Animated.View style={selectionStyle} />
+        )}
+        
+        {/* Selection sum display */}
+        {selectionSum && (
+          <View style={selectionSum.style}>
+            <Text style={[
+              styles.sumText,
+              { color: '#000' }
+            ]}>
+              {selectionSum.sum}
+            </Text>
           </View>
-        </View>
+        )}
+        
+        {/* Explosion effect */}
+        {explosionAnimation && (
+          <Animated.View
+            style={[
+              styles.explosion,
+              {
+                left: explosionAnimation.x - 40,
+                top: explosionAnimation.y - 30,
+                transform: [{ scale: explosionScale }],
+                opacity: explosionOpacity,
+              }
+            ]}
+          >
+            <View style={styles.explosionNote}>
+              <Text style={styles.explosionText}>10</Text>
+            </View>
+          </Animated.View>
+        )}
       </View>
     </View>
   );

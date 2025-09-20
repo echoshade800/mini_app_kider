@@ -11,7 +11,9 @@ import {
   TouchableOpacity, 
   StyleSheet,
   Alert,
-  Modal
+  Modal,
+  Image,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -63,6 +65,9 @@ export default function LevelDetailScreen() {
   const [totalTiles, setTotalTiles] = useState(0);
   const [clearedTiles, setClearedTiles] = useState(0);
   const [progress, setProgress] = useState(0);
+  
+  // 人物动画
+  const characterPosition = useRef(new Animated.Value(0)).current;
 
   // 生成新棋盘的函数
   const generateNewBoard = useCallback(() => {
@@ -84,6 +89,9 @@ export default function LevelDetailScreen() {
       setSelectedSwapTile(null);
       setSwapAnimations(new Map());
       setFractalAnimations(new Map());
+      
+      // 重置人物位置
+      characterPosition.setValue(0);
     }
   }, [level]);
 
@@ -114,6 +122,13 @@ export default function LevelDetailScreen() {
       // 计算并更新进度
       const newProgress = Math.min(newClearedCount / totalTiles, 1);
       setProgress(newProgress);
+      
+      // 动画移动人物到新位置
+      Animated.timing(characterPosition, {
+        toValue: newProgress,
+        duration: 500,
+        useNativeDriver: false,
+      }).start();
       
       console.log(`📊 进度更新: 清除${clearedPositions.length}个方块, 总计${newClearedCount}/${totalTiles}, 进度=${(newProgress * 100).toFixed(1)}%`);
       
@@ -291,30 +306,40 @@ export default function LevelDetailScreen() {
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         
-        <View style={styles.headerCenter}>
-          {/* 进度条容器 */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-            </View>
-            {/* 角色图标 */}
-            <View style={styles.characterIcon}>
-              <Text style={styles.characterEmoji}>🤗</Text>
-            </View>
+        {/* 新的进度条设计 */}
+        <View style={styles.newProgressContainer}>
+          {/* 进度条背景 */}
+          <View style={styles.progressTrack}>
+            {/* 绿色进度填充 */}
+            <View style={[styles.progressFillGreen, { width: `${progress * 100}%` }]} />
+            
+            {/* 人物角色 */}
+            <Animated.View 
+              style={[
+                styles.characterContainer,
+                {
+                  left: characterPosition.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '85%'], // 不要到最右边，留空间给标签
+                  })
+                }
+              ]}
+            >
+              <Image 
+                source={{ uri: 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/monsterwalk.webp' }}
+                style={styles.characterImage}
+                resizeMode="contain"
+              />
+            </Animated.View>
           </View>
-        </View>
-        
-        <View style={styles.headerRight}>
-          {/* 蓝色书本图标 */}
-          <View style={styles.bookIcon}>
-            <Ionicons name="book" size={24} color="#2196F3" />
-          </View>
-          {/* 关卡名称显示区 */}
-          {displayLevelName && (
-            <Text style={styles.levelNameText} numberOfLines={1}>
-              {displayLevelName}
+          
+          {/* 关卡名称标签 */}
+          <View style={styles.levelNameTag}>
+            <Ionicons name="book" size={16} color="white" />
+            <Text style={styles.levelNameTagText}>
+              {displayLevelName}!
             </Text>
-          )}
+          </View>
         </View>
       </View>
 
@@ -487,8 +512,6 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: 'white',
@@ -496,58 +519,72 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e0e0e0',
   },
   backButton: {
+    position: 'absolute',
+    left: 16,
+    top: 12,
+    zIndex: 10,
     padding: 8,
     backgroundColor: '#FFD700',
     borderRadius: 8,
   },
-  headerCenter: {
-    flex: 1,
-    marginHorizontal: 16,
-    justifyContent: 'center',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  newProgressContainer: {
+    marginTop: 8,
+    marginHorizontal: 60, // 为返回按钮留空间
     position: 'relative',
   },
-  progressBar: {
-    flex: 1,
-    height: 8,
+  progressTrack: {
+    height: 12,
     backgroundColor: '#E0E0E0',
-    borderRadius: 4,
-    overflow: 'hidden',
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#333',
+    position: 'relative',
+    overflow: 'visible',
   },
-  progressFill: {
+  progressFillGreen: {
     height: '100%',
     backgroundColor: '#4CAF50',
     borderRadius: 4,
-    transition: 'width 0.3s ease-out', // 平滑动画效果
+    transition: 'width 0.5s ease-out',
   },
-  characterIcon: {
+  characterContainer: {
     position: 'absolute',
-    right: -12,
-    top: -8,
-    width: 24,
-    height: 24,
+    top: -20,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  characterEmoji: {
-    fontSize: 20,
+  characterImage: {
+    width: 36,
+    height: 36,
   },
-  headerRight: {
+  levelNameTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    maxWidth: 120,
+    position: 'absolute',
+    right: -8,
+    top: -8,
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#333',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+    gap: 4,
   },
-  bookIcon: {
-    marginRight: 8,
-  },
-  levelNameText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-    flex: 1,
+  levelNameTagText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#000',
+    textShadowColor: '#FF5722',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   bottomToolbar: {
     flexDirection: 'row',

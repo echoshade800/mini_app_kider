@@ -75,12 +75,6 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
-        {/* 中间信息框 */}
-        <View style={styles.centerInfoBox}>
-          <Text style={styles.centerLevelName}>{latestLevelName}</Text>
-          <Text style={styles.centerIqText}>IQ：{iq}</Text>
-        </View>
-
         {/* 底部按钮栏 */}
         <View style={styles.bottomButtonBar}>
           <TouchableOpacity

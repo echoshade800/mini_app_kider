@@ -99,6 +99,11 @@ export default function Home() {
         </View>
       </View>
 
+      <Modal
+        visible={showGuide}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowGuide(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.guideModal}>

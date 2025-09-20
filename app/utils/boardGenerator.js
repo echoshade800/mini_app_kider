@@ -122,7 +122,7 @@ function getNumberDistribution(level) {
 export function generateBoard(level, ensureSolvable = true, isChallenge = false) {
   const seed = isChallenge ? 
     `challenge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : 
-    `level_${level}`;
+    `level_${level}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
   const random = seededRandom(seed);
   
@@ -180,11 +180,20 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     [1, 9], [2, 8], [3, 7], [4, 6], [5, 5]
   ];
   
+  // Target triplets that sum to 10 (for level 1)
+  const targetTriplets = [
+    [1, 2, 7], [1, 3, 6], [1, 4, 5], [2, 2, 6], [2, 3, 5], [2, 4, 4], [3, 3, 4]
+  ];
+  
   // 确定目标配对的比例 - 前几关保证高比例的有效配对
   let targetPairRatio = 0.85; // 默认85%有效配对
   let adjacentPairRatio = 0.7; // 默认70%的配对是相邻的
   
-  if (level <= 5) {
+  if (level === 1) {
+    // 第一关：使用3个数字组合，更容易消除
+    targetPairRatio = 0.0; // 不使用2个数字配对
+    adjacentPairRatio = 0.0;
+  } else if (level <= 5) {
     targetPairRatio = 0.95; // 前5关：95%有效配对
     adjacentPairRatio = 0.9; // 90%的配对是相邻的，非常容易找到
   } else if (level <= 10) {
@@ -214,6 +223,65 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   const adjacentPairCount = Math.floor(pairCount * adjacentPairRatio);
   const placedPositions = new Set();
   let pairsPlaced = 0;
+  
+  // 第一关特殊处理：生成3个数字组合
+  if (level === 1) {
+    const tripletCount = Math.floor(finalTileCount / 3); // 生成尽可能多的3个数字组合
+    
+    for (let i = 0; i < tripletCount; i++) {
+      const tripletType = targetTriplets[Math.floor(random() * targetTriplets.length)];
+      const [val1, val2, val3] = tripletType;
+      
+      // 寻找3个相邻位置（L形或直线形）
+      let attempts = 0;
+      let placed = false;
+      
+      while (attempts < 100 && !placed) {
+        const pos1 = Math.floor(random() * finalTileCount);
+        const row1 = Math.floor(pos1 / maxTileCols);
+        const col1 = pos1 % maxTileCols;
+        
+        if (placedPositions.has(pos1)) {
+          attempts++;
+          continue;
+        }
+        
+        // 尝试L形组合：右+下 或 下+右
+        const lShapes = [
+          [[0, 1], [1, 0]], // 右+下
+          [[1, 0], [0, 1]]  // 下+右
+        ];
+        
+        for (const shape of lShapes) {
+          const [dir1, dir2] = shape;
+          const row2 = row1 + dir1[0];
+          const col2 = col1 + dir1[1];
+          const row3 = row1 + dir2[0];
+          const col3 = col1 + dir2[1];
+          
+          if (row2 >= 0 && row2 < maxTileRows && col2 >= 0 && col2 < maxTileCols &&
+              row3 >= 0 && row3 < maxTileRows && col3 >= 0 && col3 < maxTileCols) {
+            const pos2 = row2 * maxTileCols + col2;
+            const pos3 = row3 * maxTileCols + col3;
+            
+            if (!placedPositions.has(pos2) && !placedPositions.has(pos3)) {
+              numberTiles[pos1] = val1;
+              numberTiles[pos2] = val2;
+              numberTiles[pos3] = val3;
+              placedPositions.add(pos1);
+              placedPositions.add(pos2);
+              placedPositions.add(pos3);
+              placed = true;
+              break;
+            }
+          }
+        }
+        
+        attempts++;
+      }
+    }
+    
+  }
   
   // 首先放置相邻的目标配对（容易找到的）
   let adjacentPairsPlaced = 0;
@@ -366,10 +434,8 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
           attempts++;
         }
         
-        console.log(`🎯 Level ${level}: 配对总和=${currentSum}, 剩余总和=${remainingTiles.reduce((sum, val) => sum + val, 0)}, 目标总和=${targetTotalSum}`);
       } else {
         // 如果目标剩余总和不合理，使用简单填充
-        console.warn(`⚠️ Level ${level}: 目标剩余总和不合理 (${targetRemainingSum}), 使用随机填充`);
         for (let i = 0; i < remainingTiles.length; i++) {
           remainingTiles[i] = Math.floor(random() * 6) + 1; // 1-6
         }
@@ -478,10 +544,8 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
           }
         }
         
-        console.log(`🎯 Level ${level}: 配对总和=${currentSum}, 剩余总和=${remainingTiles.reduce((sum, val) => sum + val, 0)}, 目标总和=${targetTotalSum}`);
       } else {
         // 如果目标剩余总和不合理，使用简单填充但确保10的倍数
-        console.warn(`⚠️ Level ${level}: 目标剩余总和不合理 (${targetRemainingSum}), 使用备用方案`);
         
         // 简单填充为1，然后调整最后几个数字使总和为10的倍数
         for (let i = 0; i < remainingTiles.length; i++) {
@@ -597,13 +661,6 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     }
   }
   
-  // Verify the sum is a multiple of 10 (for debugging)
-  const finalSum = numberTiles.filter(val => val > 0).reduce((sum, val) => sum + val, 0);
-  if (finalSum % 10 !== 0) {
-    console.warn(`❌ Level ${level}: 总和 ${finalSum} 不是10的倍数！`);
-  } else {
-    console.log(`✅ Level ${level}: 总和 = ${finalSum} (${finalSum/10} × 10)`);
-  }
     
   
   return {

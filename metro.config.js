@@ -24,7 +24,6 @@ config.resolver = {
 // Configure server settings
 config.server = {
   port: 8081,
-  host: '0.0.0.0',
 };
 
 module.exports = config;

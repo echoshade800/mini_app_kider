@@ -11,7 +11,8 @@ import {
   TouchableOpacity, 
   StyleSheet,
   Alert,
-  Modal
+  Modal,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
@@ -63,9 +64,83 @@ export default function ChallengeScreen() {
   const [showRescueModal, setShowRescueModal] = useState(false);
   const [boardKey, setBoardKey] = useState(0); // 用于强制重新生成棋盘
   
+  // Progress bar state
+  const [progressBarWidth, setProgressBarWidth] = useState(200);
+  const progressAnimation = useRef(new Animated.Value(1)).current; // 1 = 100%, 0 = 0%
+  
+  // Fire effect animations
+  const fireAnimation = useRef(new Animated.Value(0)).current;
+  const sparkAnimations = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]).current;
+  
   // Refs
   const timerRef = useRef(null);
   const gameStartTimeRef = useRef(null);
+  
+  // Fire effect functions
+  const startFireEffect = () => {
+    // 燃烧动画 - 持续闪烁
+    const fireLoop = () => {
+      Animated.sequence([
+        Animated.timing(fireAnimation, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+        Animated.timing(fireAnimation, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        if (gameState === 'playing') {
+          fireLoop();
+        }
+      });
+    };
+    fireLoop();
+    
+    // 火星飞溅动画
+    const createSparkAnimation = (sparkIndex) => {
+      const spark = sparkAnimations[sparkIndex];
+      const randomDelay = Math.random() * 1000;
+      const randomDuration = 800 + Math.random() * 400;
+      
+      setTimeout(() => {
+        Animated.sequence([
+          Animated.timing(spark, {
+            toValue: 1,
+            duration: randomDuration,
+            useNativeDriver: false,
+          }),
+          Animated.timing(spark, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: false,
+          }),
+        ]).start(() => {
+          if (gameState === 'playing') {
+            createSparkAnimation(sparkIndex);
+          }
+        });
+      }, randomDelay);
+    };
+    
+    // 启动所有火星动画
+    sparkAnimations.forEach((_, index) => {
+      createSparkAnimation(index);
+    });
+  };
+  
+  const stopFireEffect = () => {
+    fireAnimation.stopAnimation();
+    sparkAnimations.forEach(spark => spark.stopAnimation());
+  };
 
   // Initialize board
   useEffect(() => {
@@ -79,11 +154,20 @@ export default function ChallengeScreen() {
     if (gameState === 'playing' && timeLeft > 0) {
       timerRef.current = setTimeout(() => {
         setTimeLeft(prev => {
-          if (prev <= 1) {
+          const newTime = prev - 1;
+          // 更新进度条动画
+          const progress = newTime / CHALLENGE_TIME;
+          Animated.timing(progressAnimation, {
+            toValue: progress,
+            duration: 1000,
+            useNativeDriver: false,
+          }).start();
+          
+          if (newTime <= 0) {
             handleGameEnd();
             return 0;
           }
-          return prev - 1;
+          return newTime;
         });
       }, 1000);
     }
@@ -93,7 +177,7 @@ export default function ChallengeScreen() {
         clearTimeout(timerRef.current);
       }
     };
-  }, [gameState, timeLeft]);
+  }, [gameState, timeLeft, progressAnimation]);
 
   const generateNewBoard = () => {
     console.log('🔄 挑战模式生成新棋盘');
@@ -138,6 +222,10 @@ export default function ChallengeScreen() {
     setTimeLeft(CHALLENGE_TIME);
     setCurrentIQ(0);
     gameStartTimeRef.current = Date.now();
+    // 重置进度条到100%
+    progressAnimation.setValue(1);
+    // 启动燃烧特效
+    startFireEffect();
     generateNewBoard();
   };
 
@@ -175,6 +263,9 @@ export default function ChallengeScreen() {
 
   const handleGameEnd = () => {
     setGameState('finished');
+    
+    // 停止燃烧特效
+    stopFireEffect();
     
     // Clear timer
     if (timerRef.current) {
@@ -218,7 +309,7 @@ export default function ChallengeScreen() {
             style={styles.backButton}
             onPress={handleBackToHome}
           >
-            <Ionicons name="arrow-back" size={24} color="#333" />
+            <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Challenge Mode</Text>
           <View style={styles.placeholder} />
@@ -265,15 +356,95 @@ export default function ChallengeScreen() {
         <View style={styles.hud}>
           <View style={styles.hudLeft}>
             <TouchableOpacity 
-              style={styles.pauseButton}
+              style={styles.backButton}
               onPress={handleBackToHome}
             >
-              <Ionicons name="pause" size={20} color="#666" />
+              <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
           </View>
           
           <View style={styles.hudCenter}>
-            <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+            <View style={styles.progressContainer}>
+              <View style={styles.bombIcon}>
+                <Ionicons name="bomb" size={20} color="#FF4444" />
+              </View>
+              <View
+                style={styles.progressBar}
+                onLayout={(event) => {
+                  const { width } = event.nativeEvent.layout;
+                  setProgressBarWidth(width);
+                }}
+              >
+                <Animated.View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: progressAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%'],
+                        extrapolate: 'clamp',
+                      }),
+                    },
+                  ]}
+                />
+                {/* 燃烧特效 */}
+                <Animated.View
+                  style={[
+                    styles.fireEffect,
+                    {
+                      opacity: fireAnimation,
+                      transform: [
+                        {
+                          scale: fireAnimation.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.8, 1.2],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Ionicons name="flame" size={12} color="#FF6B35" />
+                </Animated.View>
+                
+                {/* 火星飞溅特效 */}
+                {sparkAnimations.map((spark, index) => (
+                  <Animated.View
+                    key={index}
+                    style={[
+                      styles.sparkEffect,
+                      {
+                        opacity: spark,
+                        transform: [
+                          {
+                            translateY: spark.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0, -20 - Math.random() * 10],
+                            }),
+                          },
+                          {
+                            translateX: spark.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0, (Math.random() - 0.5) * 30],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <View style={styles.sparkDot} />
+                  </Animated.View>
+                ))}
+              </View>
+              {timeLeft <= 0 && (
+                <TouchableOpacity
+                  style={styles.finishButton}
+                  onPress={handleGameEnd}
+                >
+                  <Text style={styles.finishButtonText}>结算</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <Text style={styles.iqText}>IQ: {currentIQ}</Text>
           </View>
           
@@ -374,16 +545,16 @@ export default function ChallengeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff',
+    backgroundColor: '#6B7B8A', // 与闯关模式保持一致的灰蓝色背景
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: 'white',
+    backgroundColor: '#6B7B8A', // 与闯关模式保持一致的灰蓝色背景
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#5A6B7A', // 稍微深一点的灰蓝色边框
   },
   backButton: {
     padding: 8,
@@ -392,7 +563,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
+    color: 'white', // 改为白色，在灰蓝色背景下更清晰
     textAlign: 'center',
   },
   placeholder: {
@@ -473,9 +644,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
+    backgroundColor: '#6B7B8A', // 与闯关模式保持一致的灰蓝色背景
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#5A6B7A', // 稍微深一点的灰蓝色边框
   },
   hudLeft: {
     flex: 1,
@@ -489,22 +660,93 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
   },
-  pauseButton: {
+  backButton: {
     padding: 8,
+    backgroundColor: 'transparent', // 取消背景，只保留箭头
+    borderRadius: 8,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+    height: 30,
+    width: 200,
+    marginBottom: 8,
+  },
+  bombIcon: {
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF6B6B', // 红色进度条
+    borderRadius: 4,
+  },
+  fireEffect: {
+    position: 'absolute',
+    right: 0,
+    top: -2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sparkEffect: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sparkDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  finishButton: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  finishButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   timerText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: 'white', // 改为白色，在灰蓝色背景下更清晰
   },
   iqText: {
     fontSize: 16,
-    color: '#666',
+    color: '#E0E0E0', // 改为浅灰色，在灰蓝色背景下更清晰
     marginTop: 4,
   },
   targetText: {
     fontSize: 14,
-    color: '#666',
+    color: '#E0E0E0', // 改为浅灰色，在灰蓝色背景下更清晰
   },
   resultsContainer: {
     flex: 1,

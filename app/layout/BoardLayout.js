@@ -43,7 +43,7 @@ function getTileCount(level, isChallenge = false) {
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // 布局常量
-const MIN_TILE_SIZE = 28; // 最小方块尺寸
+const MIN_TILE_SIZE = 28; // 最小方块尺寸 - 保持28px
 const TILE_GAP = 4; // 方块间距
 const BOARD_PADDING = 5; // 棋盘内边距（方块矩形到木框的留白）
 const WOOD_FRAME_WIDTH = 8; // 木框厚度
@@ -51,7 +51,7 @@ const WOOD_FRAME_WIDTH = 8; // 木框厚度
 // 有效游戏区域配置
 const EFFECTIVE_AREA = {
   TOP_RESERVED: 120,     // 顶部保留区域（HUD）
-  BOTTOM_RESERVED: 120,  // 底部保留区域（道具栏）
+  BOTTOM_RESERVED: 100,  // 底部保留区域（道具栏）- 减少到100px
 };
 
 /**

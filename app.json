@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Daycare Number Elimination",
-    "slug": "daycare-number-elimination",
+    "name": "KiderCrash",
+    "slug": "kidercrash",
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
@@ -36,7 +36,7 @@
       "favicon": "./assets/images/favicon.png",
       "bundler": "metro"
     },
-    "scheme": "daycare-number-elimination",
+    "scheme": "kidercrash",
     "packagerOpts": {
       "host": "0.0.0.0",
       "port": 8081

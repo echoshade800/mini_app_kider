@@ -31,11 +31,6 @@ export default function ProfileScreen() {
     saveSettingsToDate
   } = useGameStore();
 
-  // 语言选择状态
-  const [currentLanguage, setCurrentLanguage] = useState('English');
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
-  
-  const languages = ['English', '中文', 'Español', 'Français', 'Deutsch'];
 
   const handleResetData = () => {
     Alert.alert(
@@ -65,18 +60,18 @@ export default function ProfileScreen() {
     const yesterdayStr = yesterday.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD格式
     
     Alert.alert(
-      '加载昨天设置',
-      `是否要加载 ${yesterdayStr} 保存的设置？`,
+      'Load Yesterday Settings',
+      `Do you want to load settings saved on ${yesterdayStr}?`,
       [
-        { text: '取消', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: '加载', 
+          text: 'Load', 
           onPress: async () => {
             const success = await loadSettingsFromDate(yesterdayStr);
             if (success) {
-              Alert.alert('成功', '昨天的设置已加载！');
+              Alert.alert('Success', 'Yesterday\'s settings have been loaded!');
             } else {
-              Alert.alert('提示', '没有找到昨天的设置，将使用默认设置。');
+              Alert.alert('Notice', 'No settings found for yesterday, using default settings.');
             }
           }
         }
@@ -89,18 +84,18 @@ export default function ProfileScreen() {
     const todayStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD格式
     
     Alert.alert(
-      '保存今天设置',
-      `是否要保存当前设置到 ${todayStr}？`,
+      'Save Today Settings',
+      `Do you want to save current settings to ${todayStr}?`,
       [
-        { text: '取消', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: '保存', 
+          text: 'Save', 
           onPress: async () => {
             const success = await saveSettingsToDate(todayStr);
             if (success) {
-              Alert.alert('成功', '今天的设置已保存！');
+              Alert.alert('Success', 'Today\'s settings have been saved!');
             } else {
-              Alert.alert('错误', '保存设置失败，请重试。');
+              Alert.alert('Error', 'Failed to save settings, please try again.');
             }
           }
         }
@@ -132,11 +127,6 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
-  // 语言选择处理
-  const handleLanguageSelect = (language) => {
-    setCurrentLanguage(language);
-    setShowLanguageModal(false);
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -217,7 +207,10 @@ export default function ProfileScreen() {
               </View>
               {renderToggle(
                 settings?.soundEnabled,
-                () => updateSettings({ soundEnabled: !settings?.soundEnabled })
+                () => {
+                  console.log('🔊 Sound Effects toggle clicked, current state:', settings?.soundEnabled);
+                  updateSettings({ soundEnabled: !settings?.soundEnabled });
+                }
               )}
             </View>
             
@@ -245,20 +238,6 @@ export default function ProfileScreen() {
               )}
             </View>
             
-            {/* Language */}
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="language" size={24} color="#8B4513" />
-                <Text style={styles.settingLabel}>Language</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.languageButton}
-                onPress={() => setShowLanguageModal(true)}
-              >
-                <Text style={styles.languageButtonText}>{currentLanguage}</Text>
-                <Ionicons name="chevron-down" size={16} color="#8B4513" />
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
 
@@ -280,7 +259,7 @@ export default function ProfileScreen() {
             onPress={handleLoadYesterdaySettings}
           >
             <Ionicons name="time" size={20} color="#FF9800" />
-            <Text style={styles.actionButtonText}>加载昨天设置</Text>
+            <Text style={styles.actionButtonText}>Load Yesterday Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
@@ -289,7 +268,7 @@ export default function ProfileScreen() {
             onPress={handleSaveTodaySettings}
           >
             <Ionicons name="save" size={20} color="#4CAF50" />
-            <Text style={styles.actionButtonText}>保存今天设置</Text>
+            <Text style={styles.actionButtonText}>Save Today Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
           
@@ -308,7 +287,7 @@ export default function ProfileScreen() {
         {/* App Info */}
         <View style={styles.section}>
           <View style={styles.appInfo}>
-            <Text style={styles.appName}>Daycare Number Elimination</Text>
+            <Text style={styles.appName}>KiderCrash</Text>
             <Text style={styles.appVersion}>Version 1.0.0</Text>
             <Text style={styles.appDescription}>
               Draw rectangles to make 10—clear the board, climb 200+ named levels, 
@@ -319,45 +298,6 @@ export default function ProfileScreen() {
           </ScrollView>
         </View>
 
-        {/* 语言选择模态框 */}
-        <Modal
-          visible={showLanguageModal}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setShowLanguageModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.languageModal}>
-              <Text style={styles.languageModalTitle}>Select Language</Text>
-              {languages.map((language) => (
-                <TouchableOpacity
-                  key={language}
-                  style={[
-                    styles.languageOption,
-                    currentLanguage === language && styles.languageOptionSelected
-                  ]}
-                  onPress={() => handleLanguageSelect(language)}
-                >
-                  <Text style={[
-                    styles.languageOptionText,
-                    currentLanguage === language && styles.languageOptionTextSelected
-                  ]}>
-                    {language}
-                  </Text>
-                  {currentLanguage === language && (
-                    <Ionicons name="checkmark" size={20} color="#8B4513" />
-                  )}
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.languageModalClose}
-                onPress={() => setShowLanguageModal(false)}
-              >
-                <Text style={styles.languageModalCloseText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
     </SafeAreaView>
   );
 }
@@ -545,24 +485,6 @@ const styles = StyleSheet.create({
   customToggleThumbActive: {
     alignSelf: 'flex-end',
   },
-  // 语言选择按钮样式
-  languageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#8B4513',
-    minWidth: 100,
-  },
-  languageButtonText: {
-    fontSize: 16,
-    color: '#8B4513',
-    fontWeight: '600',
-    marginRight: 8,
-  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -625,72 +547,5 @@ const styles = StyleSheet.create({
     lineHeight: 22, // 增加行高
     paddingHorizontal: 10, // 减少水平内边距
     fontWeight: '400', // 设置字重
-  },
-  // 语言选择模态框样式
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  languageModal: {
-    backgroundColor: '#FFF8DC',
-    borderRadius: 16,
-    padding: 20,
-    width: '100%',
-    maxWidth: 300,
-    borderWidth: 3,
-    borderColor: '#8B4513',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  languageModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#8B4513',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  languageOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  languageOptionSelected: {
-    backgroundColor: 'rgba(139, 195, 74, 0.2)',
-    borderColor: '#8BC34A',
-  },
-  languageOptionText: {
-    fontSize: 16,
-    color: '#8B4513',
-    fontWeight: '500',
-  },
-  languageOptionTextSelected: {
-    fontWeight: 'bold',
-    color: '#2E7D32',
-  },
-  languageModalClose: {
-    backgroundColor: '#8B4513',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  languageModalCloseText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });

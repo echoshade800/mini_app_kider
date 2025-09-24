@@ -209,7 +209,7 @@ export default function Home() {
                 showsVerticalScrollIndicator={true}
                 nestedScrollEnabled={true}
               >
-                <Text style={styles.guideTitle}>🎉 Welcome to Daycare Dash!</Text>
+                <Text style={styles.guideTitle}>🎉 Welcome to KiderCrash!</Text>
                 <Text style={styles.guideContent}>
                   🎯 <Text style={styles.guideBold}>How to Play:</Text> Draw rectangles around numbers that add up to exactly 10 to clear them! You can connect numbers across rows and columns—be strategic and quick!{'\n\n'}
                   
@@ -219,13 +219,15 @@ export default function Home() {
                   
                   🛠️ <Text style={styles.guideBold}>Power-ups:</Text>{'\n'}
                   • <Text style={styles.guideBold}>SwapMaster:</Text> Swap any two tiles to create better combinations{'\n'}
-                  • <Text style={styles.guideBold}>Split:</Text> Break a tile into two smaller ones (e.g., 7 → 1 + 6){'\n\n'}
+                  • <Text style={styles.guideBold}>Split:</Text> Break a tile into 3-4 smaller ones (e.g., 7 → 2+3+2){'\n\n'}
+                  
+                  📚 <Text style={styles.guideBold}>Multi-page Levels:</Text> Higher levels (80+) require clearing multiple boards to complete. Each page cleared brings you closer to victory!{'\n\n'}
                   
                   🎵 <Text style={styles.guideBold}>Settings:</Text> Customize sound effects and haptic feedback in your profile.{'\n\n'}
                   
                   🧠 <Text style={styles.guideBold}>IQ System:</Text> From "Newborn Dreamer" to "Cosmic Genius"—your intelligence grows with every clear!{'\n\n'}
                   
-                  Get ready to sharpen your mind and become the ultimate Daycare Dash master! 🧩✨
+                  Get ready to sharpen your mind and become the ultimate KiderCrash master! 🧩✨
                 </Text>
                 <TouchableOpacity 
                   style={styles.guideCloseButton}

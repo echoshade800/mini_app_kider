@@ -59,7 +59,7 @@ export default function OnboardingScreen() {
           <View style={styles.welcomeContainer}>
             <Ionicons name="school" size={80} color="#4CAF50" />
             <Text style={styles.welcomeTitle}>Welcome to</Text>
-            <Text style={styles.appTitle}>Daycare Number Elimination</Text>
+            <Text style={styles.appTitle}>KiderCrash</Text>
             
             <Text style={styles.valueProposition}>
               Draw rectangles to make 10—clear the board, climb 200+ named levels, 

@@ -36,12 +36,16 @@ const FAQ_ITEMS = [
     answer: 'Draw a rectangle by dragging your finger across tiles. If the sum equals 10, the tiles will clear with a green celebration effect.'
   },
   {
-    question: 'What are Change items?',
-    answer: 'Change items allow you to swap any two tiles on the board. You earn +1 Change item for each level you complete.'
+    question: 'What are SwapMaster items?',
+    answer: 'SwapMaster items allow you to swap any two tiles on the board. You earn +1 SwapMaster item for each level you complete.'
   },
   {
-    question: 'How does Challenge Mode work?',
-    answer: 'You have 60 seconds to clear as many rectangles as possible. Each clear awards +3 IQ points. New boards appear instantly after each clear.'
+    question: 'What are Split items?',
+    answer: 'Split items break a tile into 3-4 smaller tiles. For example, a 7 can become 2+3+2 or 1+2+4. You earn +1 Split item for each level you complete.'
+  },
+  {
+    question: 'What are multi-page levels?',
+    answer: 'Higher levels (80+) require clearing multiple boards to complete. You must clear all pages to finish the level and earn rewards.'
   },
   {
     question: 'Can I only draw rectangles?',
@@ -104,7 +108,7 @@ export default function AboutScreen() {
         <View style={styles.section}>
           <View style={styles.appInfo}>
             <Ionicons name="school" size={60} color="#4CAF50" />
-            <Text style={styles.appName}>Daycare Number Elimination</Text>
+            <Text style={styles.appName}>KiderCrash</Text>
             <Text style={styles.appVersion}>Version 1.0.0</Text>
             <Text style={styles.appDescription}>
               Draw rectangles to make 10—clear the board, climb 200+ named levels, 
@@ -138,13 +142,25 @@ export default function AboutScreen() {
             <View style={styles.rule}>
               <Ionicons name="swap-horizontal" size={20} color="#4CAF50" />
               <Text style={styles.ruleText}>
-                Use Change items to swap any two tiles
+                Use SwapMaster items to swap any two tiles
+              </Text>
+            </View>
+            <View style={styles.rule}>
+              <Ionicons name="cut" size={20} color="#4CAF50" />
+              <Text style={styles.ruleText}>
+                Use Split items to break tiles into 3-4 smaller ones
+              </Text>
+            </View>
+            <View style={styles.rule}>
+              <Ionicons name="layers" size={20} color="#4CAF50" />
+              <Text style={styles.ruleText}>
+                Higher levels require clearing multiple boards
               </Text>
             </View>
             <View style={styles.rule}>
               <Ionicons name="trophy" size={20} color="#4CAF50" />
               <Text style={styles.ruleText}>
-                Earn +1 Change item for each completed level
+                Earn +1 SwapMaster & +1 Split item for each completed level
               </Text>
             </View>
           </View>

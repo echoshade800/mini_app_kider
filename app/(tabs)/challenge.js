@@ -119,6 +119,12 @@ export default function ChallengeScreen() {
   // 播放结束音效
   const playEndSound = async () => {
     try {
+      // 检查音效设置
+      if (!settings?.soundEnabled) {
+        console.log('🔇 音效已禁用，跳过播放');
+        return;
+      }
+      
       if (endSoundRef.current) {
         console.log('🎵 挑战模式播放结束音效...');
         await endSoundRef.current.replayAsync();

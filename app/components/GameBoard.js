@@ -224,6 +224,12 @@ const GameBoard = forwardRef((props, ref) => {
   // 播放消除音效
   const playClearSound = async () => {
     try {
+      // 检查音效设置
+      if (!settings?.soundEnabled) {
+        console.log('🔇 音效已禁用，跳过播放');
+        return;
+      }
+      
       if (soundRef.current) {
         console.log('🎵 播放消除音效...');
         await soundRef.current.replayAsync();
@@ -239,6 +245,12 @@ const GameBoard = forwardRef((props, ref) => {
   // 播放道具音效
   const playItemSound = async () => {
     try {
+      // 检查音效设置
+      if (!settings?.soundEnabled) {
+        console.log('🔇 音效已禁用，跳过播放');
+        return;
+      }
+      
       if (itemSoundRef.current) {
         console.log('🎵 播放道具音效...');
         await itemSoundRef.current.replayAsync();
@@ -254,6 +266,12 @@ const GameBoard = forwardRef((props, ref) => {
   // 播放结束音效
   const playEndSound = async () => {
     try {
+      // 检查音效设置
+      if (!settings?.soundEnabled) {
+        console.log('🔇 音效已禁用，跳过播放');
+        return;
+      }
+      
       if (endSoundRef.current) {
         console.log('🎵 播放结束音效...');
         await endSoundRef.current.replayAsync();
@@ -268,7 +286,12 @@ const GameBoard = forwardRef((props, ref) => {
 
   // 暴露给父组件的方法
   useImperativeHandle(ref, () => ({
-    playEndSound
+    playEndSound,
+    clearSelection: () => {
+      setSelection(null);
+      setHoveredTiles(new Set());
+      selectionOpacity.setValue(0);
+    },
   }));
 
   // 父容器 ref

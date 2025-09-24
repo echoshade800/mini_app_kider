@@ -551,7 +551,18 @@ export default function LevelDetailScreen() {
       // 检查棋盘是否完全清空（所有非零方块都被消除）
       const remainingTiles = newTiles.filter(tile => tile > 0).length;
       
+      // 更新当前棋盘状态（被清除的位置变为空位）
+      setBoard(prev => ({
+        ...prev,
+        tiles: newTiles
+      }));
+
       if (remainingTiles === 0) {
+        // 立即清除选择状态，避免显示框选区域
+        if (gameBoardRef.current) {
+          gameBoardRef.current.clearSelection();
+        }
+        
         // 确保进度条达到100%
         setProgress(1);
         
@@ -618,12 +629,6 @@ export default function LevelDetailScreen() {
           return;
         }
       }
-
-      // 更新当前棋盘状态（被清除的位置变为空位）
-      setBoard(prev => ({
-        ...prev,
-        tiles: newTiles
-      }));
 
     }
   };

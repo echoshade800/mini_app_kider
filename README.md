@@ -1,4 +1,4 @@
-# Daycare Number Elimination
+# KiderCrash
 
 A React Native (Expo) puzzle game where players draw rectangles to select tiles that sum to 10. Progress through 200+ educational stages or challenge yourself in a 60-second IQ sprint.
 
@@ -51,8 +51,10 @@ app/
 1. **Draw Rectangles**: Drag your finger to select tiles in rectangular shapes
 2. **Sum to 10**: Selected tiles must sum to exactly 10 to clear
 3. **Visual Feedback**: Green = success (sum = 10), Blue = try again (sum ≠ 10)
-4. **Change Items**: Swap any two tiles (earned by completing levels)
-5. **Rectangle Only**: No L-shapes or irregular selections allowed
+4. **SwapMaster Items**: Swap any two tiles (earned by completing levels)
+5. **Split Items**: Break a tile into 3-4 smaller tiles (earned by completing levels)
+6. **Multi-page Levels**: Higher levels (80+) require clearing multiple boards
+7. **Rectangle Only**: No L-shapes or irregular selections allowed
 
 ## Development
 

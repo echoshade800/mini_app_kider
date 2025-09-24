@@ -13,7 +13,9 @@
     "ios": "npx expo run:ios",
     "web": "npx expo start --web",
     "clean": "rm -rf node_modules package-lock.json .expo",
-    "doctor": "npx expo doctor"
+    "doctor": "npx expo doctor",
+    "build:ios": "npx react-native bundle --platform ios --dev false --entry-file index.tsx --bundle-output ios/rnbundle/main.jsbundle --assets-dest ios/rnbundle",
+    "deploy:ios": "sh deploy_ios.sh"
   },
   "dependencies": {
     "@expo/cli": "^0.21.0",
@@ -44,6 +46,10 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
-    "babel-plugin-transform-import-meta": "^2.3.3"
+    "@types/react": "~19.1.10",
+    "@react-native-community/cli": "^20.0.2",
+    "@react-native/metro-config": "^0.81.4",
+    "babel-plugin-transform-import-meta": "^2.3.3",
+    "typescript": "~5.9.2"
   }
 }

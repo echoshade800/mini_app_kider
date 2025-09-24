@@ -119,39 +119,6 @@ export default function Home() {
             <Text style={styles.iqText}>IQ：{iq}</Text>
           </View>
           
-<<<<<<< HEAD
-          <TouchableOpacity
-            style={styles.topButton}
-            onPress={() => router.push('/(tabs)/profile')}
-            accessibilityLabel="设置"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.topButtonText}>⚙</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 底部按钮栏 */}
-        <View style={styles.bottomButtonBar}>
-          <TouchableOpacity
-            style={styles.mainButton}
-            onPress={() => router.push('/(tabs)/levels')}
-            accessibilityLabel="LEVELS 按钮"
-            activeOpacity={0.8}
-            pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
-          >
-            <Text style={styles.mainButtonText}>LEVELS</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.mainButton, styles.arcadeButton]}
-            onPress={() => router.push('/(tabs)/challenge')}
-            accessibilityLabel="ARCADE 按钮"
-            activeOpacity={0.8}
-            pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
-          >
-            <Text style={styles.mainButtonText}>ARCADE</Text>
-          </TouchableOpacity>
-=======
           <View style={styles.topRightButtons}>
             <TouchableOpacity
               style={styles.topButton}
@@ -162,7 +129,6 @@ export default function Home() {
               <Text style={styles.topButtonText}>⚙</Text>
             </TouchableOpacity>
           </View>
->>>>>>> 2824516 (feature)
         </View>
       </View>
 

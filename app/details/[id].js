@@ -91,10 +91,6 @@ export default function LevelDetailScreen() {
   const [clearedTiles, setClearedTiles] = useState(0);
   const [progress, setProgress] = useState(0);
   
-<<<<<<< HEAD
-  // 人物动画
-  const characterPosition = useRef(new Animated.Value(0)).current;
-=======
   // 人物动画状态
   const [characterPosition] = useState(new Animated.Value(0));
   const [characterScale] = useState(new Animated.Value(1));
@@ -102,9 +98,6 @@ export default function LevelDetailScreen() {
   
   // 进度条渐变色状态
   const [progressGradient, setProgressGradient] = useState(['#FF6B6B', '#4ECDC4']);
-<<<<<<< HEAD
->>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
-=======
   
   // 多页游戏状态
   const [totalPages, setTotalPages] = useState(1);
@@ -434,7 +427,6 @@ export default function LevelDetailScreen() {
     else if (level < 200) return 3;
     else return 4;
   }, []);
->>>>>>> 2824516 (feature)
 
   // 生成新棋盘的函数
   const generateNewBoard = useCallback(() => {
@@ -527,16 +519,6 @@ export default function LevelDetailScreen() {
       const newProgress = Math.min(newClearedCount / totalTiles, 1);
       setProgress(newProgress);
       
-<<<<<<< HEAD
-      // 动画移动人物到新位置
-      Animated.timing(characterPosition, {
-        toValue: newProgress,
-        duration: 500,
-        useNativeDriver: false,
-      }).start();
-      
-      console.log(`📊 进度更新: 清除${clearedPositions.length}个方块, 总计${newClearedCount}/${totalTiles}, 进度=${(newProgress * 100).toFixed(1)}%`);
-=======
       // 更新人物位置和动画
       Animated.parallel([
         Animated.timing(characterPosition, {
@@ -558,7 +540,6 @@ export default function LevelDetailScreen() {
         ]),
       ]).start();
       
->>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
       
       // 更新棋盘：将被清除的方块设为0（空位）
       const newTiles = [...board.tiles];
@@ -961,104 +942,6 @@ export default function LevelDetailScreen() {
             }
           ]}
         >
-<<<<<<< HEAD
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        
-<<<<<<< HEAD
-        {/* 新的进度条设计 */}
-        <View style={styles.newProgressContainer}>
-          {/* 进度条背景 */}
-          <View style={styles.progressTrack}>
-            {/* 绿色进度填充 */}
-            <View style={[styles.progressFillGreen, { width: `${progress * 100}%` }]} />
-            
-            {/* 人物角色 */}
-=======
-        <View style={styles.headerCenter}>
-          {/* 进度条容器 */}
-          <View style={styles.progressContainer}>
-            <View 
-              style={styles.progressBar}
-              onLayout={(event) => {
-                const { width } = event.nativeEvent.layout;
-                setProgressBarWidth(width);
-              }}
-            >
-              <LinearGradient
-                colors={progressGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.progressFill, { width: `${progress * 100}%` }]}
-              />
-            </View>
-            {/* 人物图片 - 在进度条上移动 */}
->>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
-            <Animated.View 
-              style={[
-                styles.characterContainer,
-                {
-<<<<<<< HEAD
-                  left: characterPosition.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '85%'], // 不要到最右边，留空间给标签
-                  })
-=======
-                  transform: [
-                    { 
-                      translateX: characterPosition.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, progressBarWidth], // 人物从当前位置开始移动到最右边
-                        extrapolate: 'clamp',
-                      })
-                    },
-                    { scale: characterScale },
-                  ],
->>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
-                }
-              ]}
-            >
-              <Image 
-                source={{ uri: 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/monsterwalk.webp' }}
-                style={styles.characterImage}
-                resizeMode="contain"
-              />
-            </Animated.View>
-<<<<<<< HEAD
-          </View>
-          
-          {/* 关卡名称标签 */}
-          <View style={styles.levelNameTag}>
-            <Ionicons name="book" size={16} color="white" />
-            <Text style={styles.levelNameTagText}>
-              {displayLevelName}!
-            </Text>
-          </View>
-=======
-            
-          </View>
-        </View>
-        
-        <View style={styles.headerRight}>
-          {/* 书本图标和关卡名称组合 */}
-          {displayLevelName && (
-            <View style={styles.levelNameWithBook}>
-              <Image
-                source={{ uri: 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/book.webp' }}
-                style={styles.bookIcon}
-                resizeMode="contain"
-              />
-              <View style={styles.levelNameContainer}>
-                <Text style={styles.levelNameText}>
-                  {displayLevelName}!
-                </Text>
-              </View>
-            </View>
-          )}
->>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
-        </View>
-      </View>
-=======
           <Text style={styles.levelNameAnimationText}>
             {displayLevelName}
           </Text>
@@ -1073,7 +956,6 @@ export default function LevelDetailScreen() {
         onBack={handleBackPress}
         onFinished={handleLevelComplete}
       />
->>>>>>> 2824516 (feature)
 
       {/* 道具工具栏 - 确保在GameBoard之前渲染 */}
       {/* Game Board */}
@@ -1438,11 +1320,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: -13, // 与人物保持平行（characterContainer的top值）
   },
-<<<<<<< HEAD
-  newProgressContainer: {
-    marginTop: 8,
-    marginHorizontal: 60, // 为返回按钮留空间
-=======
   headerCenter: {
     flex: 2, // 保持2，让进度条占更多空间
     marginHorizontal: 16,
@@ -1467,43 +1344,20 @@ const styles = StyleSheet.create({
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
->>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
     position: 'relative',
     height: 50,
     paddingLeft: 21, // 保持左padding
     paddingRight: 30, // 增加右padding，让进度条右端与书本位置重合
   },
-<<<<<<< HEAD
-  progressTrack: {
-    height: 12,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#333',
-    position: 'relative',
-    overflow: 'visible',
-=======
   progressBar: {
     flex: 1,
     height: 12, // 从16减小到12，缩小高度
     backgroundColor: '#E0E0E0',
     borderRadius: 6, // 相应调整圆角
     overflow: 'hidden',
->>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
   },
   progressFillGreen: {
     height: '100%',
-<<<<<<< HEAD
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-    transition: 'width 0.5s ease-out',
-  },
-  characterContainer: {
-    position: 'absolute',
-    top: -20,
-    width: 40,
-    height: 40,
-=======
     borderRadius: 6, // 与progressBar保持一致
   },
   characterContainer: {
@@ -1512,42 +1366,10 @@ const styles = StyleSheet.create({
     left: -32, // 向左偏移32px，让人物与进度条最左边重叠
     width: 64, // 从56增加到64，放大一些
     height: 64, // 从56增加到64，放大一些
->>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
     alignItems: 'center',
     justifyContent: 'center',
   },
   characterImage: {
-<<<<<<< HEAD
-    width: 36,
-    height: 36,
-  },
-  levelNameTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    position: 'absolute',
-    right: -8,
-    top: -8,
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#333',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
-    gap: 4,
-  },
-  levelNameTagText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#000',
-    textShadowColor: '#FF5722',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-=======
     width: 64, // 从56增加到64
     height: 64, // 从56增加到64
   },
@@ -1586,7 +1408,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'left', // 改为左对齐，确保文字不被截断
     flexShrink: 0, // 防止文字被压缩
->>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
   },
   bottomToolbar: {
     position: 'absolute',

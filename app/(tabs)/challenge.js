@@ -541,6 +541,8 @@ export default function ChallengeScreen() {
 
 
   const handleBackToHome = () => {
+    console.log('🏠 挑战模式：返回按钮被点击');
+    
     // 返回按钮压感反馈动画
     Animated.sequence([
       Animated.timing(backButtonScaleAnimation, {
@@ -561,7 +563,9 @@ export default function ChallengeScreen() {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    router.replace('/');
+    
+    console.log('🏠 挑战模式：准备导航到主页面');
+    router.replace('/(tabs)/');
   };
 
   const handlePlayAgain = () => {
@@ -797,6 +801,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.1)', // 10% 透明度深色蒙层
     zIndex: 1,
+    pointerEvents: 'none', // 允许触摸事件穿透
   },
   hudLeft: {
     flexDirection: 'row',

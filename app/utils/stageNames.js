@@ -250,3 +250,10 @@ export function getStageGroup(level) {
   }
   return level > 200 ? 'Beyond Reality' : 'Unknown';
 }
+
+// Default export
+export default {
+  STAGE_NAMES,
+  STAGE_GROUPS,
+  getStageGroup
+};

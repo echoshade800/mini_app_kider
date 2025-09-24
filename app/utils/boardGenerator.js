@@ -5,6 +5,7 @@
  */
 
 import { getBoardLayoutConfig } from '../layout/BoardLayout';
+import { hasValidCombinations } from './gameLogic';
 
 // Deterministic random number generator for consistent board generation
 function seededRandom(seed) {
@@ -19,40 +20,114 @@ function seededRandom(seed) {
   };
 }
 
-// 根据关卡获取数字方块数量
+// 根据关卡获取数字方块数量（现在基于白色方格数量计算）
 function getTileCount(level, isChallenge = false) {
   if (isChallenge) {
-    // 挑战模式：使用高数量提供最大挑战
-    return 120; // 固定中等数量，通过复杂组合增加难度
+    // 挑战模式：使用与第130关相同的配置（8×15棋盘，144个白色方格）
+    return 144;
   }
   
-  // 关卡模式：前几关保证可完全消除，后续渐进式增长
+  // 关卡模式：基于白色方格数量计算数字方块数量
+  // 白色方格数量 = (width + 1) × (height + 1)
+  // 数字方块数量 = 白色方格数量
+  
   if (level >= 1 && level <= 10) {
-    // 前10关：使用较少方块，确保可完全消除
-    return Math.floor(8 + level * 1.5); // 9.5-23个方块，向下取整为9-22个
-  }
-  if (level >= 11 && level <= 20) {
-    return Math.floor(25 + (level - 10) * 2.5); // 27.5-50个方块
-  }
-  if (level >= 21 && level <= 30) {
-    return Math.floor(50 + (level - 20) * 3); // 53-80个方块
-  }
-  if (level >= 31 && level <= 50) {
-    return Math.floor(80 + (level - 30) * 2.5); // 82.5-130个方块
+    // 前10关：3×3到4×6的棋盘
+    const gridSizes = [
+      { rows: 3, cols: 3 }, // 第1关：16个白色方格
+      { rows: 3, cols: 4 }, // 第2关：20个白色方格
+      { rows: 3, cols: 4 }, // 第3关：20个白色方格
+      { rows: 3, cols: 5 }, // 第4关：24个白色方格
+      { rows: 3, cols: 5 }, // 第5关：24个白色方格
+      { rows: 4, cols: 5 }, // 第6关：30个白色方格
+      { rows: 3, cols: 6 }, // 第7关：28个白色方格
+      { rows: 4, cols: 5 }, // 第8关：30个白色方格
+      { rows: 3, cols: 7 }, // 第9关：32个白色方格
+      { rows: 4, cols: 6 }, // 第10关：35个白色方格
+    ];
+    const grid = gridSizes[level - 1];
+    return (grid.rows + 1) * (grid.cols + 1);
   }
   
-  // 51关以后固定在120个方块，通过数字分布和组合复杂度增加难度
-  return 120;
+  if (level >= 11 && level <= 20) {
+    // 11-20关：3×9到5×10的棋盘
+    const gridSizes = [
+      { rows: 3, cols: 9 }, // 第11关：40个白色方格
+      { rows: 5, cols: 6 }, // 第12关：42个白色方格
+      { rows: 4, cols: 8 }, // 第13关：45个白色方格
+      { rows: 5, cols: 7 }, // 第14关：48个白色方格
+      { rows: 4, cols: 9 }, // 第15关：50个白色方格
+      { rows: 5, cols: 8 }, // 第16关：54个白色方格
+      { rows: 6, cols: 7 }, // 第17关：56个白色方格
+      { rows: 5, cols: 9 }, // 第18关：60个白色方格
+      { rows: 4, cols: 12 }, // 第19关：65个白色方格
+      { rows: 5, cols: 10 }, // 第20关：66个白色方格
+    ];
+    const grid = gridSizes[level - 11];
+    return (grid.rows + 1) * (grid.cols + 1);
+  }
+  
+  if (level >= 21 && level <= 30) {
+    // 21-30关：5×11到8×10的棋盘
+    const gridSizes = [
+      { rows: 5, cols: 11 }, // 第21关：72个白色方格
+      { rows: 7, cols: 8 }, // 第22关：72个白色方格
+      { rows: 6, cols: 10 }, // 第23关：77个白色方格
+      { rows: 6, cols: 11 }, // 第24关：84个白色方格
+      { rows: 5, cols: 13 }, // 第25关：84个白色方格
+      { rows: 7, cols: 10 }, // 第26关：88个白色方格
+      { rows: 6, cols: 12 }, // 第27关：91个白色方格
+      { rows: 7, cols: 11 }, // 第28关：96个白色方格
+      { rows: 7, cols: 11 }, // 第29关：96个白色方格
+      { rows: 8, cols: 10 }, // 第30关：99个白色方格
+    ];
+    const grid = gridSizes[level - 21];
+    return (grid.rows + 1) * (grid.cols + 1);
+  }
+  
+  if (level >= 31 && level <= 50) {
+    // 31-50关：8×11到8×15的棋盘
+    const gridSizes = [
+      { rows: 8, cols: 11 }, // 第31关：108个白色方格
+      { rows: 7, cols: 13 }, // 第32关：112个白色方格
+      { rows: 7, cols: 13 }, // 第33关：112个白色方格
+      { rows: 8, cols: 12 }, // 第34关：117个白色方格
+      { rows: 8, cols: 12 }, // 第35关：117个白色方格
+      { rows: 8, cols: 12 }, // 第36关：117个白色方格
+      { rows: 8, cols: 13 }, // 第37关：126个白色方格
+      { rows: 8, cols: 13 }, // 第38关：126个白色方格
+      { rows: 8, cols: 13 }, // 第39关：126个白色方格
+      { rows: 8, cols: 14 }, // 第40关：135个白色方格
+      { rows: 8, cols: 14 }, // 第41关：135个白色方格
+      { rows: 8, cols: 14 }, // 第42关：135个白色方格
+      { rows: 8, cols: 14 }, // 第43关：135个白色方格
+      { rows: 8, cols: 15 }, // 第44关：144个白色方格
+      { rows: 8, cols: 15 }, // 第45关：144个白色方格
+      { rows: 8, cols: 15 }, // 第46关：144个白色方格
+      { rows: 8, cols: 15 }, // 第47关：144个白色方格
+      { rows: 8, cols: 15 }, // 第48关：144个白色方格
+      { rows: 8, cols: 15 }, // 第49关：144个白色方格
+      { rows: 8, cols: 15 }, // 第50关：144个白色方格
+    ];
+    const grid = gridSizes[level - 31];
+    return (grid.rows + 1) * (grid.cols + 1);
+  }
+  
+  // 51关以后：使用第50关的棋盘布局（8×15棋盘，144个白色方格）
+  if (level >= 51) {
+    // 第50关：8×15棋盘，144个白色方格
+    return 144;
+  }
 }
 
 // Get number distribution strategy based on level
 function getNumberDistribution(level) {
-  // 挑战模式使用特殊的数字分布
+  // 挑战模式使用与第130关相同的数字分布
   if (level === -1) { // 挑战模式标识
     return {
-      smallNumbers: 0.10,  // 极少1-2，需要更大框组合
-      mediumNumbers: 0.50, // 中等数字3-6
-      largeNumbers: 0.40   // 大量7-9，需要复杂组合
+      smallNumbers: 0.2,  // 20% 1-3
+      mediumNumbers: 0.4, // 40% 4-6
+      largeNumbers: 0.4   // 40% 7-9，需要复杂组合
     };
   }
   
@@ -120,6 +195,23 @@ function getNumberDistribution(level) {
 
 // Generate a game board for the specified level
 export function generateBoard(level, ensureSolvable = true, isChallenge = false) {
+  const maxAttempts = isChallenge ? 10 : 3; // 挑战模式最多尝试10次，普通模式3次
+  let attempts = 0;
+  
+  while (attempts < maxAttempts) {
+    const board = generateSingleBoard(level, ensureSolvable, isChallenge);
+    if (board && (!ensureSolvable || hasValidCombinations(board.tiles, board.width, board.height))) {
+      return board;
+    }
+    attempts++;
+  }
+  
+  // 如果所有尝试都失败，返回最后一次生成的棋盘（即使无解）
+  return generateSingleBoard(level, false, isChallenge);
+}
+
+// 生成单个棋盘的内部函数
+function generateSingleBoard(level, ensureSolvable = true, isChallenge = false) {
   const seed = isChallenge ? 
     `challenge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : 
     `level_${level}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -130,10 +222,10 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   let tileCount, rows, cols;
   
   if (isChallenge) {
-    // 挑战模式：固定14行11列
-    rows = 10;
-    cols = 12;
-    tileCount = 120; // 固定120个方块
+    // 挑战模式：使用与第130关相同的配置（8×15棋盘，120个数字方块）
+    rows = 8;
+    cols = 15;
+    tileCount = 120; // 8×15 = 120个数字方块
   } else {
     // 关卡模式：使用原有逻辑
     tileCount = getTileCount(level, isChallenge);
@@ -152,15 +244,10 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
   cols = layoutConfig.cols;
   const totalSlots = rows * cols;
   
-  // 计算实际数字方块数量和矩形尺寸
-  const actualTileCount = Math.min(tileCount, totalSlots);
-  const actualTileRows = Math.ceil(Math.sqrt(actualTileCount));
-  const actualTileCols = Math.ceil(actualTileCount / actualTileRows);
-  
-  // 确保矩形不超出棋盘边界
-  const maxTileRows = Math.min(actualTileRows, rows);
-  const maxTileCols = Math.min(actualTileCols, cols);
-  const finalTileCount = maxTileRows * maxTileCols;
+  // 数字方块数量应该等于白色方格数量（即整个棋盘）
+  const finalTileCount = totalSlots; // 使用整个棋盘作为数字方块数量
+  const maxTileRows = rows;
+  const maxTileCols = cols;
   
   // 计算数字方块矩形在棋盘中的起始位置（居中）
   const startRow = Math.floor((rows - maxTileRows) / 2);
@@ -648,17 +735,9 @@ export function generateBoard(level, ensureSolvable = true, isChallenge = false)
     }
   }
   
-  // 将数字方块矩形放置到棋盘的居中位置
-  for (let tileRow = 0; tileRow < maxTileRows; tileRow++) {
-    for (let tileCol = 0; tileCol < maxTileCols; tileCol++) {
-      const tileIndex = tileRow * maxTileCols + tileCol;
-      if (tileIndex < finalTileCount) {
-        const boardRow = startRow + tileRow;
-        const boardCol = startCol + tileCol;
-        const boardIndex = boardRow * cols + boardCol;
-        tiles[boardIndex] = numberTiles[tileIndex];
-      }
-    }
+  // 将数字方块直接放置到棋盘上（填满整个棋盘）
+  for (let i = 0; i < finalTileCount; i++) {
+    tiles[i] = numberTiles[i];
   }
   
     

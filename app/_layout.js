@@ -55,7 +55,13 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" />
-        <Stack.Screen name="details/[id]" />
+        <Stack.Screen 
+          name="details/[id]" 
+          options={{
+            gestureEnabled: false, // 禁用滑动返回手势
+            gestureDirection: 'horizontal', // 禁用水平滑动
+          }}
+        />
         <Stack.Screen name="about" />
         <Stack.Screen name="+not-found" />
       </Stack>

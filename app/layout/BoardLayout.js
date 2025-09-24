@@ -6,38 +6,104 @@
 
 import { Dimensions } from 'react-native';
 
-// 根据关卡获取数字方块数量（从boardGenerator复制过来避免循环依赖）
+// 根据关卡获取数字方块数量（现在基于白色方格数量计算）
 function getTileCount(level, isChallenge = false) {
   if (isChallenge) {
-    // 挑战模式：使用高数量提供最大挑战
-    return 200; // 固定高数量
+    // 挑战模式：使用与第130关相同的配置（8×15棋盘，144个白色方格）
+    return 144;
   }
   
-  // 关卡模式：渐进式增长
+  // 关卡模式：基于白色方格数量计算数字方块数量
+  // 白色方格数量 = (width + 1) × (height + 1)
+  // 数字方块数量 = 白色方格数量
+  
   if (level >= 1 && level <= 10) {
-    return Math.floor(12 + level * 2); // 14-32个方块
-  }
-  if (level >= 11 && level <= 20) {
-    return Math.floor(30 + (level - 10) * 3); // 33-60个方块
-  }
-  if (level >= 21 && level <= 30) {
-    return Math.floor(60 + (level - 20) * 4); // 64-100个方块
-  }
-  if (level >= 31 && level <= 50) {
-    return Math.floor(100 + (level - 30) * 3); // 103-160个方块
-  }
-  if (level >= 51 && level <= 80) {
-    return Math.floor(160 + (level - 50) * 2); // 162-220个方块
-  }
-  if (level >= 81 && level <= 120) {
-    return Math.floor(220 + (level - 80) * 1.5); // 221-280个方块
-  }
-  if (level >= 121 && level <= 200) {
-    return Math.floor(280 + (level - 120) * 1); // 281-360个方块
+    // 前10关：3×3到4×6的棋盘
+    const gridSizes = [
+      { rows: 3, cols: 3 }, // 第1关：16个白色方格
+      { rows: 3, cols: 4 }, // 第2关：20个白色方格
+      { rows: 3, cols: 4 }, // 第3关：20个白色方格
+      { rows: 3, cols: 5 }, // 第4关：24个白色方格
+      { rows: 3, cols: 5 }, // 第5关：24个白色方格
+      { rows: 4, cols: 5 }, // 第6关：30个白色方格
+      { rows: 3, cols: 6 }, // 第7关：28个白色方格
+      { rows: 4, cols: 5 }, // 第8关：30个白色方格
+      { rows: 3, cols: 7 }, // 第9关：32个白色方格
+      { rows: 4, cols: 6 }, // 第10关：35个白色方格
+    ];
+    const grid = gridSizes[level - 1];
+    return (grid.rows + 1) * (grid.cols + 1);
   }
   
-  // 200关以后继续增长
-  return Math.floor(360 + (level - 200) * 0.5);
+  if (level >= 11 && level <= 20) {
+    // 11-20关：3×9到5×10的棋盘
+    const gridSizes = [
+      { rows: 3, cols: 9 }, // 第11关：40个白色方格
+      { rows: 5, cols: 6 }, // 第12关：42个白色方格
+      { rows: 4, cols: 8 }, // 第13关：45个白色方格
+      { rows: 5, cols: 7 }, // 第14关：48个白色方格
+      { rows: 4, cols: 9 }, // 第15关：50个白色方格
+      { rows: 5, cols: 8 }, // 第16关：54个白色方格
+      { rows: 6, cols: 7 }, // 第17关：56个白色方格
+      { rows: 5, cols: 9 }, // 第18关：60个白色方格
+      { rows: 4, cols: 12 }, // 第19关：65个白色方格
+      { rows: 5, cols: 10 }, // 第20关：66个白色方格
+    ];
+    const grid = gridSizes[level - 11];
+    return (grid.rows + 1) * (grid.cols + 1);
+  }
+  
+  if (level >= 21 && level <= 30) {
+    // 21-30关：5×11到8×10的棋盘
+    const gridSizes = [
+      { rows: 5, cols: 11 }, // 第21关：72个白色方格
+      { rows: 7, cols: 8 }, // 第22关：72个白色方格
+      { rows: 6, cols: 10 }, // 第23关：77个白色方格
+      { rows: 6, cols: 11 }, // 第24关：84个白色方格
+      { rows: 5, cols: 13 }, // 第25关：84个白色方格
+      { rows: 7, cols: 10 }, // 第26关：88个白色方格
+      { rows: 6, cols: 12 }, // 第27关：91个白色方格
+      { rows: 7, cols: 11 }, // 第28关：96个白色方格
+      { rows: 7, cols: 11 }, // 第29关：96个白色方格
+      { rows: 8, cols: 10 }, // 第30关：99个白色方格
+    ];
+    const grid = gridSizes[level - 21];
+    return (grid.rows + 1) * (grid.cols + 1);
+  }
+  
+  if (level >= 31 && level <= 50) {
+    // 31-50关：8×11到8×15的棋盘
+    const gridSizes = [
+      { rows: 8, cols: 11 }, // 第31关：108个白色方格
+      { rows: 7, cols: 13 }, // 第32关：112个白色方格
+      { rows: 7, cols: 13 }, // 第33关：112个白色方格
+      { rows: 8, cols: 12 }, // 第34关：117个白色方格
+      { rows: 8, cols: 12 }, // 第35关：117个白色方格
+      { rows: 8, cols: 12 }, // 第36关：117个白色方格
+      { rows: 8, cols: 13 }, // 第37关：126个白色方格
+      { rows: 8, cols: 13 }, // 第38关：126个白色方格
+      { rows: 8, cols: 13 }, // 第39关：126个白色方格
+      { rows: 8, cols: 14 }, // 第40关：135个白色方格
+      { rows: 8, cols: 14 }, // 第41关：135个白色方格
+      { rows: 8, cols: 14 }, // 第42关：135个白色方格
+      { rows: 8, cols: 14 }, // 第43关：135个白色方格
+      { rows: 8, cols: 15 }, // 第44关：144个白色方格
+      { rows: 8, cols: 15 }, // 第45关：144个白色方格
+      { rows: 8, cols: 15 }, // 第46关：144个白色方格
+      { rows: 8, cols: 15 }, // 第47关：144个白色方格
+      { rows: 8, cols: 15 }, // 第48关：144个白色方格
+      { rows: 8, cols: 15 }, // 第49关：144个白色方格
+      { rows: 8, cols: 15 }, // 第50关：144个白色方格
+    ];
+    const grid = gridSizes[level - 31];
+    return (grid.rows + 1) * (grid.cols + 1);
+  }
+  
+  // 51关以后：使用第50关的棋盘布局（8×15棋盘，144个白色方格）
+  if (level >= 51) {
+    // 第50关：8×15棋盘，144个白色方格
+    return 144;
+  }
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');

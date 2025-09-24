@@ -4,7 +4,7 @@
  * Features: Level completion detection, next level navigation, item management
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -13,11 +13,13 @@ import {
   Alert,
   Modal,
   Image,
-  Animated
+  Animated,
+  PanResponder
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback } from 'react';
 import { useGameStore } from '../store/gameStore';
@@ -25,6 +27,7 @@ import { generateBoard } from '../utils/boardGenerator';
 import { STAGE_NAMES } from '../utils/stageNames';
 import GameBoard from '../components/GameBoard';
 import RescueModal from '../components/RescueModal';
+import TopHUD from '../components/TopHUD';
 
 // 提取关卡名称（去掉Grade前缀部分）
 function extractLevelName(stageName) {
@@ -80,6 +83,9 @@ export default function LevelDetailScreen() {
   const [fractalAnimations, setFractalAnimations] = useState(new Map());
   const [boardKey, setBoardKey] = useState(0); // 用于强制重新生成棋盘
   
+  // GameBoard ref
+  const gameBoardRef = useRef(null);
+  
   // 进度条状态
   const [totalTiles, setTotalTiles] = useState(0);
   const [clearedTiles, setClearedTiles] = useState(0);
@@ -96,7 +102,339 @@ export default function LevelDetailScreen() {
   
   // 进度条渐变色状态
   const [progressGradient, setProgressGradient] = useState(['#FF6B6B', '#4ECDC4']);
+<<<<<<< HEAD
 >>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
+=======
+  
+  // 多页游戏状态
+  const [totalPages, setTotalPages] = useState(1);
+  const [completedPages, setCompletedPages] = useState(0);
+  
+  // 关卡名称动画状态
+  const [showLevelNameAnimation, setShowLevelNameAnimation] = useState(true);
+  const levelNameAnimation = useRef(new Animated.Value(-300)).current; // 从左边开始
+  
+  // 文字框拖拽位置状态
+  const [currentLevelPosition, setCurrentLevelPosition] = useState({ x: 0, y: 0 });
+  const [nextLevelPosition, setNextLevelPosition] = useState({ x: 0, y: 0 });
+  
+  // 编辑模式状态
+  const [editingMode, setEditingMode] = useState(true);
+  
+  // 按钮悬停状态
+  const [returnButtonPressed, setReturnButtonPressed] = useState(false);
+  const [nextButtonPressed, setNextButtonPressed] = useState(false);
+  
+  // 文字框动画状态
+  const [textAnimationPhase, setTextAnimationPhase] = useState('initial'); // initial, currentBounce, currentExit, nextEnter, final
+  const [textWidth, setTextWidth] = useState(0); // 文字宽度状态
+  const currentTextScale = useRef(new Animated.Value(0)).current;
+  const currentTextOpacity = useRef(new Animated.Value(0)).current;
+  const currentTextRotation = useRef(new Animated.Value(0)).current;
+  const nextTextScale = useRef(new Animated.Value(0)).current;
+  const nextTextOpacity = useRef(new Animated.Value(0)).current;
+  const nextTextTranslateY = useRef(new Animated.Value(50)).current;
+  const sparkleParticles = useRef([]).current;
+  
+  // 箭头动画状态
+  const arrowAnimation = useRef(new Animated.Value(0)).current;
+  const arrowOpacity = useRef(new Animated.Value(1)).current;
+  
+  // 庆祝粒子状态 - 两个动画层
+  const [celebrationParticles1, setCelebrationParticles1] = useState([]);
+  const [celebrationParticles2, setCelebrationParticles2] = useState([]);
+  
+  // 生成庆祝粒子
+  const generateCelebrationParticles = () => {
+    // 第一层粒子 - 40个，较慢速度
+    const particles1 = [];
+    for (let i = 0; i < 40; i++) {
+      const particleAnimation = new Animated.Value(0);
+      particles1.push({
+        id: `layer1-${i}`,
+        x: Math.random() * 100, // 百分比位置
+        y: -10, // 从顶部开始
+        color: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF9F43', '#6C5CE7'][Math.floor(Math.random() * 7)],
+        size: Math.random() * 6 + 3, // 3-9px，稍小一些
+        rotation: Math.random() * 360,
+        duration: Math.random() * 3000 + 4000, // 4-7秒，较慢
+        animation: particleAnimation,
+        delay: Math.random() * 2000, // 随机延迟开始
+      });
+      
+      // 启动循环下落动画
+      const createLoopAnimation = () => {
+        setTimeout(() => {
+          Animated.timing(particleAnimation, {
+            toValue: 1,
+            duration: particleAnimation.duration || 5000,
+            useNativeDriver: true,
+          }).start(() => {
+            // 动画完成后重置位置并重新开始
+            particleAnimation.setValue(0);
+            createLoopAnimation();
+          });
+        }, particleAnimation.delay);
+      };
+      
+      createLoopAnimation();
+    }
+    
+    // 第二层粒子 - 30个，较快速度
+    const particles2 = [];
+    for (let i = 0; i < 30; i++) {
+      const particleAnimation = new Animated.Value(0);
+      particles2.push({
+        id: `layer2-${i}`,
+        x: Math.random() * 100, // 百分比位置
+        y: -10, // 从顶部开始
+        color: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF9F43', '#6C5CE7'][Math.floor(Math.random() * 7)],
+        size: Math.random() * 10 + 5, // 5-15px，稍大一些
+        rotation: Math.random() * 360,
+        duration: Math.random() * 1500 + 2000, // 2-3.5秒，较快
+        animation: particleAnimation,
+        delay: Math.random() * 1500, // 随机延迟开始
+      });
+      
+      // 启动循环下落动画
+      const createLoopAnimation = () => {
+        setTimeout(() => {
+          Animated.timing(particleAnimation, {
+            toValue: 1,
+            duration: particleAnimation.duration || 3000,
+            useNativeDriver: true,
+          }).start(() => {
+            // 动画完成后重置位置并重新开始
+            particleAnimation.setValue(0);
+            createLoopAnimation();
+          });
+        }, particleAnimation.delay);
+      };
+      
+      createLoopAnimation();
+    }
+    
+    setCelebrationParticles1(particles1);
+    setCelebrationParticles2(particles2);
+  };
+  
+  // 生成闪光粒子效果
+  const generateSparkleParticles = () => {
+    const particles = [];
+    for (let i = 0; i < 8; i++) {
+      const particleAnimation = new Animated.Value(0);
+      particles.push({
+        id: `sparkle-${i}`,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        size: Math.random() * 4 + 2,
+        color: ['#FFD700', '#FFA500', '#FF6B6B'][Math.floor(Math.random() * 3)],
+        animation: particleAnimation,
+        duration: Math.random() * 1000 + 500,
+      });
+      
+      Animated.timing(particleAnimation, {
+        toValue: 1,
+        duration: particleAnimation.duration || 800,
+        useNativeDriver: true,
+      }).start();
+    }
+    sparkleParticles.current = particles;
+  };
+
+  // 文字框动画序列
+  const startTextAnimation = () => {
+    setTextAnimationPhase('initial');
+    
+    // 1. 当前关卡名称弹跳登场
+    setTimeout(() => {
+      setTextAnimationPhase('currentBounce');
+      Animated.sequence([
+        Animated.spring(currentTextScale, {
+          toValue: 1.2,
+          tension: 100,
+          friction: 3,
+          useNativeDriver: true,
+        }),
+        Animated.spring(currentTextScale, {
+          toValue: 1,
+          tension: 100,
+          friction: 3,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      
+      Animated.timing(currentTextOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }, 500);
+    
+    // 2. 停留1.5秒后，当前关卡名称跳动消失
+    setTimeout(() => {
+      setTextAnimationPhase('currentExit');
+      Animated.sequence([
+        Animated.timing(currentTextScale, {
+          toValue: 1.1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(currentTextRotation, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(currentTextOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, 2000);
+    
+    // 3. 下一关卡名称萌趣进入
+    setTimeout(() => {
+      setTextAnimationPhase('nextEnter');
+      generateSparkleParticles();
+      
+      Animated.parallel([
+        Animated.spring(nextTextScale, {
+          toValue: 1,
+          tension: 80,
+          friction: 4,
+          useNativeDriver: true,
+        }),
+        Animated.timing(nextTextOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(nextTextTranslateY, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, 2800);
+    
+    // 4. 最终停留
+    setTimeout(() => {
+      setTextAnimationPhase('final');
+    }, 3500);
+  };
+
+  // 箭头动画效果和庆祝粒子
+  useEffect(() => {
+    if (showCompletionModal) {
+      // 生成庆祝粒子
+      generateCelebrationParticles();
+      
+      // 启动文字框动画
+      startTextAnimation();
+      
+      // 摆动动画
+      const swingAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(arrowAnimation, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(arrowAnimation, {
+            toValue: -1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      
+      // 闪烁动画
+      const blinkAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(arrowOpacity, {
+            toValue: 0.3,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(arrowOpacity, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      
+      swingAnimation.start();
+      blinkAnimation.start();
+      
+      return () => {
+        swingAnimation.stop();
+        blinkAnimation.stop();
+        // 清理粒子动画
+        setCelebrationParticles1([]);
+        setCelebrationParticles2([]);
+        // 重置文字框动画状态
+        setTextAnimationPhase('initial');
+        currentTextScale.setValue(0);
+        currentTextOpacity.setValue(0);
+        currentTextRotation.setValue(0);
+        nextTextScale.setValue(0);
+        nextTextOpacity.setValue(0);
+        nextTextTranslateY.setValue(50);
+      };
+    }
+  }, [showCompletionModal, arrowAnimation, arrowOpacity]);
+  
+  // 当前关卡文字框拖拽响应器
+  const currentLevelPanResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => {
+      console.log('当前关卡文字框获得拖拽权限');
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      const newPosition = {
+        x: gestureState.dx,
+        y: gestureState.dy
+      };
+      console.log('当前关卡文字框移动中:', newPosition);
+      setCurrentLevelPosition(newPosition);
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      console.log('当前关卡文字框拖拽结束，位置:', { x: gestureState.dx, y: gestureState.dy });
+    }
+  });
+  
+  // 下一关文字框拖拽响应器
+  const nextLevelPanResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => {
+      console.log('下一关文字框获得拖拽权限');
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      const newPosition = {
+        x: gestureState.dx,
+        y: gestureState.dy
+      };
+      console.log('下一关文字框移动中:', newPosition);
+      setNextLevelPosition(newPosition);
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      console.log('下一关文字框拖拽结束，位置:', { x: gestureState.dx, y: gestureState.dy });
+    }
+  });
+  
+  
+  // 计算总页数
+  const calculateTotalPages = useCallback((level) => {
+    if (level < 80) return 1;
+    else if (level < 130) return 2;
+    else if (level < 200) return 3;
+    else return 4;
+  }, []);
+>>>>>>> 2824516 (feature)
 
   // 生成新棋盘的函数
   const generateNewBoard = useCallback(() => {
@@ -130,10 +468,15 @@ export default function LevelDetailScreen() {
     }
   }, [level]);
 
-  // 初始化棋盘
+  // 初始化棋盘和多页游戏状态
   useEffect(() => {
-    generateNewBoard();
-  }, [generateNewBoard]);
+    if (level && !isNaN(level)) {
+      const tp = calculateTotalPages(level);
+      setTotalPages(tp);
+      setCompletedPages(0);
+      generateNewBoard();
+    }
+  }, [level, calculateTotalPages, generateNewBoard]);
 
   // 页面获得焦点时刷新棋盘
   useFocusEffect(
@@ -141,6 +484,33 @@ export default function LevelDetailScreen() {
       generateNewBoard();
     }, [generateNewBoard])
   );
+
+  // 关卡名称动画效果
+  useEffect(() => {
+    if (showLevelNameAnimation) {
+      // 动画序列：滑入 -> 停留3秒 -> 滑出
+      Animated.sequence([
+        // 滑入到屏幕中间
+        Animated.timing(levelNameAnimation, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        // 停留1.5秒
+        Animated.delay(1500),
+        // 滑出到右边
+        Animated.timing(levelNameAnimation, {
+          toValue: 300,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // 动画完成后隐藏
+        setShowLevelNameAnimation(false);
+      });
+    }
+  }, [showLevelNameAnimation, levelNameAnimation]);
+
 
   const handleTilesClear = (clearedPositions, newTilesData = null) => {
     if (!board) return;
@@ -204,23 +574,68 @@ export default function LevelDetailScreen() {
         // 确保进度条达到100%
         setProgress(1);
         
-        // 关卡完成！显示完成弹窗
-        setShowCompletionModal(true);
-        
-        // 更新进度
-        const currentMaxLevel = gameData?.maxLevel || 0;
-        const newMaxLevel = Math.max(currentMaxLevel, level);
-        const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
-        const newSplitItems = (gameData?.splitItems || 0) + 1;
-        
-        updateGameData({
-          maxLevel: newMaxLevel,
-          lastPlayedLevel: level,
-          swapMasterItems: newSwapMasterItems,
-          splitItems: newSplitItems,
-        });
-        
-        return; // 不更新棋盘，直接显示完成弹窗
+        // 检查是否是多页游戏
+        if (totalPages > 1) {
+          // 多页游戏：完成当前页面
+          const newCompletedPages = completedPages + 1;
+          setCompletedPages(newCompletedPages);
+          
+          if (newCompletedPages < totalPages) {
+            // 还有页面需要完成，生成新棋盘
+            setTimeout(() => {
+              generateNewBoard();
+              // 重置当前页面进度
+              setClearedTiles(0);
+              setProgress(0);
+              characterPosition.setValue(0);
+            }, 500);
+            return;
+          } else {
+            // 所有页面都完成了，显示完成弹窗
+            setShowCompletionModal(true);
+            
+            // 播放结束音效
+            if (gameBoardRef.current) {
+              gameBoardRef.current.playEndSound();
+            }
+            
+            // 更新进度
+            const currentMaxLevel = gameData?.maxLevel || 0;
+            const newMaxLevel = Math.max(currentMaxLevel, level);
+            const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
+            const newSplitItems = (gameData?.splitItems || 0) + 1;
+            
+            updateGameData({
+              maxLevel: newMaxLevel,
+              lastPlayedLevel: level,
+              swapMasterItems: newSwapMasterItems,
+              splitItems: newSplitItems,
+            });
+            return;
+          }
+        } else {
+          // 单页游戏：直接显示完成弹窗
+          setShowCompletionModal(true);
+          
+          // 播放结束音效
+          if (gameBoardRef.current) {
+            gameBoardRef.current.playEndSound();
+          }
+          
+          // 更新进度
+          const currentMaxLevel = gameData?.maxLevel || 0;
+          const newMaxLevel = Math.max(currentMaxLevel, level);
+          const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
+          const newSplitItems = (gameData?.splitItems || 0) + 1;
+          
+          updateGameData({
+            maxLevel: newMaxLevel,
+            lastPlayedLevel: level,
+            swapMasterItems: newSwapMasterItems,
+            splitItems: newSplitItems,
+          });
+          return;
+        }
       }
 
       // 更新当前棋盘状态（被清除的位置变为空位）
@@ -244,7 +659,173 @@ export default function LevelDetailScreen() {
   };
 
   const handleBackPress = () => {
-    router.replace('/(tabs)/levels');
+    router.replace('/(tabs)/');
+  };
+
+  const handleLevelComplete = () => {
+    // 触发关卡完成逻辑
+    setShowCompletionModal(true);
+    
+    // 播放结束音效
+    if (gameBoardRef.current) {
+      gameBoardRef.current.playEndSound();
+    }
+    
+    // 更新进度
+    const currentMaxLevel = gameData?.maxLevel || 0;
+    const newMaxLevel = Math.max(currentMaxLevel, level);
+    const newSwapMasterItems = (gameData?.swapMasterItems || 0) + 1;
+    const newSplitItems = (gameData?.splitItems || 0) + 1;
+    
+    updateGameData({
+      maxLevel: newMaxLevel,
+      lastPlayedLevel: level,
+      swapMasterItems: newSwapMasterItems,
+      splitItems: newSplitItems,
+    });
+  };
+
+  // 拆分算法：将数字拆分为3-4个小数字
+  const splitValueIntoParts = (v) => {
+    // k = 3 or 4, but must be <= v
+    const k = Math.min(v, (v >= 7 ? (Math.random() < 0.5 ? 3 : 4) : 3));
+
+    // 生成 k 个正整数，和为 v，且每个不超过 9
+    let parts = Array(k).fill(1);
+    let remain = v - k;
+
+    // 均匀/随机分配剩余
+    while (remain > 0) {
+      const i = Math.floor(Math.random() * k);
+      if (parts[i] < 9) { // 每项上限 9
+        parts[i] += 1;
+        remain -= 1;
+      }
+    }
+
+    // 打散顺序，避免模式感
+    return parts.sort(() => Math.random() - 0.5);
+  };
+
+  // 位置选择算法：优先远离原位置
+  const pickTargetCells = ({ origin, emptyCells, k, rows, cols }) => {
+    const dist = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+    const tiers = [2, 1, 0]; // 首选距离≥2，其次≥1，最后≥0
+
+    const chosen = [];
+    const used = new Set(); // "r,c" 字符串
+
+    // 分层收集候选
+    for (const minD of tiers) {
+      const candidates = emptyCells.filter(cell => 
+        !used.has(`${cell.r},${cell.c}`) && dist(cell, origin) >= minD
+      );
+
+      // 洗牌，避免总是同一方向
+      for (let i = candidates.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+      }
+
+      while (candidates.length && chosen.length < k) {
+        const cell = candidates.pop();
+        chosen.push(cell);
+        used.add(`${cell.r},${cell.c}`);
+      }
+      if (chosen.length === k) break;
+    }
+
+    return chosen; // 可能不足 k 个，由调用方兜底
+  };
+
+  // 获取空位集合
+  const getEmptyCells = () => {
+    const emptyCells = [];
+    for (let r = 0; r < board.height; r++) {
+      for (let c = 0; c < board.width; c++) {
+        const index = r * board.width + c;
+        if (board.tiles[index] === 0) {
+          emptyCells.push({ r, c });
+        }
+      }
+    }
+    return emptyCells;
+  };
+
+  // 执行交换动画
+  const performSwapAnimation = (tile1, tile2) => {
+    // 计算两个方块之间的相对位置偏移
+    const deltaX = (tile2.col - tile1.col) * board.layoutConfig.tileSize;
+    const deltaY = (tile2.row - tile1.row) * board.layoutConfig.tileSize;
+
+    // 创建动画值
+    const tile1AnimX = new Animated.Value(0);
+    const tile1AnimY = new Animated.Value(0);
+    const tile2AnimX = new Animated.Value(0);
+    const tile2AnimY = new Animated.Value(0);
+
+    // 设置动画状态
+    const newSwapAnimations = new Map();
+    newSwapAnimations.set(tile1.index, {
+      translateX: tile1AnimX,
+      translateY: tile1AnimY
+    });
+    newSwapAnimations.set(tile2.index, {
+      translateX: tile2AnimX,
+      translateY: tile2AnimY
+    });
+    setSwapAnimations(newSwapAnimations);
+
+    // 执行动画：两个方块互相滑动到对方位置
+    Animated.parallel([
+      Animated.timing(tile1AnimX, {
+        toValue: deltaX,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tile1AnimY, {
+        toValue: deltaY,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tile2AnimX, {
+        toValue: -deltaX,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tile2AnimY, {
+        toValue: -deltaY,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // 使用setTimeout确保动画状态完全清除后再更新棋盘
+      setTimeout(() => {
+        // 先清除动画状态
+        setSwapAnimations(new Map());
+        
+        // 强制重新渲染以确保动画状态清除
+        setBoardKey(prev => prev + 1);
+        
+        // 然后更新棋盘状态
+        const newTiles = [...board.tiles];
+        newTiles[tile1.index] = tile2.value;
+        newTiles[tile2.index] = tile1.value;
+        
+        setBoard(prev => ({ ...prev, tiles: newTiles }));
+        setSelectedSwapTile(null);
+        setItemMode(null);
+        
+        // Consume item
+        const newSwapMasterItems = Math.max(0, (gameData?.swapMasterItems || 0) - 1);
+        updateGameData({ swapMasterItems: newSwapMasterItems });
+
+        // 触觉反馈
+        if (settings?.hapticsEnabled) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
+      }, 50); // 给一个小的延迟确保动画状态清除
+    });
   };
 
   const handleTileClick = (row, col, value) => {
@@ -260,58 +841,74 @@ export default function LevelDetailScreen() {
         // Deselect same tile
         setSelectedSwapTile(null);
       } else {
-        // Swap tiles
-        const newTiles = [...board.tiles];
-        newTiles[selectedSwapTile.index] = value;
-        newTiles[index] = selectedSwapTile.value;
-        
-        // Split道具增加了一个新方块，更新总数
-        const newTotalTiles = totalTiles + 1;
-        setTotalTiles(newTotalTiles);
-        
-        // 重新计算进度（保持已清除数量不变）
-        const newProgress = Math.min(clearedTiles / newTotalTiles, 1);
-        setProgress(newProgress);
-        
-        
-        setBoard(prev => ({ ...prev, tiles: newTiles }));
-        setSelectedSwapTile(null);
-        setItemMode(null);
-        
-        // Consume item
-        const newSwapMasterItems = Math.max(0, (gameData?.swapMasterItems || 0) - 1);
-        updateGameData({ swapMasterItems: newSwapMasterItems });
+        // 执行交换动画
+        performSwapAnimation(selectedSwapTile, { row, col, value, index });
       }
     } else if (itemMode === 'fractalSplit') {
-      // Split the selected tile into two tiles with value 1 and (value-1)
-      if (value > 1) {
-        const newTiles = [...board.tiles];
-        
-        // Find an empty position for the new tile
-        let emptyIndex = -1;
-        for (let i = 0; i < newTiles.length; i++) {
-          if (newTiles[i] === 0) {
-            emptyIndex = i;
-            break;
-          }
-        }
-        
-        if (emptyIndex !== -1) {
-          // Split: original tile becomes 1, new tile gets (value-1)
-          newTiles[index] = 1;
-          newTiles[emptyIndex] = value - 1;
-          
-          setBoard(prev => ({ ...prev, tiles: newTiles }));
-          setItemMode(null);
-          
-          // Consume item
-          const newSplitItems = Math.max(0, (gameData?.splitItems || 0) - 1);
-          updateGameData({ splitItems: newSplitItems });
-        } else {
-          Alert.alert('No Space', 'No empty space available for splitting.');
-        }
-      } else {
+      // 新的分裂逻辑：拆分为3-4个小数字
+      if (value <= 1) {
         Alert.alert('Cannot Split', 'Cannot split a tile with value 1.');
+        return;
+      }
+
+      const parts = splitValueIntoParts(value);
+      const k = parts.length;
+
+      const emptyCells = getEmptyCells();
+      const targets = pickTargetCells({ 
+        origin: { r: row, c: col }, 
+        emptyCells, 
+        k, 
+        rows: board.height, 
+        cols: board.width 
+      });
+
+      // 兜底策略：允许用原格补1个
+      if (targets.length < k) {
+        if (!targets.some(c => c.r === row && c.c === col)) {
+          targets.push({ r: row, c: col });
+        }
+      }
+
+      if (targets.length < k) {
+        Alert.alert('Not Enough Space', 'Not enough space to split this tile.');
+        return;
+      }
+
+      // 执行分裂
+      const newTiles = [...board.tiles];
+      
+      // 清空原位置（如果原位置不在目标中）
+      const originUsed = targets.some(c => c.r === row && c.c === col);
+      if (!originUsed) {
+        newTiles[index] = 0;
+      }
+
+      // 在目标位置放置新数字
+      for (let i = 0; i < targets.length; i++) {
+        const target = targets[i];
+        const targetIndex = target.r * board.width + target.c;
+        newTiles[targetIndex] = parts[i];
+      }
+
+      // 更新总方块数（增加的分裂方块数）
+      const newTotalTiles = totalTiles + (targets.length - 1);
+      setTotalTiles(newTotalTiles);
+      
+      // 重新计算进度（保持已清除数量不变）
+      const newProgress = Math.min(clearedTiles / newTotalTiles, 1);
+      setProgress(newProgress);
+
+      setBoard(prev => ({ ...prev, tiles: newTiles }));
+      setItemMode(null);
+      
+      // Consume item
+      const newSplitItems = Math.max(0, (gameData?.splitItems || 0) - 1);
+      updateGameData({ splitItems: newSplitItems });
+
+      // 触觉反馈
+      if (settings?.hapticsEnabled) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
     }
   };
@@ -353,12 +950,18 @@ export default function LevelDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBackPress}
+
+      {/* 关卡名称动画 */}
+      {showLevelNameAnimation && (
+        <Animated.View 
+          style={[
+            styles.levelNameAnimation,
+            {
+              transform: [{ translateX: levelNameAnimation }]
+            }
+          ]}
         >
+<<<<<<< HEAD
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         
@@ -455,10 +1058,27 @@ export default function LevelDetailScreen() {
 >>>>>>> 5d89f88 (feat: 挑战模式进度条燃烧特效)
         </View>
       </View>
+=======
+          <Text style={styles.levelNameAnimationText}>
+            {displayLevelName}
+          </Text>
+        </Animated.View>
+      )}
+      
+      {/* 新的顶部HUD */}
+      <TopHUD
+        progress={progress}
+        gradeText={displayLevelName}
+        nextLevelText={STAGE_NAMES[level + 1] ? extractLevelName(STAGE_NAMES[level + 1]) : `Level ${level + 1}`}
+        onBack={handleBackPress}
+        onFinished={handleLevelComplete}
+      />
+>>>>>>> 2824516 (feature)
 
       {/* 道具工具栏 - 确保在GameBoard之前渲染 */}
       {/* Game Board */}
       <GameBoard
+        ref={gameBoardRef}
         key={boardKey}
         tiles={board.tiles}
         width={board.width}
@@ -473,6 +1093,8 @@ export default function LevelDetailScreen() {
         settings={settings}
         isChallenge={false}
         layoutConfig={board.layoutConfig}
+        currentPage={completedPages + 1}
+        totalPages={totalPages}
       />
 
       {/* Bottom Toolbar - 移到GameBoard下方确保不被覆盖 */}
@@ -557,37 +1179,212 @@ export default function LevelDetailScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.completionModal}>
-            <View style={styles.completionIcon}>
-              <Ionicons name="trophy" size={60} color="#FFD700" />
+            {/* 新的结算页面背景图片 */}
+            <Image
+              source={{ uri: 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/cg.jpeg' }}
+              style={styles.completionBackground}
+              resizeMode="cover"
+              pointerEvents="none"
+            />
+            
+            {/* 黑板区域文本框 */}
+            <View style={styles.blackboardTextContainer}>
+              <View style={styles.textContent}>
+                {/* 当前关卡名称 - 带动画 */}
+                {(textAnimationPhase === 'initial' || textAnimationPhase === 'currentBounce' || textAnimationPhase === 'currentExit') && (
+                  <Animated.View
+                    style={{
+                      opacity: currentTextOpacity,
+                      transform: [
+                        { scale: currentTextScale },
+                        { 
+                          rotate: currentTextRotation.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0deg', '15deg'],
+                          })
+                        },
+                      ],
+                    }}
+                  >
+                    <Text style={styles.blackboardText}>{displayLevelName}!</Text>
+                  </Animated.View>
+                )}
+                
+                {/* 下一关卡名称 - 带动画 */}
+                {(textAnimationPhase === 'nextEnter' || textAnimationPhase === 'final') && (
+                  <Animated.View
+                    style={{
+                      opacity: nextTextOpacity,
+                      transform: [
+                        { scale: nextTextScale },
+                        { translateY: nextTextTranslateY },
+                      ],
+                    }}
+                  >
+                    <Text 
+                      style={styles.blackboardText}
+                      onLayout={(event) => {
+                        const { width } = event.nativeEvent.layout;
+                        setTextWidth(width);
+                      }}
+                    >
+                      {STAGE_NAMES[level + 1] ? extractLevelName(STAGE_NAMES[level + 1]) : `Level ${level + 1}`}!
+                    </Text>
+                    <View style={styles.doubleLines}>
+                      <View style={[styles.line, { width: textWidth || 100 }]} />
+                      <View style={[styles.line, { width: textWidth || 100 }]} />
+                    </View>
+                  </Animated.View>
+                )}
+                
+                {/* 闪光粒子效果 */}
+                {textAnimationPhase === 'nextEnter' && sparkleParticles.current.map((particle) => (
+                  <Animated.View
+                    key={particle.id}
+                    style={{
+                      position: 'absolute',
+                      left: `${particle.x}%`,
+                      top: `${particle.y}%`,
+                      width: particle.size,
+                      height: particle.size,
+                      backgroundColor: particle.color,
+                      borderRadius: particle.size / 2,
+                      opacity: particle.animation.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [0, 1, 0],
+                      }),
+                      transform: [
+                        {
+                          scale: particle.animation.interpolate({
+                            inputRange: [0, 0.5, 1],
+                            outputRange: [0, 1.5, 0],
+                          }),
+                        },
+                      ],
+                    }}
+                  />
+                ))}
+              </View>
             </View>
             
-            <Text style={styles.completionTitle}>🎉 Level Complete!</Text>
-            <Text style={styles.completionMessage}>
-              Excellent work! You've cleared all the tiles.
-            </Text>
-            
-            <View style={styles.rewardInfo}>
-              <Ionicons name="gift" size={20} color="#4CAF50" />
-              <Text style={styles.rewardText}>+1 Change & +1 Split Item earned!</Text>
-            </View>
-            
-            <View style={styles.completionButtons}>
-              <TouchableOpacity 
-                style={styles.nextLevelButton}
-                onPress={handleNextLevel}
+            {/* 返回主页面按钮 */}
+            <TouchableOpacity 
+              style={[
+                styles.returnButton,
+                returnButtonPressed && styles.returnButtonPressed
+              ]}
+              onPress={() => {
+                setShowCompletionModal(false);
+                router.replace('/(tabs)/');
+              }}
+              onPressIn={() => setReturnButtonPressed(true)}
+              onPressOut={() => setReturnButtonPressed(false)}
+            >
+              <LinearGradient
+                colors={returnButtonPressed ? ['#FF8A65', '#FF7043'] : ['#FF7043', '#FF5722']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.buttonGradient}
               >
-                <Ionicons name="arrow-forward" size={20} color="white" />
-                <Text style={styles.nextLevelButtonText}>Next Level</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.backToLevelsButton}
-                onPress={handleBackToLevels}
+                <Text style={styles.returnButtonText}>Return</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            {/* 下一关按钮 */}
+            <TouchableOpacity 
+              style={[
+                styles.nextButton,
+                nextButtonPressed && styles.nextButtonPressed
+              ]}
+              onPress={handleNextLevel}
+              onPressIn={() => setNextButtonPressed(true)}
+              onPressOut={() => setNextButtonPressed(false)}
+            >
+              <LinearGradient
+                colors={nextButtonPressed ? ['#42A5F5', '#1565C0'] : ['#1565C0', '#0D47A1']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.buttonGradient}
               >
-                <Ionicons name="list" size={20} color="#666" />
-                <Text style={styles.backToLevelsButtonText}>Level List</Text>
-              </TouchableOpacity>
-            </View>
+                <Text style={styles.nextButtonText}>Next</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            {/* 庆祝粒子效果 - 第一层（慢速小粒子） */}
+            {celebrationParticles1.map((particle) => (
+              <Animated.View
+                key={particle.id}
+                style={[
+                  styles.celebrationParticle,
+                  {
+                    position: 'absolute',
+                    left: `${particle.x}%`,
+                    top: '-10%', // 固定起始位置
+                    backgroundColor: particle.color,
+                    width: particle.size,
+                    height: particle.size,
+                    borderRadius: particle.size / 2,
+                    transform: [
+                      { rotate: `${particle.rotation}deg` },
+                      {
+                        translateY: particle.animation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 120], // 从0到120%的下落距离
+                        }),
+                      },
+                      {
+                        translateX: particle.animation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, Math.random() * 30 - 15], // 较小的左右摆动
+                        }),
+                      },
+                    ],
+                    opacity: particle.animation.interpolate({
+                      inputRange: [0, 0.9, 1],
+                      outputRange: [0.8, 0.8, 0.8], // 稍微透明，营造层次感
+                    }),
+                  },
+                ]}
+              />
+            ))}
+            
+            {/* 庆祝粒子效果 - 第二层（快速大粒子） */}
+            {celebrationParticles2.map((particle) => (
+              <Animated.View
+                key={particle.id}
+                style={[
+                  styles.celebrationParticle,
+                  {
+                    position: 'absolute',
+                    left: `${particle.x}%`,
+                    top: '-10%', // 固定起始位置
+                    backgroundColor: particle.color,
+                    width: particle.size,
+                    height: particle.size,
+                    borderRadius: particle.size / 2,
+                    transform: [
+                      { rotate: `${particle.rotation}deg` },
+                      {
+                        translateY: particle.animation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 120], // 从0到120%的下落距离
+                        }),
+                      },
+                      {
+                        translateX: particle.animation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, Math.random() * 60 - 30], // 较大的左右摆动
+                        }),
+                      },
+                    ],
+                    opacity: particle.animation.interpolate({
+                      inputRange: [0, 0.9, 1],
+                      outputRange: [1, 1, 1], // 完全不透明，突出前景
+                    }),
+                  },
+                ]}
+              />
+            ))}
+            
           </View>
         </View>
       </Modal>
@@ -637,7 +1434,7 @@ const styles = StyleSheet.create({
     top: 12,
     zIndex: 10,
     padding: 8,
-    backgroundColor: 'transparent', // 取消背景，只保留箭头
+    backgroundColor: '#FFD700', // 黄色背景
     borderRadius: 8,
     marginTop: -13, // 与人物保持平行（characterContainer的top值）
   },
@@ -651,6 +1448,21 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     justifyContent: 'center',
     marginTop: 1, // 向下移动1px
+  },
+  pageProgressContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  pageProgressText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   progressContainer: {
     flexDirection: 'row',
@@ -782,75 +1594,73 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'center', // 改为居中对齐
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 34, // 增加底部安全区域
-    backgroundColor: '#6B7B8A', // 改为与背景一致的灰蓝色
-    borderTopWidth: 1,
-    borderTopColor: '#5A6B7A', // 稍微深一点的灰蓝色边框
-    gap: 20,
+    paddingHorizontal: 20, // 减少左右边距
+    paddingVertical: 20,
+    paddingBottom: 40, // 增加底部安全区域
+    backgroundColor: 'transparent', // 改为透明背景
+    gap: 30, // 添加两个按钮之间的间距
     zIndex: 1000,
     elevation: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
   bottomToolButton: {
-    flexDirection: 'row',
+    width: 64,
+    height: 64,
+    backgroundColor: '#2196F3', // 主蓝色背景
+    borderRadius: 14,
     alignItems: 'center',
-    backgroundColor: '#2D6B4A', // 绿色背景
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    gap: 8,
-    minWidth: 120,
     justifyContent: 'center',
-    borderWidth: 4, // 加粗木质边框
-    borderColor: '#8B5A2B', // 木质边框
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   toolButtonActive: {
-    backgroundColor: '#1B5E20', // 深绿色激活状态
-    borderColor: '#8B5A2B',
+    backgroundColor: '#1976D2', // 深蓝色激活状态
+    transform: [{ scale: 0.95 }], // 按压时稍微缩放
+    shadowOpacity: 0.2, // 减弱阴影
   },
   toolButtonDisabled: {
-    backgroundColor: '#4A4A4A', // 深灰色禁用状态
-    borderColor: '#6B6B6B',
+    backgroundColor: '#B0BEC5', // 浅灰蓝色禁用状态
+    shadowOpacity: 0, // 去除阴影
   },
   toolButtonText: {
-    fontSize: 16,
-    color: 'white', // 白色字体
-    fontWeight: '500',
+    display: 'none', // 隐藏文字，只显示图标
   },
   toolButtonTextActive: {
-    color: 'white',
+    display: 'none',
   },
   toolButtonTextDisabled: {
-    color: '#BDBDBD', // 灰色禁用文字
+    display: 'none',
   },
   toolButtonCount: {
-    fontSize: 14,
-    color: '#333', // 深色文字，在米色背景上更清晰
-    backgroundColor: '#FFF9E6', // 与数字方块背景保持一致
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#000', // 黑色圆形背景
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
     textAlign: 'center',
-    borderWidth: 1,
-    borderColor: '#333', // 添加边框，与数字方块样式一致
+    lineHeight: 20,
+    borderWidth: 2,
+    borderColor: 'white', // 白色边框
   },
   toolButtonCountActive: {
-    backgroundColor: '#FFF9E6', // 保持米色背景
-    color: '#333', // 深色文字
-    borderColor: '#333',
+    backgroundColor: '#000',
+    color: 'white',
+    borderColor: 'white',
   },
   toolButtonCountDisabled: {
-    backgroundColor: '#F5F5F5', // 灰色禁用背景
-    color: '#ccc',
-    borderColor: '#ccc',
+    backgroundColor: '#666',
+    color: 'white',
+    borderColor: 'white',
   },
   modalOverlay: {
     flex: 1,
@@ -860,16 +1670,19 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   completionModal: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
+    width: '90%',
+    height: '75%',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
-    minWidth: 300,
+    justifyContent: 'center',
+    position: 'relative',
+    backgroundColor: '#6B7B8A', // 游戏页面的灰色背景
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  completionBackground: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
   },
   completionIcon: {
     marginBottom: 16,
@@ -934,5 +1747,293 @@ const styles = StyleSheet.create({
   backToLevelsButtonText: {
     color: '#666',
     fontSize: 16,
+  },
+  returnButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    borderRadius: 25,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden', // 确保渐变效果正确显示
+  },
+  returnButtonPressed: {
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
+    transform: [{ scale: 0.95 }], // 轻微缩放效果
+  },
+  returnButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  nextButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    borderRadius: 25,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden', // 确保渐变效果正确显示
+  },
+  nextButtonPressed: {
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
+    transform: [{ scale: 0.95 }], // 轻微缩放效果
+  },
+  buttonGradient: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
+  },
+  nextButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  currentLevelTextContainer: {
+    position: 'absolute',
+    top: '65%',
+    left: '25%',
+    backgroundColor: '#000000',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    maxWidth: '30%',
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  nextLevelTextContainer: {
+    position: 'absolute',
+    top: '62.5%',
+    right: '13%',
+    backgroundColor: '#000000',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    maxWidth: '25%',
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  levelText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    lineHeight: 16,
+  },
+  levelNameAnimation: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateY: -30 }], // 垂直居中偏移
+  },
+  levelNameAnimationText: {
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    color: '#FF0000', // 红色文字
+    fontSize: 28,
+    fontWeight: 'bold',
+    paddingHorizontal: 50,
+    paddingVertical: 25,
+    borderRadius: 0, // 改为规整的长方形
+    textAlign: 'center',
+    borderWidth: 1, // 改为细线
+    borderColor: '#FFFFFF', // 白色边框
+    minWidth: 300,
+    minHeight: 80,
+    margin: 8, // 添加外边距，让白色线框与边缘有间距
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  
+  // 编辑模式样式
+  editingModeContainer: {
+    backgroundColor: 'rgba(46, 204, 113, 0.40)', // 绿色半透明
+    borderWidth: 3,
+    borderColor: '#1E90FF',
+    borderStyle: 'dashed',
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+  },
+  editingModeContainerNext: {
+    backgroundColor: 'rgba(255, 140, 0, 0.40)', // 橙色半透明
+    borderWidth: 3,
+    borderColor: '#FF8C00',
+    borderStyle: 'dashed',
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+  },
+  editingModeText: {
+    textShadowColor: '#000',
+    textShadowRadius: 2,
+    textShadowOffset: { width: 0, height: 1 },
+  },
+  
+  // 类型标签
+  typeTag: {
+    position: 'absolute',
+    top: -18,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  typeTagText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  
+  // 十字准星
+  crosshair: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  crossH: {
+    position: 'absolute',
+    width: 18,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  crossV: {
+    position: 'absolute',
+    width: 2,
+    height: 18,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  
+  // 黑板区域文本框样式
+  blackboardTextContainer: {
+    position: 'absolute',
+    top: '39%', // 再向上移动20px (从42%改为39%)
+    left: '50%',
+    transform: [{ translateX: -120 }, { translateY: -60 }],
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 240, // 增加宽度
+    height: 120, // 增加高度
+  },
+  gradientBorder: {
+    borderRadius: 12,
+    padding: 8, // 进一步增加渐变边框的厚度
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    // 确保渐变边框在四周都显示
+    borderWidth: 0,
+  },
+  textContent: {
+    backgroundColor: 'transparent', // 透明背景
+    borderRadius: 8,
+    paddingHorizontal: 22, // 增加水平内边距（20+2）
+    paddingVertical: 18, // 增加垂直内边距（16+2）
+    alignItems: 'center',
+    justifyContent: 'center',
+    // 确保内容区域不会覆盖渐变边框
+    flex: 1,
+    width: '100%',
+    minHeight: 84, // 增加最小高度（80+4）
+    // 透明边缘
+    borderWidth: 0,
+  },
+  blackboardText: {
+    fontSize: 25, // 增加字体大小（20+5）
+    fontWeight: 'bold',
+    color: '#FFA500', // 改为橙黄色字体
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    marginVertical: 4,
+    // 防止文字溢出
+    flexWrap: 'wrap',
+    maxWidth: '100%',
+  },
+  arrowIcon: {
+    marginVertical: 8,
+  },
+  completedText: {
+    textDecorationLine: 'line-through', // 添加删除线
+    textDecorationColor: '#FF0000', // 红色删除线
+    textDecorationStyle: 'solid',
+  },
+  celebrationParticle: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  doubleLines: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 2,
+  },
+  line: {
+    height: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    elevation: 2,
   },
 });

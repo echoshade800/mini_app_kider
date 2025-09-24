@@ -4,7 +4,7 @@
  * Features: 完全响应式、最小28px方块、棋盘比矩形大一圈
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { 
   View, 
   Text, 
@@ -16,6 +16,7 @@ import {
   findNodeHandle,
   InteractionManager
 } from 'react-native';
+import { Audio } from 'expo-av';
 
 const snap = v => PixelRatio.roundToNearestPixel(v);
 const measureInWindowAsync = ref =>
@@ -30,11 +31,7 @@ function logDiff(tag, exp, mea, eps = 0.6) {
   const dw = +(mea.width - exp.width).toFixed(2);
   const dh = +(mea.height - exp.height).toFixed(2);
   const off = Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dw), Math.abs(dh));
-  if (off > eps) {
-    console.warn(`❗[${tag}] mismatch`, { dx, dy, dw, dh, exp, mea });
-  } else {
-    console.log(`✅[${tag}] ok`, { dx, dy, dw, dh });
-  }
+  // 调试日志已移除
 }
 
 // 重试辅助：rAF → runAfterInteractions → setTimeout，最多 N 次
@@ -105,28 +102,174 @@ const __mkTileLayoutLogger = (id, row, col, exp) => e => {
   const cx = x + width / 2, cy = y + height / 2;        // 实际中心
   const ex = exp.x + exp.width / 2, ey = exp.y + exp.height / 2; // 期望中心
   const dx = cx - ex, dy = cy - ey;                     // 偏移
-  console.log(`Tile#${id} (r${row},c${col})  Δx=${dx>=0?'+':''}${__fx(dx)}  Δy=${dy>=0?'+':''}${__fx(dy)}`);
+  // 调试日志已移除
 };
 
-const GameBoard = ({ 
-  tiles, 
-  width, 
-  height, 
-  onTilesClear, 
-  disabled, 
-  itemMode, 
-  onTileClick,
-  selectedSwapTile,
-  swapAnimations,
-  fractalAnimations,
-  settings,
-  isChallenge,
-  reshuffleCount,
-  setReshuffleCount,
-  onRescueNeeded,
-  layoutConfig, // 新增：布局配置
-}) => {
+const GameBoard = forwardRef((props, ref) => {
+  const { 
+    tiles, 
+    width, 
+    height, 
+    onTilesClear, 
+    disabled, 
+    itemMode, 
+    onTileClick,
+    selectedSwapTile,
+    swapAnimations,
+    fractalAnimations,
+    settings,
+    isChallenge,
+    reshuffleCount,
+    setReshuffleCount,
+    onRescueNeeded,
+    layoutConfig, // 新增：布局配置
+    currentPage, // 新增：当前页面
+    totalPages, // 新增：总页数
+  } = props;
+  
   const DEBUG = true;
+  
+  // 音效引用
+  const soundRef = useRef(null);
+  const itemSoundRef = useRef(null);
+  const endSoundRef = useRef(null);
+
+  // 加载音效（带备选方案）
+  useEffect(() => {
+    const loadSounds = async () => {
+      try {
+        console.log('🎵 开始加载音效文件...');
+        
+        // 设置音频模式
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false
+        });
+        
+        // 加载消除音效
+        console.log('🎵 加载消除音效: clearcombo.mp3');
+        try {
+          const { sound: clearSound } = await Audio.Sound.createAsync(
+            { uri: 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/clearcombo.mp3' }
+          );
+          soundRef.current = clearSound;
+          console.log('✅ 消除音效加载成功');
+        } catch (clearError) {
+          console.warn('⚠️ 消除音效加载失败:', clearError);
+        }
+        
+        // 加载道具音效
+        console.log('🎵 加载道具音效: changesplit.mp3');
+        try {
+          const { sound: itemSound } = await Audio.Sound.createAsync(
+            { uri: 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/changesplit.mp3' }
+          );
+          itemSoundRef.current = itemSound;
+          console.log('✅ 道具音效加载成功');
+        } catch (itemError) {
+          console.warn('⚠️ 道具音效加载失败:', itemError);
+          console.warn('错误详情:', {
+            message: itemError.message,
+            code: itemError.code,
+            name: itemError.name
+          });
+        }
+        
+        // 加载结束音效
+        console.log('🎵 加载结束音效: end.mp3');
+        try {
+          const { sound: endSound } = await Audio.Sound.createAsync(
+            { uri: 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/end.mp3' }
+          );
+          endSoundRef.current = endSound;
+          console.log('✅ 结束音效加载成功');
+        } catch (endError) {
+          console.warn('⚠️ 结束音效加载失败:', endError);
+          console.warn('错误详情:', {
+            message: endError.message,
+            code: endError.code,
+            name: endError.name
+          });
+        }
+        
+      } catch (error) {
+        console.error('❌ 音效加载失败:', error);
+        console.error('错误详情:', {
+          message: error.message,
+          code: error.code,
+          stack: error.stack
+        });
+      }
+    };
+    
+    loadSounds();
+    
+    return () => {
+      console.log('🎵 清理音效资源...');
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+      if (itemSoundRef.current) {
+        itemSoundRef.current.unloadAsync();
+      }
+      if (endSoundRef.current) {
+        endSoundRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  // 播放消除音效
+  const playClearSound = async () => {
+    try {
+      if (soundRef.current) {
+        console.log('🎵 播放消除音效...');
+        await soundRef.current.replayAsync();
+        console.log('✅ 消除音效播放成功');
+      } else {
+        console.warn('⚠️ 消除音效未加载');
+      }
+    } catch (error) {
+      console.error('❌ 消除音效播放失败:', error);
+    }
+  };
+
+  // 播放道具音效
+  const playItemSound = async () => {
+    try {
+      if (itemSoundRef.current) {
+        console.log('🎵 播放道具音效...');
+        await itemSoundRef.current.replayAsync();
+        console.log('✅ 道具音效播放成功');
+      } else {
+        console.warn('⚠️ 道具音效未加载');
+      }
+    } catch (error) {
+      console.error('❌ 道具音效播放失败:', error);
+    }
+  };
+
+  // 播放结束音效
+  const playEndSound = async () => {
+    try {
+      if (endSoundRef.current) {
+        console.log('🎵 播放结束音效...');
+        await endSoundRef.current.replayAsync();
+        console.log('✅ 结束音效播放成功');
+      } else {
+        console.warn('⚠️ 结束音效未加载');
+      }
+    } catch (error) {
+      console.error('❌ 结束音效播放失败:', error);
+    }
+  };
+
+  // 暴露给父组件的方法
+  useImperativeHandle(ref, () => ({
+    playEndSound
+  }));
 
   // 父容器 ref
   const boardRef = useRef(null);
@@ -164,13 +307,12 @@ const GameBoard = ({
   // —— 诊断主流程（几乎不变，但不再"首块未测到"）
   const runDiagnostics = async (reason = 'onLayout') => {
     if (!DEBUG) return 0;
-    console.log(`🧪 DIAG start (${reason})`);
+    // 调试日志已移除
 
     const { boardBox, measured } = await measureAllOnce();
 
     if (!tiles.length) {
-      console.warn('⚠️ 无 tiles，跳过对比');
-      console.log('🧪 DIAG end\n');
+      // 调试日志已移除
       return 0;
     }
 
@@ -191,15 +333,14 @@ const GameBoard = ({
     const exp0  = layoutConfig.getTilePosition(first.row, first.col);
     const mea0  = measured.get(first.id);
     if (!mea0) {
-      console.warn('❗ 首块仍未测到：可能原因 = (1) 父容器/首块带 transform 且动画未结束 (2) 该 tile 暂未渲染 (3) 该 tile 在 ScrollView/FlatList 视窗外 (4) 该视图被 pointerEvents=none 拦截或透明度动画中');
-      console.log('🧪 DIAG end\n');
+      // 调试日志已移除
       return 0;
     }
 
     // 推断父容器偏移，把期望(容器) → 期望(屏幕)
     const offsetX = mea0.x - exp0.x;
     const offsetY = mea0.y - exp0.y;
-    console.log('📐 inferred container offset', { offsetX:+offsetX.toFixed(2), offsetY:+offsetY.toFixed(2) });
+    // 调试日志已移除
 
     let mismatches = 0;
     tiles.forEach(t => {
@@ -215,45 +356,45 @@ const GameBoard = ({
       
       if (off > 0.6) {
         mismatches++;
-        console.warn(`❗[tile#${t.id} (${t.row},${t.col})] mismatch`, { dx, dy, dw, dh, exp, mea });
+        // 调试日志已移除
       } else {
-        console.log(`✅[tile#${t.id} (${t.row},${t.col})] ok`, { dx, dy, dw, dh });
+        // 调试日志已移除
       }
     });
 
-    console.log(`🧪 DIAG end (${reason}) mismatches=${mismatches}\n`);
+    // 调试日志已移除
     return mismatches;
   };
 
   // —— 稳定后诊断：等动画停稳再测
   async function runDiagnosticsWhenStable(reason='afterStable') {
-    console.log(`🧪 DIAG(STABLE) wait -> ${reason}`);
+    // 调试日志已移除
 
     // 选一个"可见"的基准 tile（避免 tiles[0] 在屏外/为空）
     let baseTile = null;
     for (const t of tiles) { baseTile = t; break; }
-    if (!baseTile) { console.warn('⚠️ 无 tiles'); return; }
+    if (!baseTile) { return; }
 
     const baseRef = tileRefs.current.get(baseTile.id);
-    if (!baseRef?.current) { console.warn('⚠️ 基准 tile ref 不可用'); return; }
+    if (!baseRef?.current) { return; }
 
     const measureBase = () => measureInWindowAsync(baseRef);
 
     const rect = await waitForStableTile(measureBase, { maxWaitMs: 5000 });
     if (!rect) {
-      console.warn('❗ 基准 tile 始终测不到（5s 超时）。极可能在动画/未渲染/屏外。');
+      // 调试日志已移除
       return;
     }
 
     // 如果最后一次仍然在动（waitForStableTile 会返回 last），这里提示一下
-    console.log('📏 基准 tile（稳定或超时）:', rect);
+    // 调试日志已移除
 
     // 稳定后再调用你已有的 runDiagnostics（它里头会遍历所有 tile 并输出 ok/mismatch）
     const mm = await runDiagnostics(reason);
     if (mm === 0) {
-      console.log('✅ STABLE 后无偏移 → 高概率是动画/transform 未停造成的假偏移。');
+      // 调试日志已移除
     } else {
-      console.warn('❗ STABLE 后仍有偏移 → 真正的坐标/步长问题，继续查 step/gap/父容器原点。');
+      // 调试日志已移除
     }
   }
 
@@ -271,6 +412,19 @@ const GameBoard = ({
       // setAllTilesLaidOut(false);
     }
   }, [DEBUG, allTilesLaidOut]);
+
+  // 挑战模式无解检测
+  useEffect(() => {
+    if (isChallenge && tiles && tiles.length > 0 && width && height) {
+      const hasValidMoves = hasValidCombinations(tiles, width, height);
+      console.log('🎯 GameBoard：挑战模式无解检测', hasValidMoves ? '有解' : '无解');
+      
+      if (!hasValidMoves && onRescueNeeded) {
+        console.log('🎯 GameBoard：检测到无解情况，触发救援机制');
+        onRescueNeeded();
+      }
+    }
+  }, [isChallenge, tiles, width, height, onRescueNeeded]);
   const [selection, setSelection] = useState(null);
   const [hoveredTiles, setHoveredTiles] = useState(new Set());
   const [explosionAnimation, setExplosionAnimation] = useState(null);
@@ -313,6 +467,9 @@ const GameBoard = ({
   const resetSelection = () => {
     setSelection(null);
     hoveredTiles.forEach(index => {
+      // 播放消除音效
+      playClearSound();
+      
       // 直接调用父组件的清除回调，不做任何额外处理
       if (onTilesClear) {
         onTilesClear(clearedPositions);
@@ -423,6 +580,9 @@ const GameBoard = ({
           useNativeDriver: false,
         }),
       ]).start(() => {
+        // 播放消除音效
+        playClearSound();
+        
         setSelection(null);
         onTilesClear(tilePositions);
       });
@@ -584,6 +744,9 @@ const GameBoard = ({
   const handleTilePress = (row, col, value) => {
     
     if (!itemMode || disabled) return;
+    
+    // 播放道具音效
+    playItemSound();
     
     if (onTileClick) {
       onTileClick(row, col, value);
@@ -747,6 +910,18 @@ const GameBoard = ({
 
     const handleTileTouch = itemMode ? () => handleTilePress(row, col, value) : undefined;
     
+    // 挑战模式缩放逻辑
+    const originalTileSize = layoutConfig.tileSize;
+    const targetTileSize = 30; // 目标方块大小
+    const scaleFactor = targetTileSize / originalTileSize;
+    const offsetX = (originalTileSize - targetTileSize) / 2;
+    const offsetY = (originalTileSize - targetTileSize) / 2;
+    
+    // 根据是否为挑战模式决定使用原始大小还是缩放后的大小
+    const finalTileSize = isChallenge ? targetTileSize : originalTileSize;
+    const finalOffsetX = isChallenge ? offsetX : 0;
+    const finalOffsetY = isChallenge ? offsetY : 0;
+    
     return (
       <View
         ref={getTileRef(`${row}-${col}`)}
@@ -757,10 +932,10 @@ const GameBoard = ({
         key={`${row}-${col}`}
         style={{
           position: 'absolute',
-          left: tilePos.x,
-          top: tilePos.y,
-          width: tilePos.width,
-          height: tilePos.height,
+          left: tilePos.x + finalOffsetX, // 添加偏移确保居中
+          top: tilePos.y + finalOffsetY,
+          width: finalTileSize, // 使用最终大小
+          height: finalTileSize,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -782,7 +957,7 @@ const GameBoard = ({
           <Text style={[
             styles.tileText,
             { 
-              fontSize: Math.max(12, tilePos.width * 0.5),
+              fontSize: Math.max(12, finalTileSize * 0.5), // 使用最终大小计算字体
               fontWeight: isInSelection ? 'bold' : 'normal',
             }
           ]}>
@@ -817,8 +992,8 @@ const GameBoard = ({
             {...panResponder.panHandlers}
             style={{
               position: 'absolute',
-              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
-              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding,
+              left: layoutConfig.woodFrameWidth + layoutConfig.boardPadding - 12, // 再向左移动2px (-10 - 2 = -12)
+              top: layoutConfig.woodFrameWidth + layoutConfig.boardPadding - 12, // 再向上移动2px (-10 - 2 = -12)
               width: layoutConfig.contentWidth - layoutConfig.boardPadding * 2,
               height: layoutConfig.contentHeight - layoutConfig.boardPadding * 2,
             }}
@@ -957,13 +1132,22 @@ const GameBoard = ({
                 </View>
               </Animated.View>
             )}
+            
+            {/* Page indicator - bottom right corner */}
+            {currentPage && totalPages && totalPages > 1 && (
+              <View style={styles.pageIndicator}>
+                <Text style={styles.pageIndicatorText}>
+                  {currentPage}/{totalPages}
+                </Text>
+              </View>
+            )}
             </View>
           </View>
         </View>
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   fullScreenContainer: {
@@ -1065,6 +1249,23 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
+  },
+  pageIndicator: {
+    position: 'absolute',
+    bottom: -32,  // 再向下移动2px (-30 - 2 = -32)
+    right: 0,     // 向右移动10px (10 - 10 = 0)
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pageIndicatorText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
 

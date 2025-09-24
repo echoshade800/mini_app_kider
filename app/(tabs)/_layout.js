@@ -39,6 +39,8 @@ export default function TabLayout() {
           tabBarIcon: ({ size, color }) => (
             <Ionicons name="timer" size={size} color={color} />
           ),
+          gestureEnabled: false, // 禁用滑动返回手势
+          gestureDirection: 'horizontal', // 禁用水平滑动
         }}
       />
       <Tabs.Screen

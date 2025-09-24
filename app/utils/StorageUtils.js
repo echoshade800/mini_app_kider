@@ -44,7 +44,6 @@ class StorageUtils {
       const raw = await AsyncStorage.getItem('userData');
       return raw ? JSON.parse(raw) : null;
     } catch (error) {
-      console.error('Failed to get user data:', error);
       return null;
     }
   }
@@ -55,7 +54,6 @@ class StorageUtils {
       await AsyncStorage.setItem('userData', JSON.stringify(userData || {}));
       return true;
     } catch (error) {
-      console.error('Failed to save user data:', error);
       return false;
     }
   }
@@ -66,7 +64,6 @@ class StorageUtils {
       const raw = await AsyncStorage.getItem(`${this.miniAppName}info`);
       return raw ? JSON.parse(raw) : null;
     } catch (error) {
-      console.error('Failed to get info blob:', error);
       return null;
     }
   }
@@ -79,7 +76,6 @@ class StorageUtils {
       await AsyncStorage.setItem(`${this.miniAppName}info`, JSON.stringify(merged));
       return true;
     } catch (error) {
-      console.error('Failed to set info blob:', error);
       return false;
     }
   }
@@ -90,7 +86,6 @@ class StorageUtils {
       const raw = await AsyncStorage.getItem(`${this.miniAppName}settings`);
       return raw ? JSON.parse(raw) : null;
     } catch (error) {
-      console.error('Failed to get settings:', error);
       return null;
     }
   }
@@ -103,8 +98,53 @@ class StorageUtils {
       await AsyncStorage.setItem(`${this.miniAppName}settings`, JSON.stringify(merged));
       return true;
     } catch (error) {
-      console.error('Failed to set settings:', error);
       return false;
+    }
+  }
+
+  /** 按日期保存设置 @param {string} date 日期字符串 (YYYYMMDD) @param {Partial<Settings>} settings @returns {Promise<boolean>} */
+  static async setSettingsByDate(date, settings) {
+    try {
+      const key = `${this.miniAppName}settings_${date}`;
+      await AsyncStorage.setItem(key, JSON.stringify(settings || {}));
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /** 按日期加载设置 @param {string} date 日期字符串 (YYYYMMDD) @returns {Promise<Settings|null>} */
+  static async getSettingsByDate(date) {
+    try {
+      const key = `${this.miniAppName}settings_${date}`;
+      const raw = await AsyncStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /** 加载指定日期的设置并应用到当前设置 @param {string} date 日期字符串 (YYYYMMDD) @returns {Promise<boolean>} */
+  static async loadSettingsFromDate(date) {
+    try {
+      const dateSettings = await this.getSettingsByDate(date);
+      if (dateSettings) {
+        return await this.setSettings(dateSettings);
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /** 获取所有保存的日期设置 @returns {Promise<string[]>} */
+  static async getAllSavedDates() {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const dateKeys = keys.filter(key => key.startsWith(`${this.miniAppName}settings_`));
+      return dateKeys.map(key => key.replace(`${this.miniAppName}settings_`, '')).sort();
+    } catch (error) {
+      return [];
     }
   }
 }

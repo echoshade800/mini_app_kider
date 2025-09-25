@@ -473,8 +473,11 @@ export default function LevelDetailScreen() {
   // 页面获得焦点时刷新棋盘
   useFocusEffect(
     useCallback(() => {
-      generateNewBoard();
-    }, [generateNewBoard])
+      // 只有在没有显示完成弹窗时才重新生成棋盘
+      if (!showCompletionModal) {
+        generateNewBoard();
+      }
+    }, [generateNewBoard, showCompletionModal])
   );
 
   // 关卡名称动画效果

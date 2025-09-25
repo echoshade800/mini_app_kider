@@ -49,6 +49,7 @@ export const useGameStore = create((set, get) => ({
           swapMasterItems: 3, // SwapMaster 道具数量
           splitItems: 2, // Split 道具数量
           lastPlayedLevel: 1,
+          hasSeenSimpleRules: false, // 是否已看过简约规则介绍
         };
         await StorageUtils.setData(gameData);
       }
@@ -115,6 +116,17 @@ export const useGameStore = create((set, get) => ({
     }
   },
 
+  markSimpleRulesSeen: async () => {
+    try {
+      const currentData = get().gameData || {};
+      const updatedData = { ...currentData, hasSeenSimpleRules: true };
+      await StorageUtils.setData(updatedData);
+      set({ gameData: updatedData });
+    } catch (error) {
+      set({ error: error.message });
+    }
+  },
+
   resetDemoData: async () => {
     try {
       // Reset game data
@@ -124,6 +136,7 @@ export const useGameStore = create((set, get) => ({
         swapMasterItems: 3,
         splitItems: 2,
         lastPlayedLevel: 1,
+        hasSeenSimpleRules: false, // 重置简约规则状态
       };
       
       // Reset settings

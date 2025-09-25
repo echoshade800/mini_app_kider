@@ -14,45 +14,33 @@ import {
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import StorageUtils from '../utils/StorageUtils';
-import { STAGE_NAMES } from '../utils/stageNames';
+import { useGameStore } from '../store/gameStore';
 
 const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/maintable.webp';
 
 const { height } = Dimensions.get('window');
 const MAX_PANEL_H = Math.floor(height * 0.55); // 半屏左右
 
-// 可调百分比热区（基于图片内按钮的视觉位置）
-const HITBOXES = {
-  level:    { x: 0.00, y: 0.82, w: 0.45, h: 0.12 }, // 左按钮 - 延伸到屏幕左边缘
-  challenge:{ x: 0.55, y: 0.82, w: 0.45, h: 0.12 }  // 右按钮 - 延伸到屏幕右边缘
-};
-
 export default function Home() {
+  const { gameData, markSimpleRulesSeen } = useGameStore();
   const [latestLevelName, setLatestLevelName] = useState('Baby Steps');
   const [iq, setIq] = useState(0);
   const [showGuide, setShowGuide] = useState(false);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [showLevelsList, setShowLevelsList] = useState(false);
-  const [bgSize, setBgSize] = useState({ w: 0, h: 0 });
+  const [showSimpleRules, setShowSimpleRules] = useState(false);
 
-  // 背景图布局回调
-  const onLayoutBG = useCallback(e => {
-    const { width, height } = e.nativeEvent.layout;
-    console.log('Background image size:', { width, height });
-    setBgSize({ w: width, h: height });
-  }, []);
+  // 检测首次启动
+  useEffect(() => {
+    if (gameData && !gameData.hasSeenSimpleRules) {
+      setShowSimpleRules(true);
+    }
+  }, [gameData]);
 
-  // 计算热区绝对像素位置
-  const rect = (r) => {
-    const result = {
-      left:  Math.round(r.x * bgSize.w),
-      top:   Math.round(r.y * bgSize.h),
-      width: Math.round(r.w * bgSize.w),
-      height:Math.round(r.h * bgSize.h),
-    };
-    console.log('Hitbox rect:', r, '->', result);
-    return result;
+  // 处理简约规则弹窗关闭
+  const handleSimpleRulesClose = async () => {
+    setShowSimpleRules(false);
+    await markSimpleRulesSeen();
   };
 
   // 热区点击处理
@@ -97,7 +85,6 @@ export default function Home() {
         style={styles.backgroundImage}
         imageStyle={styles.backgroundImageStyle}
         pointerEvents="none"
-        onLayout={onLayoutBG}
       />
       
       {/* 前景层容器 - 所有交互元素 */}
@@ -132,67 +119,48 @@ export default function Home() {
         </View>
       </View>
 
-      {/* 透明热区 - 覆盖在背景图按钮上，独立于前景层 */}
-      {bgSize.w > 0 && (
-        <>
-          {/* 左：Level Mode 热区（透明） */}
-          <Pressable
-            style={[styles.hit, rect(HITBOXES.level)]}
-            android_ripple={{ color: 'rgba(255,255,255,0.15)', borderless: false }}
-            onPressIn={() => {
-              console.log('Level Mode onPressIn triggered');
-            }}
-            onPress={() => {
-              console.log('Level Mode onPress triggered, navigating to:', `/details/${currentLevel}`);
-              press(`/details/${currentLevel}`);
-            }}
-            onPressOut={() => {
-              console.log('Level Mode onPressOut triggered');
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Level Mode"
-            hitSlop={12}
-          />
-          
-          {/* 右：Challenge Mode 热区（透明） */}
-          <Pressable
-            style={[styles.hit, rect(HITBOXES.challenge)]}
-            android_ripple={{ color: 'rgba(255,255,255,0.15)', borderless: false }}
-            onPressIn={() => {
-              console.log('Challenge Mode onPressIn triggered');
-            }}
-            onPress={() => {
-              console.log('Challenge Mode onPress triggered, navigating to:', '/(tabs)/challenge');
-              press('/(tabs)/challenge');
-            }}
-            onPressOut={() => {
-              console.log('Challenge Mode onPressOut triggered');
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Challenge Mode"
-            hitSlop={12}
-          />
-        </>
-      )}
-
-      {/* 关卡列表按钮 - 位于闯关模式按钮右下方 */}
-      {bgSize.w > 0 && (
+      {/* 游戏模式按钮 */}
+      <View style={styles.gameModeButtons}>
+        {/* Level Mode 按钮 - 红色 */}
         <TouchableOpacity
-          style={[styles.levelListButton, {
-            left: Math.round(0.45 * bgSize.w) - 25, // 闯关模式按钮右边缘，向左移动25px（10px + 5px + 10px）
-            top: Math.round(0.94 * bgSize.h) - 115,  // 闯关模式按钮下方，向上移动115px（10px + 50px + 60px - 5px）
-          }]}
-          onPress={() => setShowLevelsList(true)}
-          accessibilityLabel="关卡列表"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.levelModeButton}
+          onPress={() => {
+            console.log('Level Mode button pressed, navigating to:', `/details/${currentLevel}`);
+            press(`/details/${currentLevel}`);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Level Mode"
         >
-          <View style={styles.hamburgerIcon}>
-            <View style={styles.hamburgerLine} />
-            <View style={styles.hamburgerLine} />
-            <View style={styles.hamburgerLine} />
-          </View>
+          <Text style={styles.gameModeButtonText}>Level Mode</Text>
         </TouchableOpacity>
-      )}
+        
+        {/* Challenge Mode 按钮 - 蓝色 */}
+        <TouchableOpacity
+          style={styles.challengeModeButton}
+          onPress={() => {
+            console.log('Challenge Mode button pressed, navigating to:', '/(tabs)/challenge');
+            press('/(tabs)/challenge');
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Challenge Mode"
+        >
+          <Text style={styles.gameModeButtonText}>Challenge Mode</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 关卡列表按钮 */}
+      <TouchableOpacity
+        style={styles.levelListButton}
+        onPress={() => setShowLevelsList(true)}
+        accessibilityLabel="关卡列表"
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <View style={styles.hamburgerIcon}>
+          <View style={styles.hamburgerLine} />
+          <View style={styles.hamburgerLine} />
+          <View style={styles.hamburgerLine} />
+        </View>
+      </TouchableOpacity>
 
       <Modal
         visible={showGuide}
@@ -283,6 +251,40 @@ export default function Home() {
           </View>
         </View>
       </Modal>
+
+      {/* 简约规则介绍弹窗 */}
+      <Modal
+        visible={showSimpleRules}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleSimpleRulesClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.simpleRulesModal}>
+            <View style={styles.simpleRulesContent}>
+              <Text style={styles.simpleRulesTitle}>🎉 Welcome to KiderCrash!</Text>
+              
+              <View style={styles.simpleRulesText}>
+                <Text style={styles.simpleRulesItem}>🎯 Draw rectangles around numbers that add up to 10</Text>
+                <Text style={styles.simpleRulesItem}>🏆 Complete levels to earn SwapMaster & Split items</Text>
+                <Text style={styles.simpleRulesItem}>⚡ Challenge mode tests your speed and IQ</Text>
+                <Text style={styles.simpleRulesItem}>🧠 Your intelligence grows with every clear!</Text>
+              </View>
+              
+              <TouchableOpacity
+                style={styles.simpleRulesButton}
+                onPress={handleSimpleRulesClose}
+              >
+                <Text style={styles.simpleRulesButtonText}>Let's Play!</Text>
+              </TouchableOpacity>
+              
+              <Text style={styles.simpleRulesNote}>
+                💡 For detailed rules, tap the "I" icon on the main page
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -315,7 +317,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 40,
     paddingBottom: 10,
   },
   topButton: {
@@ -365,30 +367,72 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
-  // 透明热区样式
-  hit: {
+  // 游戏模式按钮容器
+  gameModeButtons: {
     position: 'absolute',
-    // 透明点击区；调试时可打开下面这一行看看是否对齐
-    // backgroundColor: 'rgba(255,0,0,0.3)', // 临时启用红色背景用于调试
-    borderRadius: 28,
-    minHeight: 48,
-    zIndex: 1000, // 确保热区在最上层
+    bottom: 100,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    zIndex: 1000,
+  },
+  // Level Mode 按钮 - 红色
+  levelModeButton: {
+    flex: 1,
+    backgroundColor: '#FF4444',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    marginRight: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  // Challenge Mode 按钮 - 蓝色
+  challengeModeButton: {
+    flex: 1,
+    backgroundColor: '#4444FF',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    marginLeft: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  // 游戏模式按钮文字
+  gameModeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   // 关卡列表按钮样式
   levelListButton: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 50,
+    height: 50,
+    bottom: 20,
+    right: 20,
+    borderRadius: 25,
+    backgroundColor: 'rgba(139, 195, 74, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-    zIndex: 1001, // 确保在热区之上
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
   },
   // 汉堡菜单图标样式
   hamburgerIcon: {
@@ -556,5 +600,69 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  // 简约规则弹窗样式
+  simpleRulesModal: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  simpleRulesContent: {
+    backgroundColor: '#FFF8DC',
+    borderRadius: 20,
+    padding: 30,
+    margin: 20,
+    borderWidth: 3,
+    borderColor: '#D2691E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    alignItems: 'center',
+    maxWidth: '90%',
+  },
+  simpleRulesTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#8B4513',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  simpleRulesText: {
+    marginBottom: 25,
+  },
+  simpleRulesItem: {
+    fontSize: 16,
+    color: '#8B4513',
+    marginBottom: 12,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  simpleRulesButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  simpleRulesButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  simpleRulesNote: {
+    fontSize: 14,
+    color: '#8B4513',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    opacity: 0.8,
   },
 });

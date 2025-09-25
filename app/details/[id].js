@@ -602,7 +602,7 @@ export default function LevelDetailScreen() {
             
             updateGameData({
               maxLevel: newMaxLevel,
-              lastPlayedLevel: level,
+              lastPlayedLevel: level + 1, // 设置为下一关，这样下次闯关会从下一关开始
               swapMasterItems: newSwapMasterItems,
               splitItems: newSplitItems,
             });
@@ -625,7 +625,7 @@ export default function LevelDetailScreen() {
           
           updateGameData({
             maxLevel: newMaxLevel,
-            lastPlayedLevel: level,
+            lastPlayedLevel: level + 1, // 设置为下一关，这样下次闯关会从下一关开始
             swapMasterItems: newSwapMasterItems,
             splitItems: newSplitItems,
           });
@@ -639,6 +639,12 @@ export default function LevelDetailScreen() {
   const handleNextLevel = () => {
     setShowCompletionModal(false);
     const nextLevel = level + 1;
+    
+    // 更新lastPlayedLevel为下一关，这样下次点击闯关模式会从下一关开始
+    updateGameData({
+      lastPlayedLevel: nextLevel,
+    });
+    
     router.replace(`/details/${nextLevel}`);
   };
 
@@ -668,7 +674,7 @@ export default function LevelDetailScreen() {
     
     updateGameData({
       maxLevel: newMaxLevel,
-      lastPlayedLevel: level,
+      lastPlayedLevel: level + 1, // 设置为下一关，这样下次闯关会从下一关开始
       swapMasterItems: newSwapMasterItems,
       splitItems: newSplitItems,
     });

@@ -92,7 +92,8 @@ export default function Home() {
     (async () => {
       try {
         const info = await StorageUtils.getData();
-        const level = info?.maxLevel || 1;
+        // 使用lastPlayedLevel而不是maxLevel，从上次停止的关卡开始
+        const level = info?.lastPlayedLevel || 1;
         setCurrentLevel(level);
         const levelName = level > 200 
           ? `The Last Horizon+${level - 200}`
@@ -105,6 +106,13 @@ export default function Home() {
       }
     })();
   }, []);
+
+  // 检测首次启动，显示简约规则弹窗
+  useEffect(() => {
+    if (gameData && !gameData.hasSeenSimpleRules) {
+      setShowSimpleRules(true);
+    }
+  }, [gameData]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -153,9 +161,26 @@ export default function Home() {
         {/* Level Mode 按钮 - 固定尺寸 */}
         <TouchableOpacity
           style={styles.duckBtn}
-          onPress={() => {
-            console.log('Level Mode button pressed, navigating to:', `/details/${currentLevel}`);
-            press(`/details/${currentLevel}`);
+          onPress={async () => {
+            // 确保从正确的进度开始：优先使用gameData，然后使用currentLevel作为fallback
+            let startLevel = gameData?.lastPlayedLevel;
+            
+            // 如果gameData中没有lastPlayedLevel，尝试从本地存储获取
+            if (!startLevel) {
+              try {
+                const info = await StorageUtils.getData();
+                startLevel = info?.lastPlayedLevel || currentLevel || 1;
+              } catch (error) {
+                console.log('Error getting data from storage:', error);
+                startLevel = currentLevel || 1;
+              }
+            }
+            
+            console.log('Level Mode button pressed, navigating to:', `/details/${startLevel}`);
+            console.log('Game data:', gameData);
+            console.log('Current level state:', currentLevel);
+            console.log('Start level:', startLevel);
+            press(`/details/${startLevel}`);
           }}
           accessibilityRole="button"
           accessibilityLabel="Level Mode"
@@ -264,16 +289,30 @@ export default function Home() {
               contentContainerStyle={styles.levelsGrid}
               showsVerticalScrollIndicator={true}
             >
-              {Array.from({ length: currentLevel }, (_, i) => i + 1).map((level) => (
+              {Array.from({ length: Math.max(gameData?.maxLevel + 1 || 2, 2) }, (_, i) => i + 1).map((level) => (
                 <TouchableOpacity
                   key={level}
-                  style={styles.levelButton}
+                  style={[
+                    styles.levelButton,
+                    level === currentLevel && styles.currentLevelButton,
+                    level > (gameData?.maxLevel || 1) && styles.lockedLevelButton
+                  ]}
                   onPress={() => {
-                    setShowLevelsList(false);
-                    router.push(`/details/${level}`);
+                    // 只能点击已解锁的关卡
+                    if (level <= (gameData?.maxLevel || 1) + 1) {
+                      setShowLevelsList(false);
+                      router.push(`/details/${level}`);
+                    }
                   }}
+                  disabled={level > (gameData?.maxLevel || 1) + 1}
                 >
-                  <Text style={styles.levelButtonText}>{level}</Text>
+                  <Text style={[
+                    styles.levelButtonText,
+                    level === currentLevel && styles.currentLevelButtonText,
+                    level > (gameData?.maxLevel || 1) && styles.lockedLevelButtonText
+                  ]}>
+                    {level}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -520,7 +559,7 @@ const styles = StyleSheet.create({
   // 弹窗样式
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // 降低透明度，从0.6改为0.3
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -671,12 +710,35 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  // 当前关卡按钮样式
+  currentLevelButton: {
+    backgroundColor: '#FF9800', // 橙色突出显示当前关卡
+    borderWidth: 3,
+    borderColor: '#FF5722',
+  },
+  // 锁定关卡按钮样式
+  lockedLevelButton: {
+    backgroundColor: '#9E9E9E', // 灰色表示锁定
+    opacity: 0.6,
+  },
+  // 当前关卡文字样式
+  currentLevelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  // 锁定关卡文字样式
+  lockedLevelButtonText: {
+    color: '#BDBDBD',
+    fontSize: 14,
+    fontWeight: 'normal',
+  },
   // 简约规则弹窗样式
   simpleRulesModal: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    // 移除重复的黑色背景，让modalOverlay处理遮罩
   },
   simpleRulesContent: {
     backgroundColor: '#FFF8DC',

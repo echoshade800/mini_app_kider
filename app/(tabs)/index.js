@@ -15,8 +15,10 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGameStore } from '../store/gameStore';
+import { StorageUtils } from '../utils/StorageUtils';
+import { STAGE_NAMES } from '../utils/stageNames';
 
-const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/maintable.webp';
+const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/bg2.jpeg';
 
 const { height } = Dimensions.get('window');
 const MAX_PANEL_H = Math.floor(height * 0.55); // 半屏左右
@@ -30,12 +32,39 @@ export default function Home() {
   const [showLevelsList, setShowLevelsList] = useState(false);
   const [showSimpleRules, setShowSimpleRules] = useState(false);
 
-  // 检测首次启动
-  useEffect(() => {
-    if (gameData && !gameData.hasSeenSimpleRules) {
-      setShowSimpleRules(true);
+  // 文字自动适配功能
+  const [buttonFontSizes, setButtonFontSizes] = useState({ level: 28, challenge: 28 });
+  
+  // 计算文字大小以适应按钮宽度
+  const calculateFontSize = (text, maxWidth) => {
+    const minFontSize = 20;
+    const maxFontSize = 32;
+    const step = 1;
+    
+    // 估算文字宽度（粗略计算）
+    const estimatedWidth = text.length * 16; // 每个字符约16px宽度（28px字体）
+    
+    if (estimatedWidth <= maxWidth) {
+      return Math.min(maxFontSize, 28);
     }
-  }, [gameData]);
+    
+    // 如果文字太长，按比例缩小
+    const ratio = maxWidth / estimatedWidth;
+    const calculatedSize = Math.floor(28 * ratio);
+    
+    return Math.max(minFontSize, Math.min(maxFontSize, calculatedSize));
+  };
+  
+  // 更新按钮文字大小
+  useEffect(() => {
+    const levelFontSize = calculateFontSize('Level', 260); // 299 - 39 (padding + border)
+    const challengeFontSize = calculateFontSize('Challenge', 260);
+    
+    setButtonFontSizes({
+      level: levelFontSize,
+      challenge: challengeFontSize
+    });
+  }, []);
 
   // 处理简约规则弹窗关闭
   const handleSimpleRulesClose = async () => {
@@ -121,9 +150,9 @@ export default function Home() {
 
       {/* 游戏模式按钮 */}
       <View style={styles.gameModeButtons}>
-        {/* Level Mode 按钮 - 红色 */}
+        {/* Level Mode 按钮 - 固定尺寸 */}
         <TouchableOpacity
-          style={styles.levelModeButton}
+          style={styles.duckBtn}
           onPress={() => {
             console.log('Level Mode button pressed, navigating to:', `/details/${currentLevel}`);
             press(`/details/${currentLevel}`);
@@ -131,12 +160,12 @@ export default function Home() {
           accessibilityRole="button"
           accessibilityLabel="Level Mode"
         >
-          <Text style={styles.gameModeButtonText}>Level Mode</Text>
+          <Text style={[styles.duckBtnLabel, { fontSize: buttonFontSizes.level }]}>Level</Text>
         </TouchableOpacity>
         
-        {/* Challenge Mode 按钮 - 蓝色 */}
+        {/* Challenge Mode 按钮 - 固定尺寸 */}
         <TouchableOpacity
-          style={styles.challengeModeButton}
+          style={styles.duckBtnChallenge}
           onPress={() => {
             console.log('Challenge Mode button pressed, navigating to:', '/(tabs)/challenge');
             press('/(tabs)/challenge');
@@ -144,7 +173,7 @@ export default function Home() {
           accessibilityRole="button"
           accessibilityLabel="Challenge Mode"
         >
-          <Text style={styles.gameModeButtonText}>Challenge Mode</Text>
+          <Text style={[styles.duckBtnLabel, { fontSize: buttonFontSizes.challenge }]}>Challenge</Text>
         </TouchableOpacity>
       </View>
 
@@ -323,13 +352,13 @@ const styles = StyleSheet.create({
   topButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(139, 195, 74, 0.9)', // 柔和的绿色背景
+    borderRadius: 8, // 圆角正方形，圆角半径为8
+    backgroundColor: 'rgba(255, 193, 7, 0.9)', // 柔和的黄色背景
     borderWidth: 2,
-    borderColor: '#8BC34A', // 绿色边框
+    borderColor: '#FFC107', // 黄色边框
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#4CAF50',
+    shadowColor: '#FF9800',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -338,7 +367,7 @@ const styles = StyleSheet.create({
   topButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2E7D32', // 深绿色文字，与绿色背景协调
+    color: '#E65100', // 深橙色文字，与黄色背景协调
   },
   topCenter: {
     flex: 1,
@@ -370,82 +399,123 @@ const styles = StyleSheet.create({
   // 游戏模式按钮容器
   gameModeButtons: {
     position: 'absolute',
-    bottom: 100,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
+    left: 30, // 60 - 30 = 30px，向左移动30px
+    top: '50%',
+    transform: [{ translateY: 60 }], // 40 + 20 = 60px，向下移动20px
+    flexDirection: 'column',
     justifyContent: 'space-between',
+    height: 160, // 两个按钮的高度加上间距
     zIndex: 1000,
   },
-  // Level Mode 按钮 - 红色
-  levelModeButton: {
-    flex: 1,
-    backgroundColor: '#FF4444',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    marginRight: 10,
+  // 新按钮样式 - 固定尺寸 + 立体感
+  duckBtn: {
+    width: 299, // 230 * 1.3 = 299px
+    height: 77,  // 59 * 1.3 = 76.7，调整为77px
+    borderRadius: 22, // 17 * 1.3 = 22.1，调整为22px
+    paddingHorizontal: 18, // 14 * 1.3 = 18.2，调整为18px
+    paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    // Level Mode 主题色 - 胡萝卜橙
+    backgroundColor: '#e77e2c',
+    borderWidth: 5, // 4 * 1.3 = 5.2，调整为5px
+    borderColor: '#a7591e', // 深橙木边框
+    // 立体外观：底部实体投影
+    shadowColor: '#a7591e',
+    shadowOffset: { width: 0, height: 5 }, // 4 * 1.3 = 5.2，调整为5px
+    shadowOpacity: 1,
+    shadowRadius: 0,
     elevation: 8,
+    // 环境阴影
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 9 }, // 7 * 1.3 = 9.1，调整为9px
+    shadowOpacity: 0.18,
+    shadowRadius: 17, // 13 * 1.3 = 16.9，调整为17px
+    elevation: 8,
+    marginBottom: 14, // 11 * 1.3 = 14.3，调整为14px
   },
-  // Challenge Mode 按钮 - 蓝色
-  challengeModeButton: {
-    flex: 1,
-    backgroundColor: '#4444FF',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    marginLeft: 10,
+  duckBtnChallenge: {
+    width: 299, // 230 * 1.3 = 299px
+    height: 77,  // 59 * 1.3 = 76.7，调整为77px
+    borderRadius: 22, // 17 * 1.3 = 22.1，调整为22px
+    paddingHorizontal: 18, // 14 * 1.3 = 18.2，调整为18px
+    paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    // Challenge Mode 主题色 - 湖蓝
+    backgroundColor: '#3c7bc1',
+    borderWidth: 5, // 4 * 1.3 = 5.2，调整为5px
+    borderColor: '#29598a', // 深蓝木边框
+    // 立体外观：底部实体投影
+    shadowColor: '#29598a',
+    shadowOffset: { width: 0, height: 5 }, // 4 * 1.3 = 5.2，调整为5px
+    shadowOpacity: 1,
+    shadowRadius: 0,
     elevation: 8,
+    // 环境阴影
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 9 }, // 7 * 1.3 = 9.1，调整为9px
+    shadowOpacity: 0.18,
+    shadowRadius: 17, // 13 * 1.3 = 16.9，调整为17px
+    elevation: 8,
+    marginBottom: 0, // 最后一个按钮不需要下边距
   },
-  // 游戏模式按钮文字
-  gameModeButtonText: {
+  // 按钮文字样式 - 立体感 + 自动适配
+  duckBtnLabel: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 26, // 20 * 1.3 = 26px
+    fontWeight: '800',
     textAlign: 'center',
+    letterSpacing: 0.5, // 0.4 * 1.3 = 0.52，调整为0.5
+    // 立体文字效果 - React Native只支持单个textShadow
+    textShadowColor: '#000',
+    textShadowOffset: { width: 0, height: 1 }, // 保持1px
+    textShadowRadius: 0,
+    // 确保文字不换行
+    numberOfLines: 1,
+    ellipsizeMode: 'clip',
   },
-  // 关卡列表按钮样式
+  // 关卡列表按钮样式 - 木质纹理边框 + 浅米黄色
   levelListButton: {
     position: 'absolute',
-    width: 50,
-    height: 50,
-    bottom: 20,
-    right: 20,
-    borderRadius: 25,
-    backgroundColor: 'rgba(139, 195, 74, 0.9)',
+    width: 42, // 32 * 1.3 = 41.6，调整为42px
+    height: 42, // 32 * 1.3 = 41.6，调整为42px
+    left: 15, // -5 + 20 = 15px，向右移动20px
+    top: '50%',
+    transform: [{ translateY: 42 }, { scale: 1.3 }], // 22 + 20 = 42px，向下移动20px + 变大0.3倍
+    borderRadius: 9, // 7 * 1.3 = 9.1，调整为9px
+    backgroundColor: '#F7E4B3', // 浅米黄色
     alignItems: 'center',
     justifyContent: 'center',
+    // 木质纹理边框
+    borderWidth: 4, // 3 * 1.3 = 3.9，调整为4px
+    borderColor: '#D2691E', // 浅棕色木质纹理
+    // 内阴影增强立体感
+    shadowColor: '#8B4513',
+    shadowOffset: { width: 0, height: -1 }, // 保持-1px
+    shadowOpacity: 0.6,
+    shadowRadius: 1, // 保持1px
+    elevation: 2,
+    // 整体投影
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 4 }, // 3 * 1.3 = 3.9，调整为4px
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 8, // 6 * 1.3 = 7.8，调整为8px
     elevation: 8,
     zIndex: 1000,
   },
-  // 汉堡菜单图标样式
+  // 汉堡菜单图标样式 - 调整大小以适应按钮缩放
   hamburgerIcon: {
-    width: 20,
-    height: 16,
+    width: 23, // 18 * 1.3 = 23.4，调整为23px
+    height: 20, // 15 * 1.3 = 19.5，调整为20px
     justifyContent: 'space-between',
   },
-  // 汉堡菜单线条样式
+  // 汉堡菜单线条样式 - 深棕色，调整大小以适应按钮缩放
   hamburgerLine: {
-    width: 20,
-    height: 3,
-    backgroundColor: '#2E7D32', // 深绿色
-    borderRadius: 1.5,
+    width: 23, // 18 * 1.3 = 23.4，调整为23px
+    height: 4, // 3 * 1.3 = 3.9，调整为4px
+    backgroundColor: '#5B3A29', // 深棕色线条
+    borderRadius: 1, // 保持1px
   },
   // 弹窗样式
   modalOverlay: {

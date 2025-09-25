@@ -114,6 +114,24 @@ export default function Home() {
     }
   }, [gameData]);
 
+  // 监听gameData变化，更新页面顶部的进度和IQ显示
+  useEffect(() => {
+    if (gameData) {
+      // 更新当前关卡
+      const level = gameData.lastPlayedLevel || 1;
+      setCurrentLevel(level);
+      
+      // 更新关卡名称
+      const levelName = level > 200 
+        ? `The Last Horizon+${level - 200}`
+        : STAGE_NAMES[level] || `Level ${level}`;
+      setLatestLevelName(levelName);
+      
+      // 更新IQ分数
+      setIq(gameData.maxScore || 0);
+    }
+  }, [gameData]);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* 背景层 - 禁用指针事件 */}

@@ -17,8 +17,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGameStore } from '../store/gameStore';
 import { StorageUtils } from '../utils/StorageUtils';
 import { STAGE_NAMES } from '../utils/stageNames';
+import DemoShowcase from '../components/DemoShowcase';
 
-const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/bg2.jpeg';
+const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/maintabletable.webp';
 
 const { height } = Dimensions.get('window');
 const MAX_PANEL_H = Math.floor(height * 0.55); // 半屏左右
@@ -31,6 +32,7 @@ export default function Home() {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [showLevelsList, setShowLevelsList] = useState(false);
   const [showSimpleRules, setShowSimpleRules] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
 
   // 文字自动适配功能
   const [buttonFontSizes, setButtonFontSizes] = useState({ level: 28, challenge: 28 });
@@ -70,6 +72,28 @@ export default function Home() {
   const handleSimpleRulesClose = async () => {
     setShowSimpleRules(false);
     await markSimpleRulesSeen();
+  };
+
+  // 处理演示动画完成
+  const handleDemoComplete = async () => {
+    setShowDemo(false);
+    // 标记演示已完成
+    try {
+      await StorageUtils.setData({ demo_v2_done: true });
+    } catch (error) {
+      console.log('Error saving demo status:', error);
+    }
+  };
+
+  // 处理跳过演示动画
+  const handleDemoSkip = async () => {
+    setShowDemo(false);
+    // 标记演示已完成
+    try {
+      await StorageUtils.setData({ demo_v2_done: true });
+    } catch (error) {
+      console.log('Error saving demo status:', error);
+    }
   };
 
   // 热区点击处理
@@ -130,6 +154,25 @@ export default function Home() {
       // 更新IQ分数
       setIq(gameData.maxScore || 0);
     }
+  }, [gameData]);
+
+  // Check if demo should be shown
+  useEffect(() => {
+    const checkDemoStatus = async () => {
+      try {
+        const data = await StorageUtils.getData();
+        if (!data?.demo_v2_done && gameData) {
+          // 延迟显示演示，让页面先加载完成
+          setTimeout(() => {
+            setShowDemo(true);
+          }, 1000);
+        }
+      } catch (error) {
+        console.log('Error checking demo status:', error);
+      }
+    };
+    
+    checkDemoStatus();
   }, [gameData]);
 
   return (
@@ -371,6 +414,14 @@ export default function Home() {
           </View>
         </View>
       </Modal>
+
+      {/* 演示动画 */}
+      <DemoShowcase
+        visible={showDemo}
+        onComplete={handleDemoComplete}
+        onSkip={handleDemoSkip}
+      />
+
     </SafeAreaView>
   );
 }

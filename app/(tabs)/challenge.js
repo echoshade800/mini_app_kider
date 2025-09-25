@@ -653,6 +653,11 @@ export default function ChallengeScreen() {
                   resizeMode="contain"
                 />
               </View>
+              
+              {/* 倒计时小框 */}
+              <View style={styles.timerBox}>
+                <Text style={styles.timerText}>{timeLeft}</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -864,6 +869,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
+  },
+  // 倒计时小框样式
+  timerBox: {
+    backgroundColor: '#000000',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 8,
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timerText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontVariant: ['tabular-nums'],
   },
   bombIcon: {
     width: 30,

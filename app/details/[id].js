@@ -28,7 +28,6 @@ import { STAGE_NAMES } from '../utils/stageNames';
 import GameBoard from '../components/GameBoard';
 import RescueModal from '../components/RescueModal';
 import TopHUD from '../components/TopHUD';
-import InteractiveTutorial from '../components/InteractiveTutorial';
 
 // 提取关卡名称（去掉Grade前缀部分）
 function extractLevelName(stageName) {
@@ -101,8 +100,6 @@ export default function LevelDetailScreen() {
   const [progressGradient, setProgressGradient] = useState(['#FF6B6B', '#4ECDC4']);
   
   // 教程状态
-  const [showTutorial, setShowTutorial] = useState(false);
-  const [tutorialStep, setTutorialStep] = useState(0);
   
   // 多页游戏状态
   const [totalPages, setTotalPages] = useState(1);
@@ -142,24 +139,7 @@ export default function LevelDetailScreen() {
   const [celebrationParticles1, setCelebrationParticles1] = useState([]);
   const [celebrationParticles2, setCelebrationParticles2] = useState([]);
   
-  // 教程处理函数
-  const handleTutorialComplete = () => {
-    setShowTutorial(false);
-    generateNewBoard(); // 教程完成后生成正常棋盘
-  };
 
-  const handleTutorialNext = () => {
-    if (tutorialStep < 2) {
-      setTutorialStep(tutorialStep + 1);
-    } else {
-      handleTutorialComplete();
-    }
-  };
-
-  const handleTutorialSkip = () => {
-    setShowTutorial(false);
-    generateNewBoard(); // 跳过教程后生成正常棋盘
-  };
 
   // 生成庆祝粒子
   const generateCelebrationParticles = () => {
@@ -491,15 +471,11 @@ export default function LevelDetailScreen() {
       setTotalPages(tp);
       setCompletedPages(0);
       
-      // 如果是第一个关卡，显示交互式教程
-      if (level === 1) {
-        setShowTutorial(true);
-        setTutorialStep(0);
-      } else {
-        generateNewBoard();
-      }
+      // 生成新棋盘
+      generateNewBoard();
     }
   }, [level, calculateTotalPages, generateNewBoard]);
+
 
   // 页面获得焦点时刷新棋盘
   useFocusEffect(
@@ -977,18 +953,10 @@ export default function LevelDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       
-      {/* 交互式教程 */}
-      {showTutorial && (
-        <InteractiveTutorial
-          visible={showTutorial}
-          onComplete={handleTutorialComplete}
-          onNext={handleTutorialNext}
-          currentStep={tutorialStep}
-        />
-      )}
+
 
       {/* 关卡名称动画 */}
-      {showLevelNameAnimation && !showTutorial && (
+      {showLevelNameAnimation && (
         <Animated.View 
           style={[
             styles.levelNameAnimation,
@@ -1004,20 +972,17 @@ export default function LevelDetailScreen() {
       )}
       
       {/* 新的顶部HUD */}
-      {!showTutorial && (
-        <TopHUD
-          progress={progress}
-          gradeText={displayLevelName}
-          nextLevelText={STAGE_NAMES[level + 1] ? extractLevelName(STAGE_NAMES[level + 1]) : `Level ${level + 1}`}
-          onBack={handleBackPress}
-          onFinished={handleLevelComplete}
-        />
-      )}
+      <TopHUD
+        progress={progress}
+        gradeText={displayLevelName}
+        nextLevelText={STAGE_NAMES[level + 1] ? extractLevelName(STAGE_NAMES[level + 1]) : `Level ${level + 1}`}
+        onBack={handleBackPress}
+        onFinished={handleLevelComplete}
+      />
 
       {/* 道具工具栏 - 确保在GameBoard之前渲染 */}
       {/* Game Board */}
-      {!showTutorial && (
-        <GameBoard
+      <GameBoard
           ref={gameBoardRef}
           key={boardKey}
           tiles={board.tiles}
@@ -1036,11 +1001,9 @@ export default function LevelDetailScreen() {
         currentPage={completedPages + 1}
         totalPages={totalPages}
       />
-      )}
 
       {/* Bottom Toolbar - 移到GameBoard下方确保不被覆盖 */}
-      {!showTutorial && (
-        <View style={styles.bottomToolbar}>
+      <View style={styles.bottomToolbar}>
         <TouchableOpacity 
           style={[
             styles.bottomToolButton,
@@ -1111,7 +1074,6 @@ export default function LevelDetailScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-      )}
 
       {/* Completion Modal */}
       <Modal 

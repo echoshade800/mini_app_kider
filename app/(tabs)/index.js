@@ -17,9 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGameStore } from '../store/gameStore';
 import { StorageUtils } from '../utils/StorageUtils';
 import { STAGE_NAMES } from '../utils/stageNames';
-import DemoShowcase from '../components/DemoShowcase';
 
-const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/maintabletable.webp';
+const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/cg2.jpeg';
 
 const { height } = Dimensions.get('window');
 const MAX_PANEL_H = Math.floor(height * 0.55); // 半屏左右
@@ -32,7 +31,6 @@ export default function Home() {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [showLevelsList, setShowLevelsList] = useState(false);
   const [showSimpleRules, setShowSimpleRules] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
 
   // 文字自动适配功能
   const [buttonFontSizes, setButtonFontSizes] = useState({ level: 28, challenge: 28 });
@@ -74,27 +72,6 @@ export default function Home() {
     await markSimpleRulesSeen();
   };
 
-  // 处理演示动画完成
-  const handleDemoComplete = async () => {
-    setShowDemo(false);
-    // 标记演示已完成
-    try {
-      await StorageUtils.setData({ demo_v2_done: true });
-    } catch (error) {
-      console.log('Error saving demo status:', error);
-    }
-  };
-
-  // 处理跳过演示动画
-  const handleDemoSkip = async () => {
-    setShowDemo(false);
-    // 标记演示已完成
-    try {
-      await StorageUtils.setData({ demo_v2_done: true });
-    } catch (error) {
-      console.log('Error saving demo status:', error);
-    }
-  };
 
   // 热区点击处理
   const press = async (to) => {
@@ -156,24 +133,6 @@ export default function Home() {
     }
   }, [gameData]);
 
-  // Check if demo should be shown
-  useEffect(() => {
-    const checkDemoStatus = async () => {
-      try {
-        const data = await StorageUtils.getData();
-        if (!data?.demo_v2_done && gameData) {
-          // 延迟显示演示，让页面先加载完成
-          setTimeout(() => {
-            setShowDemo(true);
-          }, 1000);
-        }
-      } catch (error) {
-        console.log('Error checking demo status:', error);
-      }
-    };
-    
-    checkDemoStatus();
-  }, [gameData]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -415,12 +374,6 @@ export default function Home() {
         </View>
       </Modal>
 
-      {/* 演示动画 */}
-      <DemoShowcase
-        visible={showDemo}
-        onComplete={handleDemoComplete}
-        onSkip={handleDemoSkip}
-      />
 
     </SafeAreaView>
   );
@@ -507,9 +460,9 @@ const styles = StyleSheet.create({
   // 游戏模式按钮容器
   gameModeButtons: {
     position: 'absolute',
-    left: 30, // 60 - 30 = 30px，向左移动30px
+    left: '50%',
     top: '50%',
-    transform: [{ translateY: 60 }], // 40 + 20 = 60px，向下移动20px
+    transform: [{ translateX: -149.5 }, { translateY: -80 }], // 居中：-width/2, -height/2
     flexDirection: 'column',
     justifyContent: 'space-between',
     height: 160, // 两个按钮的高度加上间距
@@ -526,12 +479,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     // Level Mode 主题色 - 胡萝卜橙
     backgroundColor: '#e77e2c',
-    borderWidth: 5, // 4 * 1.3 = 5.2，调整为5px
+    borderWidth: 6, // 增加边框厚度
     borderColor: '#a7591e', // 深橙木边框
-    // 立体外观：底部实体投影
-    shadowColor: '#a7591e',
-    shadowOffset: { width: 0, height: 5 }, // 4 * 1.3 = 5.2，调整为5px
-    shadowOpacity: 1,
+    // 增强立体感阴影
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 }, // 增加阴影偏移
+    shadowOpacity: 0.25, // 增加阴影透明度
+    shadowRadius: 12, // 增加阴影半径
+    elevation: 12, // 增加Android阴影
     shadowRadius: 0,
     elevation: 8,
     // 环境阴影
@@ -552,12 +507,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     // Challenge Mode 主题色 - 湖蓝
     backgroundColor: '#3c7bc1',
-    borderWidth: 5, // 4 * 1.3 = 5.2，调整为5px
+    borderWidth: 6, // 增加边框厚度
     borderColor: '#29598a', // 深蓝木边框
-    // 立体外观：底部实体投影
-    shadowColor: '#29598a',
-    shadowOffset: { width: 0, height: 5 }, // 4 * 1.3 = 5.2，调整为5px
-    shadowOpacity: 1,
+    // 增强立体感阴影
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 }, // 增加阴影偏移
+    shadowOpacity: 0.25, // 增加阴影透明度
+    shadowRadius: 12, // 增加阴影半径
+    elevation: 12, // 增加Android阴影
     shadowRadius: 0,
     elevation: 8,
     // 环境阴影
@@ -588,22 +545,22 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 42, // 32 * 1.3 = 41.6，调整为42px
     height: 42, // 32 * 1.3 = 41.6，调整为42px
-    left: 15, // -5 + 20 = 15px，向右移动20px
+    left: '50%',
     top: '50%',
-    transform: [{ translateY: 42 }, { scale: 1.3 }], // 22 + 20 = 42px，向下移动20px + 变大0.3倍
+    transform: [{ translateX: -21 }, { translateY: 100 }, { scale: 1.3 }], // 居中并放在主按钮下方
     borderRadius: 9, // 7 * 1.3 = 9.1，调整为9px
     backgroundColor: '#F7E4B3', // 浅米黄色
     alignItems: 'center',
     justifyContent: 'center',
-    // 木质纹理边框
-    borderWidth: 4, // 3 * 1.3 = 3.9，调整为4px
-    borderColor: '#D2691E', // 浅棕色木质纹理
-    // 内阴影增强立体感
+    // 木质纹理边框 - 增强版
+    borderWidth: 6, // 增加边框厚度
+    borderColor: '#A0522D', // 深棕色木质纹理
+    // 多层阴影增强立体感
     shadowColor: '#8B4513',
-    shadowOffset: { width: 0, height: -1 }, // 保持-1px
-    shadowOpacity: 0.6,
-    shadowRadius: 1, // 保持1px
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 }, // 增加阴影偏移
+    shadowOpacity: 0.4, // 增加阴影透明度
+    shadowRadius: 8, // 增加阴影半径
+    elevation: 10, // 增加Android阴影
     // 整体投影
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 }, // 3 * 1.3 = 3.9，调整为4px

@@ -36,7 +36,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 class StorageUtils {
   /** namespace key prefix */
-  static miniAppName = 'DaycareNumberElimination';
+  static miniAppName = 'KidderCrushMiniApp';
 
   /** @returns {Promise<UserData|null>} */
   static async getUserData() {

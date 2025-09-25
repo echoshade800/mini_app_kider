@@ -9,16 +9,16 @@ import {
   ScrollView,
   Dimensions,
   Platform,
-  Pressable
+  Pressable,
+  SafeAreaView
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import OnboardingGuide from '../components/OnboardingGuide';
 import { useGameStore } from '../store/gameStore';
-import { StorageUtils } from '../utils/StorageUtils';
 import { STAGE_NAMES } from '../utils/stageNames';
 
-const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/cg2.jpeg';
+const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/maintabletabl1end.webp';
 
 const { height } = Dimensions.get('window');
 const MAX_PANEL_H = Math.floor(height * 0.55); // 半屏左右
@@ -31,6 +31,7 @@ export default function Home() {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [showLevelsList, setShowLevelsList] = useState(false);
   const [showSimpleRules, setShowSimpleRules] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // 文字自动适配功能
   const [buttonFontSizes, setButtonFontSizes] = useState({ level: 28, challenge: 28 });
@@ -115,6 +116,34 @@ export default function Home() {
     }
   }, [gameData]);
 
+  // 检查是否需要显示新手引导
+  useEffect(() => {
+    const checkOnboardingStatus = async () => {
+      try {
+        const data = await StorageUtils.getData();
+        if (!data?.hasSeenOnboarding) {
+          setShowOnboarding(true);
+        }
+      } catch (error) {
+        console.log('Error checking onboarding status:', error);
+        // 如果出错，默认显示新手引导
+        setShowOnboarding(true);
+      }
+    };
+    
+    checkOnboardingStatus();
+  }, []);
+
+  // 处理新手引导关闭
+  const handleOnboardingClose = async () => {
+    setShowOnboarding(false);
+    try {
+      await StorageUtils.setData({ hasSeenOnboarding: true });
+    } catch (error) {
+      console.log('Error saving onboarding status:', error);
+    }
+  };
+
   // 监听gameData变化，更新页面顶部的进度和IQ显示
   useEffect(() => {
     if (gameData) {
@@ -136,6 +165,12 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* 新手引导界面 */}
+      <OnboardingGuide 
+        visible={showOnboarding} 
+        onClose={handleOnboardingClose} 
+      />
+      
       {/* 背景层 - 禁用指针事件 */}
       <ImageBackground
         source={{ uri: HERO_URL }}

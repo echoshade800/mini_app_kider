@@ -13,7 +13,7 @@ import {
   ScrollView,
   FlatList
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
@@ -37,6 +37,7 @@ const FILTER_CHIPS = [
 export default function LevelsScreen() {
   const { gameData } = useGameStore();
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const insets = useSafeAreaInsets();
   
   const maxLevel = gameData?.maxLevel || 1; // 至少可以玩第1关
   const lastPlayedLevel = gameData?.lastPlayedLevel || 1;
@@ -128,7 +129,7 @@ export default function LevelsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* 返回按钮 */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.replace('/')}

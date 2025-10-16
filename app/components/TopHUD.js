@@ -1,6 +1,7 @@
 // src/ui/TopHUD.js
 import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, Pressable, Animated, Dimensions, Image, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -18,6 +19,7 @@ export default function TopHUD({
   onBack,
   onFinished,                   // progress===1 到达右边回调（触发结算）
 }) {
+  const insets = useSafeAreaInsets();
   const anim = React.useRef(new Animated.Value(progress)).current;
 
   useEffect(() => {
@@ -48,10 +50,9 @@ export default function TopHUD({
   });
 
   return (
-    <View style={[styles.wrap, { width: HUD_W, height: SAFE_H }]}>
+    <View style={[styles.wrap, { width: HUD_W, height: SAFE_H, marginTop: insets.top }]}>
       {/* 背条（也可以用底图） */}
       <View style={[styles.base, { left: 0, right: 0, height: SAFE_H }]} />
-
       {/* 返回按钮 */}
       <Pressable onPress={onBack} style={[styles.abs, { left: 0, top: (SAFE_H - BACK_W) / 2 }]}>
         <View style={styles.backButtonContainer}>

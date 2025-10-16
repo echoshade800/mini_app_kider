@@ -16,6 +16,8 @@ import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import OnboardingGuide from '../components/OnboardingGuide';
 import ButtonGuide from '../components/ButtonGuide';
+import { router } from 'expo-router';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGameStore } from '../store/gameStore';
 import { STAGE_NAMES } from '../utils/stageNames';
 import StorageUtils from '../utils/StorageUtils';
@@ -42,6 +44,7 @@ export default function Home() {
   const challengeButtonRef = useRef(null);
   const levelListButtonRef = useRef(null);
   const hasCheckedOnboarding = useRef(false);
+  const insets = useSafeAreaInsets();
 
   // 文字自动适配功能
   const [buttonFontSizes, setButtonFontSizes] = useState({ level: 28, challenge: 28 });
@@ -329,7 +332,7 @@ export default function Home() {
       <View style={styles.foregroundContainer} pointerEvents="auto">
         
         {/* 顶部栏 */}
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity
             style={styles.topButton}
             onPress={() => {

@@ -18,7 +18,7 @@ import OnboardingGuide from '../components/OnboardingGuide';
 import ButtonGuide from '../components/ButtonGuide';
 import { useGameStore } from '../store/gameStore';
 import { STAGE_NAMES } from '../utils/stageNames';
-import { StorageUtils } from '../utils/StorageUtils';
+import StorageUtils from '../utils/StorageUtils';
 
 const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/maintabletabl1end.webp';
 
@@ -121,45 +121,71 @@ export default function Home() {
     })();
   }, []);
 
-  // 检测首次启动，显示简约规则弹窗
-  useEffect(() => {
-    if (gameData && !gameData.hasSeenSimpleRules) {
-      setShowSimpleRules(true);
-    }
-  }, [gameData]);
+  // Welcome界面只在点击问号按钮时显示，不再自动显示
 
   // 检查是否需要显示新手引导
-  const checkOnboardingStatus = useCallback(async () => {
+  const checkOnboardingStatus = useCallback(async (forceCheck = false) => {
+    // 如果已经检查过且不是强制检查，则跳过
+    if (hasCheckedOnboarding.current && !forceCheck) {
+      return;
+    }
+
     try {
-      const data = await StorageUtils.getData();
-      if (!data?.hasSeenOnboarding) {
-        setShowOnboarding(true);
-        hasCheckedOnboarding.current = true;
-      } else {
-        hasCheckedOnboarding.current = true;
+      // 优先使用gameData，如果没有则从Storage读取
+      let hasSeenOnboarding = gameData?.hasSeenOnboarding;
+      if (hasSeenOnboarding === undefined) {
+        const data = await StorageUtils.getData();
+        hasSeenOnboarding = data?.hasSeenOnboarding;
       }
+      
+      console.log('checkOnboardingStatus - hasSeenOnboarding:', hasSeenOnboarding, 'forceCheck:', forceCheck);
+      
+      if (!hasSeenOnboarding) {
+        // 需要显示新手引导
+        console.log('显示新手引导');
+        setShowOnboarding(true);
+      }
+      
+      // 标记为已检查（只有在检查完成后才标记）
+      hasCheckedOnboarding.current = true;
     } catch (error) {
       console.log('Error checking onboarding status:', error);
       hasCheckedOnboarding.current = true;
     }
-  }, []);
+  }, [gameData?.hasSeenOnboarding]);
 
+  // 监听gameData的hasSeenOnboarding变化
   useEffect(() => {
-    if (!hasCheckedOnboarding.current || gameData?.hasSeenOnboarding === false) {
-      if (gameData?.hasSeenOnboarding === false) {
-        hasCheckedOnboarding.current = false;
-      }
-      checkOnboardingStatus();
+    console.log('useEffect - gameData?.hasSeenOnboarding:', gameData?.hasSeenOnboarding, 'hasCheckedOnboarding.current:', hasCheckedOnboarding.current);
+    
+    // 如果gameData中hasSeenOnboarding为false，强制重置检查标志并重新检查
+    if (gameData?.hasSeenOnboarding === false) {
+      console.log('检测到hasSeenOnboarding为false，重置检查标志并强制检查');
+      hasCheckedOnboarding.current = false;
+      checkOnboardingStatus(true); // 强制检查
+    } else if (!hasCheckedOnboarding.current) {
+      // 如果还没有检查过，检查一次
+      console.log('首次检查新手引导状态');
+      checkOnboardingStatus(false);
     }
-  }, [gameData, checkOnboardingStatus]);
+  }, [gameData?.hasSeenOnboarding, checkOnboardingStatus]);
 
+  // 页面获得焦点时检查（用于重置后返回页面）
   useFocusEffect(
     useCallback(() => {
+      console.log('useFocusEffect - gameData?.hasSeenOnboarding:', gameData?.hasSeenOnboarding, 'hasCheckedOnboarding.current:', hasCheckedOnboarding.current);
+      
+      // 如果gameData中hasSeenOnboarding为false，强制重置检查标志并重新检查
       if (gameData?.hasSeenOnboarding === false) {
+        console.log('useFocusEffect: 检测到hasSeenOnboarding为false，重置检查标志并强制检查');
         hasCheckedOnboarding.current = false;
-        checkOnboardingStatus();
+        checkOnboardingStatus(true); // 强制检查
+      } else if (!hasCheckedOnboarding.current) {
+        // 如果还没有检查过，检查一次
+        console.log('useFocusEffect: 首次检查新手引导状态');
+        checkOnboardingStatus(false);
       }
-    }, [gameData, checkOnboardingStatus])
+    }, [gameData?.hasSeenOnboarding, checkOnboardingStatus])
   );
 
   // 测量按钮位置
@@ -187,17 +213,31 @@ export default function Home() {
   const handleOnboardingClose = async () => {
     setShowOnboarding(false);
     try {
+      // 先更新Storage
       await StorageUtils.setData({ hasSeenOnboarding: true });
+      // 再更新gameData
       const { updateGameData } = useGameStore.getState();
       updateGameData({ hasSeenOnboarding: true });
       
+      console.log('新手引导关闭，检查按钮引导');
+      
+      // 等待一下确保状态更新
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       // 检查是否需要显示按钮引导
       const data = await StorageUtils.getData();
+      console.log('按钮引导状态:', data?.hasSeenButtonGuide);
+      
+      // 直接检查并显示按钮引导，不依赖useEffect
       if (!data?.hasSeenButtonGuide) {
+        console.log('显示按钮引导');
+        // 等待更长时间确保页面渲染完成
         setTimeout(() => {
           setShowButtonGuide(true);
           measureButtonPositions();
-        }, 300);
+        }, 600);
+      } else {
+        console.log('已看过按钮引导，跳过');
       }
     } catch (error) {
       console.log('Error saving onboarding status:', error);
@@ -216,12 +256,22 @@ export default function Home() {
     }
   };
 
-  // 检查初始是否需要显示按钮引导
+  // 检查初始是否需要显示按钮引导（只在已看过新手引导但未看过按钮引导时显示）
   useEffect(() => {
     const checkButtonGuide = async () => {
       try {
-        const info = await StorageUtils.getData();
-        if (info?.hasSeenOnboarding && !info?.hasSeenButtonGuide) {
+        // 使用gameData优先，如果没有则从Storage读取
+        const hasSeenOnboarding = gameData?.hasSeenOnboarding !== undefined 
+          ? gameData.hasSeenOnboarding 
+          : (await StorageUtils.getData())?.hasSeenOnboarding;
+        const hasSeenButtonGuide = gameData?.hasSeenButtonGuide !== undefined
+          ? gameData.hasSeenButtonGuide
+          : (await StorageUtils.getData())?.hasSeenButtonGuide;
+          
+        console.log('checkButtonGuide - hasSeenOnboarding:', hasSeenOnboarding, 'hasSeenButtonGuide:', hasSeenButtonGuide);
+          
+        if (hasSeenOnboarding && !hasSeenButtonGuide) {
+          console.log('自动显示按钮引导');
           setTimeout(() => {
             setShowButtonGuide(true);
             measureButtonPositions();
@@ -232,10 +282,13 @@ export default function Home() {
       }
     };
     
-    if (hasCheckedOnboarding.current) {
+    // 只有在已检查过新手引导且新手引导已看过时才检查按钮引导
+    // 并且新手引导没有正在显示时
+    if (hasCheckedOnboarding.current && gameData?.hasSeenOnboarding && !showOnboarding) {
+      console.log('触发按钮引导检查');
       checkButtonGuide();
     }
-  }, [hasCheckedOnboarding.current]);
+  }, [hasCheckedOnboarding.current, gameData?.hasSeenOnboarding, gameData?.hasSeenButtonGuide, showOnboarding]);
 
   // 监听gameData变化，更新页面顶部的进度和IQ显示
   useEffect(() => {
@@ -279,7 +332,10 @@ export default function Home() {
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.topButton}
-            onPress={() => setShowGuide(true)}
+            onPress={() => {
+              setShowGuide(true);
+              setShowSimpleRules(true);
+            }}
             accessibilityLabel="帮助"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -405,7 +461,10 @@ export default function Home() {
         visible={showGuide}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setShowGuide(false)}
+        onRequestClose={() => {
+          setShowGuide(false);
+          setShowSimpleRules(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.guidePanel}>
@@ -438,7 +497,10 @@ export default function Home() {
                 </Text>
                 <TouchableOpacity 
                   style={styles.guideCloseButton}
-                  onPress={() => setShowGuide(false)}
+                  onPress={() => {
+                    setShowGuide(false);
+                    setShowSimpleRules(false);
+                  }}
                 >
                   <Text style={styles.guideCloseButtonText}>Got it!</Text>
                 </TouchableOpacity>

@@ -184,16 +184,13 @@ const SplitDemo = ({ isPlaying }) => {
   const [splitTiles, setSplitTiles] = useState([]);
   const animationRef = useRef(null);
 
-  // 分裂方块的动画引用
+  // 分裂方块的动画引用（只需要两个方块：3和4）
   const splitTile1AnimX = useRef(new Animated.Value(0)).current;
   const splitTile1AnimY = useRef(new Animated.Value(0)).current;
   const splitTile1Scale = useRef(new Animated.Value(0)).current;
   const splitTile2AnimX = useRef(new Animated.Value(0)).current;
   const splitTile2AnimY = useRef(new Animated.Value(0)).current;
   const splitTile2Scale = useRef(new Animated.Value(0)).current;
-  const splitTile3AnimX = useRef(new Animated.Value(0)).current;
-  const splitTile3AnimY = useRef(new Animated.Value(0)).current;
-  const splitTile3Scale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!isPlaying) {
@@ -212,9 +209,6 @@ const SplitDemo = ({ isPlaying }) => {
       splitTile2AnimX.setValue(0);
       splitTile2AnimY.setValue(0);
       splitTile2Scale.setValue(0);
-      splitTile3AnimX.setValue(0);
-      splitTile3AnimY.setValue(0);
-      splitTile3Scale.setValue(0);
       return;
     }
 
@@ -231,9 +225,6 @@ const SplitDemo = ({ isPlaying }) => {
       splitTile2AnimX.setValue(0);
       splitTile2AnimY.setValue(0);
       splitTile2Scale.setValue(0);
-      splitTile3AnimX.setValue(0);
-      splitTile3AnimY.setValue(0);
-      splitTile3Scale.setValue(0);
 
       // 高亮闪烁
       const highlightLoop = Animated.loop(
@@ -273,17 +264,16 @@ const SplitDemo = ({ isPlaying }) => {
 
       animationRef.current = sequence;
       sequence.start(() => {
-        // 显示分裂方块
+        // 显示分裂方块：7分裂成3和4
         setShowOriginal(false);
         setSplitTiles([
-          { id: 1, row: 0, col: 1, value: 2 },
-          { id: 2, row: 1, col: 0, value: 3 },
-          { id: 3, row: 1, col: 2, value: 2 },
+          { id: 1, row: 1, col: 0, value: 3 },
+          { id: 2, row: 1, col: 2, value: 4 },
         ]);
 
-        // 新方块从中心扩散
+        // 新方块从中心扩散（左右扩散）
         Animated.parallel([
-          Animated.timing(splitTile1AnimY, {
+          Animated.timing(splitTile1AnimX, {
             toValue: -CELL_SIZE,
             duration: 500,
             useNativeDriver: true,
@@ -294,21 +284,11 @@ const SplitDemo = ({ isPlaying }) => {
             useNativeDriver: true,
           }),
           Animated.timing(splitTile2AnimX, {
-            toValue: -CELL_SIZE,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(splitTile2Scale, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(splitTile3AnimX, {
             toValue: CELL_SIZE,
             duration: 500,
             useNativeDriver: true,
           }),
-          Animated.timing(splitTile3Scale, {
+          Animated.timing(splitTile2Scale, {
             toValue: 1,
             duration: 500,
             useNativeDriver: true,
@@ -368,21 +348,17 @@ const SplitDemo = ({ isPlaying }) => {
         </Animated.View>
       )}
 
-      {/* 分裂后的方块 */}
+      {/* 分裂后的方块：3和4 */}
       {splitTiles.map((tile, index) => {
         let animX, animY, animScale;
         if (index === 0) {
           animX = splitTile1AnimX;
           animY = splitTile1AnimY;
           animScale = splitTile1Scale;
-        } else if (index === 1) {
+        } else {
           animX = splitTile2AnimX;
           animY = splitTile2AnimY;
           animScale = splitTile2Scale;
-        } else {
-          animX = splitTile3AnimX;
-          animY = splitTile3AnimY;
-          animScale = splitTile3Scale;
         }
 
         return (
@@ -411,11 +387,196 @@ const SplitDemo = ({ isPlaying }) => {
   );
 };
 
+// 消除演示动画 - 画框消除
+const EliminationDemo = ({ isPlaying }) => {
+  const tile1Opacity = useRef(new Animated.Value(1)).current;
+  const tile2Opacity = useRef(new Animated.Value(1)).current;
+  const highlightAnim = useRef(new Animated.Value(1)).current;
+  const [showSelectionRect, setShowSelectionRect] = useState(false);
+  const rectOpacity = useRef(new Animated.Value(0)).current;
+  const rectScale = useRef(new Animated.Value(0.8)).current;
+  const animationRef = useRef(null);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
+      tile1Opacity.setValue(1);
+      tile2Opacity.setValue(1);
+      highlightAnim.setValue(1);
+      rectOpacity.setValue(0);
+      rectScale.setValue(0.8);
+      setShowSelectionRect(false);
+      return;
+    }
+
+    const playAnimation = () => {
+      // 重置动画值
+      tile1Opacity.setValue(1);
+      tile2Opacity.setValue(1);
+      highlightAnim.setValue(1);
+      rectOpacity.setValue(0);
+      rectScale.setValue(0.8);
+      setShowSelectionRect(false);
+
+      // 高亮闪烁动画
+      const highlightLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(highlightAnim, {
+            toValue: 0.5,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(highlightAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]),
+        { iterations: 2 }
+      );
+
+      // 画框动画（选择框从无到有，包围两个方块）
+      const drawRectAnimation = Animated.parallel([
+        Animated.timing(rectOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rectScale, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]);
+
+      // 消除动画（两个方块缩小消失）
+      const eliminateAnimation = Animated.parallel([
+        Animated.timing(tile1Opacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tile2Opacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rectOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]);
+
+      // 动画序列
+      const sequence = Animated.sequence([
+        highlightLoop,
+        Animated.delay(200),
+      ]);
+
+      animationRef.current = sequence;
+      sequence.start(() => {
+        // 显示选择框
+        setShowSelectionRect(true);
+        drawRectAnimation.start(() => {
+          Animated.delay(300).start(() => {
+            eliminateAnimation.start(() => {
+              // 延迟后循环播放
+              if (isPlaying) {
+                setTimeout(playAnimation, 800);
+              }
+            });
+          });
+        });
+      });
+    };
+
+    playAnimation();
+  }, [isPlaying]);
+
+  return (
+    <View style={styles.demoBoard}>
+      {/* 网格背景 */}
+      <View style={styles.grid}>
+        {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => {
+          const row = Math.floor(i / GRID_SIZE);
+          const col = i % GRID_SIZE;
+          return (
+            <View
+              key={i}
+              style={[
+                styles.cell,
+                {
+                  width: CELL_SIZE,
+                  height: CELL_SIZE,
+                  left: col * CELL_SIZE,
+                  top: row * CELL_SIZE,
+                },
+              ]}
+            />
+          );
+        })}
+      </View>
+
+      {/* 方块 */}
+      <Animated.View
+        style={[
+          styles.tile,
+          {
+            left: 0 * CELL_SIZE + 4,
+            top: 0 * CELL_SIZE + 4,
+            width: TILE_SIZE,
+            height: TILE_SIZE,
+            opacity: Animated.multiply(tile1Opacity, highlightAnim),
+          },
+        ]}
+      >
+        <Text style={styles.tileText}>3</Text>
+      </Animated.View>
+      <Animated.View
+        style={[
+          styles.tile,
+          {
+            left: 2 * CELL_SIZE + 4,
+            top: 0 * CELL_SIZE + 4,
+            width: TILE_SIZE,
+            height: TILE_SIZE,
+            opacity: Animated.multiply(tile2Opacity, highlightAnim),
+          },
+        ]}
+      >
+        <Text style={styles.tileText}>7</Text>
+      </Animated.View>
+
+      {/* 选择框 - 包围两个方块 */}
+      {showSelectionRect && (
+        <Animated.View
+          style={[
+            styles.selectionRect,
+            {
+              left: 0 * CELL_SIZE + 4,
+              top: 0 * CELL_SIZE + 4,
+              width: 2 * CELL_SIZE + TILE_SIZE,
+              height: TILE_SIZE,
+              opacity: rectOpacity,
+              transform: [{ scale: rectScale }],
+            },
+          ]}
+        />
+      )}
+    </View>
+  );
+};
+
 const ItemDemoBoard = ({ itemType, isPlaying }) => {
   if (itemType === 'swapMaster') {
     return <SwapMasterDemo isPlaying={isPlaying} />;
   } else if (itemType === 'split') {
     return <SplitDemo isPlaying={isPlaying} />;
+  } else if (itemType === 'elimination') {
+    return <EliminationDemo isPlaying={isPlaying} />;
   }
   return null;
 };
@@ -464,6 +625,13 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+  selectionRect: {
+    position: 'absolute',
+    borderWidth: 3,
+    borderColor: '#4CAF50',
+    borderRadius: 4,
+    backgroundColor: 'rgba(76, 175, 80, 0.2)',
   },
 });
 

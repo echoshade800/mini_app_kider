@@ -82,8 +82,9 @@ export default function LevelDetailScreen() {
   const [itemMode, setItemMode] = useState(null);
   const [showItemGuide, setShowItemGuide] = useState(false);
   const [itemButtonPosition, setItemButtonPosition] = useState(null);
+  const [splitButtonPosition, setSplitButtonPosition] = useState(null);
   const itemButtonRef = useRef(null);
-  const [itemGuideStep, setItemGuideStep] = useState(1); // 道具引导步骤
+  const splitButtonRef = useRef(null);
   const [selectedSwapTile, setSelectedSwapTile] = useState(null);
   const [swapAnimations, setSwapAnimations] = useState(new Map());
   const [fractalAnimations, setFractalAnimations] = useState(new Map());
@@ -495,11 +496,15 @@ export default function LevelDetailScreen() {
           // 延迟显示引导，等待布局完成
           setTimeout(() => {
             setShowItemGuide(true);
-            setItemGuideStep(1); // 重置为Step 1
             // 测量道具按钮位置
             if (itemButtonRef.current) {
               itemButtonRef.current.measureInWindow((x, y, width, height) => {
                 setItemButtonPosition({ x, y, width, height });
+              });
+            }
+            if (splitButtonRef.current) {
+              splitButtonRef.current.measureInWindow((x, y, width, height) => {
+                setSplitButtonPosition({ x, y, width, height });
               });
             }
           }, 500);
@@ -514,20 +519,6 @@ export default function LevelDetailScreen() {
     }
   }, [board, level, gameData]);
 
-  // 监听引导步骤变化，在Step 2时激活道具模式
-  useEffect(() => {
-    if (showItemGuide) {
-      if (itemGuideStep === 2) {
-        // Step 2时，激活swapMaster模式，让用户可以点击方块
-        setItemMode('swapMaster');
-        setSelectedSwapTile(null);
-      } else if (itemGuideStep === 1) {
-        // Step 1时，取消道具模式
-        setItemMode(null);
-        setSelectedSwapTile(null);
-      }
-    }
-  }, [itemGuideStep, showItemGuide]);
 
   // 页面获得焦点时刷新棋盘
   useFocusEffect(
@@ -885,11 +876,6 @@ export default function LevelDetailScreen() {
         // Consume item
         const newSwapMasterItems = Math.max(0, (gameData?.swapMasterItems || 0) - 1);
         updateGameData({ swapMasterItems: newSwapMasterItems });
-        
-        // 如果正在显示道具引导且是Step 2，完成引导
-        if (showItemGuide && itemGuideStep === 2) {
-          handleItemGuideClose();
-        }
 
         // 触觉反馈
         if (settings?.hapticsEnabled) {
@@ -905,22 +891,6 @@ export default function LevelDetailScreen() {
     const index = row * board.width + col;
     
     if (itemMode === 'swapMaster') {
-      // 如果正在显示道具引导且是Step 2，第一次点击时选择方块，第二次点击时执行交换
-      if (showItemGuide && itemGuideStep === 2) {
-        if (!selectedSwapTile) {
-          // Select first tile
-          setSelectedSwapTile({ row, col, value, index });
-        } else if (selectedSwapTile.index === index) {
-          // Deselect same tile
-          setSelectedSwapTile(null);
-        } else {
-          // 执行交换动画（这会完成引导）
-          performSwapAnimation(selectedSwapTile, { row, col, value, index });
-        }
-        return;
-      }
-      
-      // 正常流程
       if (!selectedSwapTile) {
         // Select first tile
         setSelectedSwapTile({ row, col, value, index });
@@ -1009,12 +979,6 @@ export default function LevelDetailScreen() {
     if ((gameData?.swapMasterItems || 0) <= 0) {
       Alert.alert('No Items', 'You don\'t have any SwapMaster items.');
       return;
-    }
-    
-    // 如果正在显示道具引导且是Step 1，进入Step 2
-    if (showItemGuide && itemGuideStep === 1) {
-      setItemGuideStep(2);
-      return; // 不执行实际的道具使用逻辑，只进入引导的下一步
     }
     
     const newMode = itemMode === 'swapMaster' ? null : 'swapMaster';
@@ -1145,6 +1109,7 @@ export default function LevelDetailScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity 
+          ref={splitButtonRef}
           style={[
             styles.bottomToolButton,
             itemMode === 'fractalSplit' && styles.toolButtonActive,
@@ -1154,6 +1119,14 @@ export default function LevelDetailScreen() {
           disabled={(gameData?.splitItems || 0) <= 0}
           activeOpacity={0.7}
           hitSlop={{ top: 30, bottom: 30, left: 30, right: 30 }}
+          onLayout={() => {
+            // 当按钮布局完成时，测量位置
+            if (splitButtonRef.current && showItemGuide) {
+              splitButtonRef.current.measureInWindow((x, y, width, height) => {
+                setSplitButtonPosition({ x, y, width, height });
+              });
+            }
+          }}
         >
           <Ionicons 
             name="cut" 
@@ -1419,9 +1392,8 @@ export default function LevelDetailScreen() {
         visible={showItemGuide}
         onClose={handleItemGuideClose}
         itemButtonPosition={itemButtonPosition}
-        onItemUsed={handleItemGuideClose}
-        itemType="swapMaster" // 默认显示SwapMaster，可以根据实际情况调整
-        currentStep={itemGuideStep}
+        splitButtonPosition={splitButtonPosition}
+        onStartGame={handleItemGuideClose}
       />
     </SafeAreaView>
   );

@@ -87,7 +87,13 @@ export default function ProfileScreen() {
           text: 'Reset', 
           style: 'destructive',
           onPress: async () => {
+            // 先重置数据
             await resetDemoData();
+            // resetDemoData已经重置了所有引导状态，gameData也会自动更新
+            // 确保gameData已经更新
+            const { gameData: updatedGameData } = useGameStore.getState();
+            console.log('Reset后gameData:', updatedGameData);
+            
             Alert.alert(
               'Success', 
               'Demo data has been reset. The onboarding guide will appear when you return to the home screen.',
@@ -95,6 +101,7 @@ export default function ProfileScreen() {
                 {
                   text: 'OK',
                   onPress: () => {
+                    // 导航回主页面，主页面会自动检测到hasSeenOnboarding为false并显示引导
                     router.replace('/(tabs)/');
                   }
                 }
@@ -427,6 +434,8 @@ const styles = StyleSheet.create({
   },
   settingsSection: {
     marginTop: 20,
+    paddingHorizontal: 20,
+    alignItems: 'center', // 确保内容居中
   },
   section: {
     marginTop: 20,
@@ -452,6 +461,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     width: '100%',
     maxWidth: 400, // 统一宽度
+    alignSelf: 'center', // 确保居中
   },
   statRow: {
     flexDirection: 'row',
@@ -567,7 +577,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 400, // 统一宽度
+    alignSelf: 'center', // 确保居中
   },
   dangerButton: {
     borderWidth: 2,

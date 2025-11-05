@@ -97,6 +97,7 @@ export default function TopHUD({
 const styles = StyleSheet.create({
   wrap: {
     marginHorizontal: PADDING_H,
+    marginTop: 20, // 向下移动20px
     alignSelf: 'center',
   },
   abs: { position: 'absolute' },

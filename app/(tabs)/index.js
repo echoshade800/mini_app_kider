@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -13,10 +13,12 @@ import {
   SafeAreaView
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import OnboardingGuide from '../components/OnboardingGuide';
+import ButtonGuide from '../components/ButtonGuide';
 import { useGameStore } from '../store/gameStore';
 import { STAGE_NAMES } from '../utils/stageNames';
+import { StorageUtils } from '../utils/StorageUtils';
 
 const HERO_URL = 'https://dzdbhsix5ppsc.cloudfront.net/monster/numberkids/maintabletabl1end.webp';
 
@@ -32,6 +34,14 @@ export default function Home() {
   const [showLevelsList, setShowLevelsList] = useState(false);
   const [showSimpleRules, setShowSimpleRules] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showButtonGuide, setShowButtonGuide] = useState(false);
+  const [levelButtonPosition, setLevelButtonPosition] = useState(null);
+  const [challengeButtonPosition, setChallengeButtonPosition] = useState(null);
+  const [levelListButtonPosition, setLevelListButtonPosition] = useState(null);
+  const levelButtonRef = useRef(null);
+  const challengeButtonRef = useRef(null);
+  const levelListButtonRef = useRef(null);
+  const hasCheckedOnboarding = useRef(false);
 
   // 文字自动适配功能
   const [buttonFontSizes, setButtonFontSizes] = useState({ level: 28, challenge: 28 });
@@ -58,12 +68,14 @@ export default function Home() {
   
   // 更新按钮文字大小
   useEffect(() => {
-    const levelFontSize = calculateFontSize('Level', 260); // 299 - 39 (padding + border)
+    const startFontSize = calculateFontSize('Start', 260); // 299 - 39 (padding + border)
     const challengeFontSize = calculateFontSize('Challenge', 260);
+    const levelFontSize = calculateFontSize('Level', 260);
     
     setButtonFontSizes({
-      level: levelFontSize,
-      challenge: challengeFontSize
+      start: startFontSize,
+      challenge: challengeFontSize,
+      level: levelFontSize
     });
   }, []);
 
@@ -117,32 +129,113 @@ export default function Home() {
   }, [gameData]);
 
   // 检查是否需要显示新手引导
-  useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      try {
-        const data = await StorageUtils.getData();
-        if (!data?.hasSeenOnboarding) {
-          setShowOnboarding(true);
-        }
-      } catch (error) {
-        console.log('Error checking onboarding status:', error);
-        // 如果出错，默认显示新手引导
+  const checkOnboardingStatus = useCallback(async () => {
+    try {
+      const data = await StorageUtils.getData();
+      if (!data?.hasSeenOnboarding) {
         setShowOnboarding(true);
+        hasCheckedOnboarding.current = true;
+      } else {
+        hasCheckedOnboarding.current = true;
       }
-    };
-    
-    checkOnboardingStatus();
+    } catch (error) {
+      console.log('Error checking onboarding status:', error);
+      hasCheckedOnboarding.current = true;
+    }
   }, []);
+
+  useEffect(() => {
+    if (!hasCheckedOnboarding.current || gameData?.hasSeenOnboarding === false) {
+      if (gameData?.hasSeenOnboarding === false) {
+        hasCheckedOnboarding.current = false;
+      }
+      checkOnboardingStatus();
+    }
+  }, [gameData, checkOnboardingStatus]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (gameData?.hasSeenOnboarding === false) {
+        hasCheckedOnboarding.current = false;
+        checkOnboardingStatus();
+      }
+    }, [gameData, checkOnboardingStatus])
+  );
+
+  // 测量按钮位置
+  const measureButtonPositions = () => {
+    setTimeout(() => {
+      if (levelButtonRef.current) {
+        levelButtonRef.current.measureInWindow((x, y, width, height) => {
+          setLevelButtonPosition({ x, y, width, height });
+        });
+      }
+      if (challengeButtonRef.current) {
+        challengeButtonRef.current.measureInWindow((x, y, width, height) => {
+          setChallengeButtonPosition({ x, y, width, height });
+        });
+      }
+      if (levelListButtonRef.current) {
+        levelListButtonRef.current.measureInWindow((x, y, width, height) => {
+          setLevelListButtonPosition({ x, y, width, height });
+        });
+      }
+    }, 100);
+  };
 
   // 处理新手引导关闭
   const handleOnboardingClose = async () => {
     setShowOnboarding(false);
     try {
       await StorageUtils.setData({ hasSeenOnboarding: true });
+      const { updateGameData } = useGameStore.getState();
+      updateGameData({ hasSeenOnboarding: true });
+      
+      // 检查是否需要显示按钮引导
+      const data = await StorageUtils.getData();
+      if (!data?.hasSeenButtonGuide) {
+        setTimeout(() => {
+          setShowButtonGuide(true);
+          measureButtonPositions();
+        }, 300);
+      }
     } catch (error) {
       console.log('Error saving onboarding status:', error);
     }
   };
+
+  // 处理按钮引导关闭
+  const handleButtonGuideClose = async () => {
+    setShowButtonGuide(false);
+    try {
+      await StorageUtils.setData({ hasSeenButtonGuide: true });
+      const { updateGameData } = useGameStore.getState();
+      updateGameData({ hasSeenButtonGuide: true });
+    } catch (error) {
+      console.log('Error saving button guide status:', error);
+    }
+  };
+
+  // 检查初始是否需要显示按钮引导
+  useEffect(() => {
+    const checkButtonGuide = async () => {
+      try {
+        const info = await StorageUtils.getData();
+        if (info?.hasSeenOnboarding && !info?.hasSeenButtonGuide) {
+          setTimeout(() => {
+            setShowButtonGuide(true);
+            measureButtonPositions();
+          }, 500);
+        }
+      } catch (error) {
+        console.log('Error checking button guide status:', error);
+      }
+    };
+    
+    if (hasCheckedOnboarding.current) {
+      checkButtonGuide();
+    }
+  }, [hasCheckedOnboarding.current]);
 
   // 监听gameData变化，更新页面顶部的进度和IQ显示
   useEffect(() => {
@@ -187,15 +280,14 @@ export default function Home() {
           <TouchableOpacity
             style={styles.topButton}
             onPress={() => setShowGuide(true)}
-            accessibilityLabel="新手引导"
+            accessibilityLabel="帮助"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.topButtonText}>I</Text>
+            <Text style={styles.topButtonText}>?</Text>
           </TouchableOpacity>
           
           <View style={styles.topCenter}>
-            <Text style={styles.levelName}>{latestLevelName}</Text>
-            <Text style={styles.iqText}>IQ：{iq}</Text>
+            <Text style={styles.gameTitle}>KiderCrash</Text>
           </View>
           
           <View style={styles.topRightButtons}>
@@ -209,13 +301,28 @@ export default function Home() {
             </TouchableOpacity>
           </View>
         </View>
+        
+        {/* 当前关卡和IQ信息 - 位于Start按钮上方10px */}
+        <View style={styles.infoContainer}>
+          <Text style={styles.infoText}>Current Level: {latestLevelName}</Text>
+          <Text style={styles.infoText}>Current IQ: {iq}</Text>
+        </View>
       </View>
 
       {/* 游戏模式按钮 */}
       <View style={styles.gameModeButtons}>
-        {/* Level Mode 按钮 - 固定尺寸 */}
+        {/* Start Mode 按钮 - 固定尺寸 */}
         <TouchableOpacity
+          ref={levelButtonRef}
           style={styles.duckBtn}
+          disabled={showButtonGuide}
+          onLayout={() => {
+            if (showButtonGuide && levelButtonRef.current) {
+              levelButtonRef.current.measureInWindow((x, y, width, height) => {
+                setLevelButtonPosition({ x, y, width, height });
+              });
+            }
+          }}
           onPress={async () => {
             // 确保从正确的进度开始：优先使用gameData，然后使用currentLevel作为fallback
             let startLevel = gameData?.lastPlayedLevel;
@@ -238,14 +345,23 @@ export default function Home() {
             press(`/details/${startLevel}`);
           }}
           accessibilityRole="button"
-          accessibilityLabel="Level Mode"
+          accessibilityLabel="Start"
         >
-          <Text style={[styles.duckBtnLabel, { fontSize: buttonFontSizes.level }]}>Level</Text>
+          <Text style={[styles.duckBtnLabel, { fontSize: buttonFontSizes.start }]}>Start</Text>
         </TouchableOpacity>
         
         {/* Challenge Mode 按钮 - 固定尺寸 */}
         <TouchableOpacity
+          ref={challengeButtonRef}
           style={styles.duckBtnChallenge}
+          disabled={showButtonGuide}
+          onLayout={() => {
+            if (showButtonGuide && challengeButtonRef.current) {
+              challengeButtonRef.current.measureInWindow((x, y, width, height) => {
+                setChallengeButtonPosition({ x, y, width, height });
+              });
+            }
+          }}
           onPress={() => {
             console.log('Challenge Mode button pressed, navigating to:', '/(tabs)/challenge');
             press('/(tabs)/challenge');
@@ -257,19 +373,33 @@ export default function Home() {
         </TouchableOpacity>
       </View>
 
-      {/* 关卡列表按钮 */}
+      {/* Level List 按钮 - 改为和大按钮一样的样式 */}
       <TouchableOpacity
+        ref={levelListButtonRef}
         style={styles.levelListButton}
+        disabled={showButtonGuide}
+        onLayout={() => {
+          if (showButtonGuide && levelListButtonRef.current) {
+            levelListButtonRef.current.measureInWindow((x, y, width, height) => {
+              setLevelListButtonPosition({ x, y, width, height });
+            });
+          }
+        }}
         onPress={() => setShowLevelsList(true)}
-        accessibilityLabel="关卡列表"
+        accessibilityLabel="Level List"
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <View style={styles.hamburgerIcon}>
-          <View style={styles.hamburgerLine} />
-          <View style={styles.hamburgerLine} />
-          <View style={styles.hamburgerLine} />
-        </View>
+        <Text style={[styles.duckBtnLabel, { fontSize: buttonFontSizes.level }]}>Level</Text>
       </TouchableOpacity>
+      
+      {/* 按钮引导 */}
+      <ButtonGuide
+        visible={showButtonGuide}
+        onClose={handleButtonGuideClose}
+        levelButtonPosition={levelButtonPosition}
+        challengeButtonPosition={challengeButtonPosition}
+        levelListButtonPosition={levelListButtonPosition}
+      />
 
       <Modal
         visible={showGuide}
@@ -474,30 +604,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  levelName: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  gameTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    fontFamily: Platform.select({
+      ios: 'Avenir Next',
+      android: 'sans-serif-rounded',
+      default: 'sans-serif',
+    }),
+    color: '#8B4513',
+    textAlign: 'center',
+    letterSpacing: 1.5,
+    includeFontPadding: false,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  infoContainer: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    top: '50%',
+    transform: [{ translateY: -157 }], // Start按钮上方10px，向上移动10px
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  infoText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#fff',
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.7)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
-  },
-  iqText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginTop: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.7)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
+    marginBottom: 4,
   },
   // 游戏模式按钮容器
   gameModeButtons: {
     position: 'absolute',
     left: '50%',
     top: '50%',
-    transform: [{ translateX: -149.5 }, { translateY: -80 }], // 居中：-width/2, -height/2
+    transform: [{ translateX: -149.5 }, { translateY: -60 }], // 居中：-width/2, -height/2，向下移动20px
     flexDirection: 'column',
     justifyContent: 'space-between',
     height: 160, // 两个按钮的高度加上间距
@@ -575,47 +722,30 @@ const styles = StyleSheet.create({
     numberOfLines: 1,
     ellipsizeMode: 'clip',
   },
-  // 关卡列表按钮样式 - 木质纹理边框 + 浅米黄色
+  // Level List 按钮样式 - 改为和大按钮一样的样式
   levelListButton: {
     position: 'absolute',
-    width: 42, // 32 * 1.3 = 41.6，调整为42px
-    height: 42, // 32 * 1.3 = 41.6，调整为42px
+    width: 299,
+    height: 77,
     left: '50%',
     top: '50%',
-    transform: [{ translateX: -21 }, { translateY: 100 }, { scale: 1.3 }], // 居中并放在主按钮下方
-    borderRadius: 9, // 7 * 1.3 = 9.1，调整为9px
-    backgroundColor: '#F7E4B3', // 浅米黄色
+    transform: [{ translateX: -149.5 }, { translateY: 120 }], // 居中并放在主按钮下方，向下移动20px
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    // 木质纹理边框 - 增强版
-    borderWidth: 6, // 增加边框厚度
-    borderColor: '#A0522D', // 深棕色木质纹理
-    // 多层阴影增强立体感
-    shadowColor: '#8B4513',
-    shadowOffset: { width: 0, height: 4 }, // 增加阴影偏移
-    shadowOpacity: 0.4, // 增加阴影透明度
-    shadowRadius: 8, // 增加阴影半径
-    elevation: 10, // 增加Android阴影
-    // 整体投影
+    // Level Mode 主题色 - 胡萝卜橙
+    backgroundColor: '#e77e2c',
+    borderWidth: 6,
+    borderColor: '#a7591e',
+    // 环境阴影
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 }, // 3 * 1.3 = 3.9，调整为4px
-    shadowOpacity: 0.3,
-    shadowRadius: 8, // 6 * 1.3 = 7.8，调整为8px
+    shadowOffset: { width: 0, height: 9 },
+    shadowOpacity: 0.18,
+    shadowRadius: 17,
     elevation: 8,
     zIndex: 1000,
-  },
-  // 汉堡菜单图标样式 - 调整大小以适应按钮缩放
-  hamburgerIcon: {
-    width: 23, // 18 * 1.3 = 23.4，调整为23px
-    height: 20, // 15 * 1.3 = 19.5，调整为20px
-    justifyContent: 'space-between',
-  },
-  // 汉堡菜单线条样式 - 深棕色，调整大小以适应按钮缩放
-  hamburgerLine: {
-    width: 23, // 18 * 1.3 = 23.4，调整为23px
-    height: 4, // 3 * 1.3 = 3.9，调整为4px
-    backgroundColor: '#5B3A29', // 深棕色线条
-    borderRadius: 1, // 保持1px
   },
   // 弹窗样式
   modalOverlay: {

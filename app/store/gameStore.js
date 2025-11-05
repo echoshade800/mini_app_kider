@@ -137,6 +137,9 @@ export const useGameStore = create((set, get) => ({
         splitItems: 2,
         lastPlayedLevel: 1,
         hasSeenSimpleRules: false, // 重置简约规则状态
+        hasSeenOnboarding: false, // 重置新手引导状态
+        hasSeenButtonGuide: false, // 重置按钮引导状态
+        hasSeenItemGuide: false, // 重置道具引导状态
       };
       
       // Reset settings

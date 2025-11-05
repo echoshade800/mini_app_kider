@@ -799,6 +799,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    marginTop: 20, // 向下移动20px
     backgroundColor: '#2D6B4A', // 与棋盘格背景颜色一致
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
@@ -1087,6 +1088,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    marginTop: 20, // 向下移动20px
     backgroundColor: '#6B7B8A', // 与闯关模式保持一致的灰蓝色背景
     borderBottomWidth: 1,
     borderBottomColor: '#5A6B7A', // 稍微深一点的灰蓝色边框

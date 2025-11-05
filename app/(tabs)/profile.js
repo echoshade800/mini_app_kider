@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
+import StorageUtils from '../utils/StorageUtils';
 
 export default function ProfileScreen() {
   const { 
@@ -32,6 +33,50 @@ export default function ProfileScreen() {
   } = useGameStore();
 
 
+  const handleResetOnboarding = async () => {
+    Alert.alert(
+      'Reset Onboarding Guide',
+      'This will allow you to see the onboarding guide and button guide again. Do you want to continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Reset', 
+          onPress: async () => {
+            try {
+              // 重置新手引导状态
+              await StorageUtils.setData({ 
+                hasSeenOnboarding: false,
+                hasSeenButtonGuide: false 
+              });
+              
+              // 同时更新 gameData
+              const { updateGameData } = useGameStore.getState();
+              updateGameData({ 
+                hasSeenOnboarding: false,
+                hasSeenButtonGuide: false 
+              });
+              
+              Alert.alert(
+                'Success', 
+                'Onboarding guide has been reset. The guides will appear when you return to the home screen.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      router.replace('/(tabs)/');
+                    }
+                  }
+                ]
+              );
+            } catch (error) {
+              Alert.alert('Error', 'Failed to reset onboarding guide. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleResetData = () => {
     Alert.alert(
       'Reset Demo Data',
@@ -41,9 +86,20 @@ export default function ProfileScreen() {
         { 
           text: 'Reset', 
           style: 'destructive',
-          onPress: () => {
-            resetDemoData();
-            Alert.alert('Success', 'Demo data has been reset.');
+          onPress: async () => {
+            await resetDemoData();
+            Alert.alert(
+              'Success', 
+              'Demo data has been reset. The onboarding guide will appear when you return to the home screen.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    router.replace('/(tabs)/');
+                  }
+                }
+              ]
+            );
           }
         }
       ]
@@ -271,6 +327,15 @@ export default function ProfileScreen() {
             <Text style={styles.actionButtonText}>Save Today Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={handleResetOnboarding}
+          >
+            <Ionicons name="school" size={20} color="#9C27B0" />
+            <Text style={styles.actionButtonText}>View Onboarding Guide Again</Text>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
           
           <TouchableOpacity 
             style={[styles.actionButton, styles.dangerButton]}
@@ -386,7 +451,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 400, // 统一宽度
   },
   statRow: {
     flexDirection: 'row',
@@ -429,7 +494,8 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 400, // 统一宽度
+    alignSelf: 'center', // 确保居中
   },
   settingRow: {
     flexDirection: 'row',
@@ -527,6 +593,9 @@ const styles = StyleSheet.create({
     borderColor: '#8B4513', // 使用棕色边框
     marginHorizontal: 20,
     marginTop: 20,
+    width: '100%',
+    maxWidth: 400, // 统一宽度
+    alignSelf: 'center', // 确保居中
   },
   appName: {
     fontSize: 18,

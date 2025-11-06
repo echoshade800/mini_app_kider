@@ -330,7 +330,7 @@ export default function Home() {
       <View style={styles.foregroundContainer} pointerEvents="auto">
         
         {/* 顶部栏 */}
-        <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
+        <View style={[styles.topBar, { paddingTop: insets.top + 30 }]}>
           <TouchableOpacity
             style={styles.topButton}
             onPress={() => {

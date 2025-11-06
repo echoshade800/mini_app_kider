@@ -16,7 +16,7 @@ import {
   Modal,
   Animated
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
@@ -35,6 +35,7 @@ export default function ProfileScreen() {
   } = useGameStore();
   
   const backButtonScale = useRef(new Animated.Value(1)).current;
+  const insets = useSafeAreaInsets();
 
 
   const handleResetOnboarding = async () => {
@@ -226,7 +227,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
         {/* Header with Back Button */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={handleBackPress}

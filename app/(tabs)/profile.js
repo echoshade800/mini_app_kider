@@ -4,7 +4,7 @@
  * Extend: Add themes, export/import, achievements, or social features
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -13,13 +13,15 @@ import {
   ScrollView,
   Alert,
   ImageBackground,
-  Modal
+  Modal,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
 import StorageUtils from '../utils/StorageUtils';
+import * as Haptics from 'expo-haptics';
 
 export default function ProfileScreen() {
   const { 
@@ -31,29 +33,33 @@ export default function ProfileScreen() {
     loadSettingsFromDate,
     saveSettingsToDate
   } = useGameStore();
+  
+  const backButtonScale = useRef(new Animated.Value(1)).current;
 
 
   const handleResetOnboarding = async () => {
     Alert.alert(
       'Reset Onboarding Guide',
-      'This will allow you to see the onboarding guide and button guide again. Do you want to continue?',
+      'This will allow you to see the onboarding guide, button guide, and item guide again. Do you want to continue?',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Reset', 
           onPress: async () => {
             try {
-              // 重置新手引导状态
+              // 重置新手引导状态（包括道具引导）
               await StorageUtils.setData({ 
                 hasSeenOnboarding: false,
-                hasSeenButtonGuide: false 
+                hasSeenButtonGuide: false,
+                hasSeenItemGuide: false 
               });
               
               // 同时更新 gameData
               const { updateGameData } = useGameStore.getState();
               updateGameData({ 
                 hasSeenOnboarding: false,
-                hasSeenButtonGuide: false 
+                hasSeenButtonGuide: false,
+                hasSeenItemGuide: false 
               });
               
               Alert.alert(
@@ -191,15 +197,46 @@ export default function ProfileScreen() {
   );
 
 
+  const handleBackPressIn = () => {
+    // 触觉反馈
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // 缩放动画
+    Animated.spring(backButtonScale, {
+      toValue: 0.9,
+      friction: 3,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleBackPressOut = () => {
+    // 恢复动画
+    Animated.spring(backButtonScale, {
+      toValue: 1,
+      friction: 3,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleBackPress = () => {
+    router.back();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
         {/* Header with Back Button */}
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={handleBackPress}
+            onPressIn={handleBackPressIn}
+            onPressOut={handleBackPressOut}
+            activeOpacity={1}
           >
-            <Ionicons name="arrow-back" size={24} color="#8B4513" />
+            <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
+              <Ionicons name="arrow-back" size={24} color="#8B4513" />
+            </Animated.View>
           </TouchableOpacity>
           <View style={styles.titleContainer}>
             <Ionicons name="settings" size={28} color="#FFD700" style={styles.titleIcon} />
@@ -327,10 +364,9 @@ export default function ProfileScreen() {
                 <Ionicons name="school" size={24} color="#8B4513" />
                 <Text style={styles.settingLabel}>View Onboarding Guide Again</Text>
               </View>
-              {renderToggle(
-                false, // 这个开关只是用来触发动作，不保存状态
-                handleResetOnboarding
-              )}
+              <TouchableOpacity onPress={handleResetOnboarding}>
+                <Ionicons name="chevron-forward" size={24} color="#8B4513" />
+              </TouchableOpacity>
             </View>
             
             {/* Reset Demo Data */}
@@ -339,10 +375,9 @@ export default function ProfileScreen() {
                 <Ionicons name="refresh" size={24} color="#f44336" />
                 <Text style={[styles.settingLabel, { color: '#f44336' }]}>Reset Demo Data</Text>
               </View>
-              {renderToggle(
-                false, // 这个开关只是用来触发动作，不保存状态
-                handleResetData
-              )}
+              <TouchableOpacity onPress={handleResetData}>
+                <Ionicons name="chevron-forward" size={24} color="#f44336" />
+              </TouchableOpacity>
             </View>
           </View>
         </View>

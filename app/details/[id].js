@@ -488,7 +488,9 @@ export default function LevelDetailScreen() {
     const checkItemGuide = async () => {
       try {
         const data = await StorageUtils.getData();
-        if (!data?.hasSeenItemGuide && level === 1) {
+        // 同时检查 StorageUtils 和 gameData 中的 hasSeenItemGuide 状态
+        const hasSeenItemGuide = data?.hasSeenItemGuide ?? gameData?.hasSeenItemGuide ?? false;
+        if (!hasSeenItemGuide && level === 1) {
           // 首次进入第一关，确保道具数量为1
           if ((gameData?.swapMasterItems || 0) === 0) {
             updateGameData({ swapMasterItems: 1 });
@@ -517,7 +519,7 @@ export default function LevelDetailScreen() {
     if (board && level === 1) {
       checkItemGuide();
     }
-  }, [board, level, gameData]);
+  }, [board, level, gameData?.hasSeenItemGuide]);
 
 
   // 页面获得焦点时刷新棋盘
@@ -1025,7 +1027,7 @@ export default function LevelDetailScreen() {
             }
           ]}
         >
-          <Text style={styles.levelNameAnimationText}>
+          <Text style={styles.levelNameAnimationText} numberOfLines={1}>
             Entering: {displayLevelName}
           </Text>
         </Animated.View>
@@ -1173,7 +1175,7 @@ export default function LevelDetailScreen() {
             {/* 黑板区域文本框 */}
             <View style={styles.blackboardTextContainer}>
               <View style={styles.textContent}>
-                {/* 当前关卡名称 - 带动画 */}
+                {/* 当前关卡名称 - 带动画（显示下一关名称，前缀now:） */}
                 {(textAnimationPhase === 'initial' || textAnimationPhase === 'currentBounce' || textAnimationPhase === 'currentExit') && (
                   <Animated.View
                     style={{
@@ -1189,7 +1191,9 @@ export default function LevelDetailScreen() {
                       ],
                     }}
                   >
-                    <Text style={styles.blackboardText}>{displayLevelName}!</Text>
+                    <Text style={styles.blackboardText} numberOfLines={1}>
+                      Now: {STAGE_NAMES[level + 1] ? extractLevelName(STAGE_NAMES[level + 1]) : `Level ${level + 1}`}!
+                    </Text>
                   </Animated.View>
                 )}
                 
@@ -1206,6 +1210,7 @@ export default function LevelDetailScreen() {
                   >
                     <Text 
                       style={styles.blackboardText}
+                      numberOfLines={1}
                       onLayout={(event) => {
                         const { width } = event.nativeEvent.layout;
                         setTextWidth(width);
@@ -1802,7 +1807,7 @@ const styles = StyleSheet.create({
   levelNameAnimationText: {
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
     color: '#FF0000', // 红色文字
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
     paddingHorizontal: 50,
     paddingVertical: 25,
@@ -1818,6 +1823,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 10,
+    flexShrink: 1,
   },
   
   // 编辑模式样式
@@ -1891,10 +1897,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '39%', // 再向上移动20px (从42%改为39%)
     left: '50%',
-    transform: [{ translateX: -120 }, { translateY: -60 }],
+    transform: [{ translateX: -150 }, { translateY: -60 }], // 调整translateX以适应更宽的容器
     alignItems: 'center',
     justifyContent: 'center',
-    width: 240, // 增加宽度
+    width: 300, // 增加宽度以容纳更长的文本
     height: 120, // 增加高度
   },
   gradientBorder: {
@@ -1931,9 +1937,9 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
     marginVertical: 4,
-    // 防止文字溢出
-    flexWrap: 'wrap',
-    maxWidth: '100%',
+    // 确保文本完整显示，不换行
+    flexShrink: 0,
+    flexGrow: 0,
   },
   arrowIcon: {
     marginVertical: 8,

@@ -1,8 +1,9 @@
 // src/ui/TopHUD.js
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View, StyleSheet, Pressable, Animated, Dimensions, Image, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SAFE_H = 72;           // 顶部 HUD 目标高度（可调）
@@ -21,6 +22,7 @@ export default function TopHUD({
 }) {
   const insets = useSafeAreaInsets();
   const anim = React.useRef(new Animated.Value(progress)).current;
+  const backButtonScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.timing(anim, { toValue: progress, duration: 250, useNativeDriver: false }).start(({ finished }) => {
@@ -49,15 +51,48 @@ export default function TopHUD({
     outputRange: [0, barWidth],
   });
 
+  const handleBackPressIn = () => {
+    // 触觉反馈
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // 缩放动画
+    Animated.spring(backButtonScale, {
+      toValue: 0.9,
+      friction: 3,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleBackPressOut = () => {
+    // 恢复动画
+    Animated.spring(backButtonScale, {
+      toValue: 1,
+      friction: 3,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleBackPress = () => {
+    if (onBack) {
+      onBack();
+    }
+  };
+
   return (
     <View style={[styles.wrap, { width: HUD_W, height: SAFE_H, marginTop: insets.top }]}>
       {/* 背条（也可以用底图） */}
       <View style={[styles.base, { left: 0, right: 0, height: SAFE_H }]} />
       {/* 返回按钮 */}
-      <Pressable onPress={onBack} style={[styles.abs, { left: 0, top: (SAFE_H - BACK_W) / 2 }]}>
-        <View style={styles.backButtonContainer}>
+      <Pressable 
+        onPress={handleBackPress}
+        onPressIn={handleBackPressIn}
+        onPressOut={handleBackPressOut}
+        style={[styles.abs, { left: 0, top: (SAFE_H - BACK_W) / 2 }]}
+      >
+        <Animated.View style={[styles.backButtonContainer, { transform: [{ scale: backButtonScale }] }]}>
           <Ionicons name="arrow-back" size={24} color="#8B4513" />
-        </View>
+        </Animated.View>
       </Pressable>
 
       {/* 右侧书本 */}

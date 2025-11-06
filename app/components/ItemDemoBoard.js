@@ -266,15 +266,18 @@ const SplitDemo = ({ isPlaying }) => {
       sequence.start(() => {
         // 显示分裂方块：7分裂成3和4
         setShowOriginal(false);
+        // 分裂后的方块：3在左侧格子(1, 0)，4在右侧格子(1, 2)
         setSplitTiles([
           { id: 1, row: 1, col: 0, value: 3 },
           { id: 2, row: 1, col: 2, value: 4 },
         ]);
 
-        // 新方块从中心扩散（左右扩散）
+        // 新方块从中心(1, 1)扩散到目标位置
+        // 方块3：从中心向左移动到(1, 0)，需要向左移动-CELL_SIZE
+        // 方块4：从中心向右移动到(1, 2)，需要向右移动CELL_SIZE
         Animated.parallel([
           Animated.timing(splitTile1AnimX, {
-            toValue: -CELL_SIZE,
+            toValue: -CELL_SIZE, // 从中心向左移动一个格子
             duration: 500,
             useNativeDriver: true,
           }),
@@ -284,7 +287,7 @@ const SplitDemo = ({ isPlaying }) => {
             useNativeDriver: true,
           }),
           Animated.timing(splitTile2AnimX, {
-            toValue: CELL_SIZE,
+            toValue: CELL_SIZE, // 从中心向右移动一个格子
             duration: 500,
             useNativeDriver: true,
           }),
@@ -361,18 +364,21 @@ const SplitDemo = ({ isPlaying }) => {
           animScale = splitTile2Scale;
         }
 
+        // 分裂方块从中心(1, 1)开始，通过translateX移动到目标位置
+        // 方块3：从中心向左移动到(1, 0)
+        // 方块4：从中心向右移动到(1, 2)
         return (
           <Animated.View
             key={tile.id}
             style={[
               styles.tile,
               {
-                left: tile.col * CELL_SIZE + 4,
-                top: tile.row * CELL_SIZE + 4,
+                left: 1 * CELL_SIZE + 4, // 从中心位置(1, 1)开始
+                top: 1 * CELL_SIZE + 4,  // 从中心位置(1, 1)开始
                 width: TILE_SIZE,
                 height: TILE_SIZE,
                 transform: [
-                  { translateX: animX },
+                  { translateX: animX }, // 通过translateX移动到目标列
                   { translateY: animY },
                   { scale: animScale },
                 ],

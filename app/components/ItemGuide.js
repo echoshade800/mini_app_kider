@@ -101,7 +101,7 @@ const ItemGuide = ({ visible, onClose, itemButtonPosition, splitButtonPosition, 
       return {
         title: 'Split Item',
         description: 'Break a tile into smaller parts.',
-        hint: 'For example: 7 → 2 + 3 + 2',
+        hint: 'For example: 3+4=7',
         itemType: 'split',
       };
     } else if (currentStep === 3) {

@@ -128,12 +128,12 @@ const ButtonGuide = ({ visible, onClose, levelButtonPosition, challengeButtonPos
     // Level Mode按钮下方，但确保不与Got it按钮重合
     textCardTop = Math.min(buttonPos.y + 180, minTop);
   } else if (currentStep === 2) {
-    // Challenge Mode按钮下方，但确保不与Got it按钮重合
-    textCardTop = Math.min(buttonPos.y + 110, minTop);
+    // Challenge Mode按钮下方，但确保不与Got it按钮重合（向上移动10px）
+    textCardTop = Math.min(buttonPos.y + 100, minTop);
   } else {
-    // Level List按钮：优先放在按钮上方，但如果按钮位置太低，则放在按钮下方
-    const textCardTopAbove = buttonPos.y - textCardHeight - 20; // 文字框在按钮上方，底部距离按钮顶部20px
-    const textCardTopBelow = buttonPos.y + buttonPos.height + 20; // 文字框在按钮下方，顶部距离按钮底部20px
+    // Level List按钮：优先放在按钮上方，但如果按钮位置太低，则放在按钮下方（向上移动20px）
+    const textCardTopAbove = buttonPos.y - textCardHeight - 40; // 文字框在按钮上方，底部距离按钮顶部40px（向上移动20px）
+    const textCardTopBelow = buttonPos.y + buttonPos.height; // 文字框在按钮下方，顶部距离按钮底部0px（向上移动20px）
     
     // 如果放在按钮上方会导致文字框顶部超出屏幕，或者与Got it按钮重叠，则放在按钮下方
     if (textCardTopAbove < 0 || textCardTopAbove + textCardHeight > minTop) {

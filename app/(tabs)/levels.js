@@ -4,20 +4,22 @@
  * Extend: Add search, favorites, difficulty indicators, or completion stats
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
   StyleSheet,
   ScrollView,
-  FlatList
+  FlatList,
+  Animated
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameStore } from '../store/gameStore';
 import { STAGE_NAMES, STAGE_GROUPS, getStageGroup } from '../utils/stageNames';
+import * as Haptics from 'expo-haptics';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All Levels', range: [1, 200] },

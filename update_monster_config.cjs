@@ -16,7 +16,7 @@ const [name, moduleName, host] = args;
 const jsonUrl = 'https://vsa-bucket-public-new.s3.us-east-1.amazonaws.com/monster/new-index-config.json';
 // 请替换为实际的S3存储桶信息
 const s3Bucket = 'vsa-bucket-public-new';
-const s3Key = 'monster/index_config.json'; // S3中JSON文件的路径
+const s3Key = 'monster/new-index-config.json'; // S3中JSON文件的路径
 
 // 初始化S3客户端
 const s3Client = new S3Client({

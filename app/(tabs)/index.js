@@ -9,14 +9,12 @@ import {
   ScrollView,
   Dimensions,
   Platform,
-  Pressable,
-  SafeAreaView
+  Pressable
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import OnboardingGuide from '../components/OnboardingGuide';
 import ButtonGuide from '../components/ButtonGuide';
-import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGameStore } from '../store/gameStore';
 import { STAGE_NAMES } from '../utils/stageNames';

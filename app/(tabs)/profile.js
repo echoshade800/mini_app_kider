@@ -259,9 +259,11 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Settings - 匹配参考图风格 */}
-        <View style={styles.settingsSection}>
-          <View style={styles.settingsCard}>
+        {/* Actions - 包含音效、音乐、震动开关 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Actions</Text>
+          
+          <View style={styles.actionCard}>
             {/* Sound Effects */}
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
@@ -300,60 +302,49 @@ export default function ProfileScreen() {
                 () => updateSettings({ hapticsEnabled: !settings?.hapticsEnabled })
               )}
             </View>
-            
           </View>
         </View>
 
-        {/* Actions */}
+        {/* Other Options - 其他选项以开关形式显示 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions</Text>
+          <Text style={styles.sectionTitle}>Other Options</Text>
           
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleAboutPress}
-          >
-            <Ionicons name="information-circle" size={20} color="#4a90e2" />
-            <Text style={styles.actionButtonText}>About & Help</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
+          <View style={styles.actionCard}>
+            {/* About & Help - 点击开关后跳转到about页面 */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Ionicons name="information-circle" size={24} color="#8B4513" />
+                <Text style={styles.settingLabel}>About & Help</Text>
+              </View>
+              <TouchableOpacity onPress={handleAboutPress}>
+                <Ionicons name="chevron-forward" size={24} color="#8B4513" />
+              </TouchableOpacity>
+            </View>
 
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleLoadYesterdaySettings}
-          >
-            <Ionicons name="time" size={20} color="#FF9800" />
-            <Text style={styles.actionButtonText}>Load Yesterday Settings</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleSaveTodaySettings}
-          >
-            <Ionicons name="save" size={20} color="#4CAF50" />
-            <Text style={styles.actionButtonText}>Save Today Settings</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleResetOnboarding}
-          >
-            <Ionicons name="school" size={20} color="#9C27B0" />
-            <Text style={styles.actionButtonText}>View Onboarding Guide Again</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.dangerButton]}
-            onPress={handleResetData}
-          >
-            <Ionicons name="refresh" size={20} color="#f44336" />
-            <Text style={[styles.actionButtonText, styles.dangerButtonText]}>
-              Reset Demo Data
-            </Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
+            {/* View Onboarding Guide Again */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Ionicons name="school" size={24} color="#8B4513" />
+                <Text style={styles.settingLabel}>View Onboarding Guide Again</Text>
+              </View>
+              {renderToggle(
+                false, // 这个开关只是用来触发动作，不保存状态
+                handleResetOnboarding
+              )}
+            </View>
+            
+            {/* Reset Demo Data */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Ionicons name="refresh" size={24} color="#f44336" />
+                <Text style={[styles.settingLabel, { color: '#f44336' }]}>Reset Demo Data</Text>
+              </View>
+              {renderToggle(
+                false, // 这个开关只是用来触发动作，不保存状态
+                handleResetData
+              )}
+            </View>
+          </View>
         </View>
 
         {/* App Info */}
@@ -436,6 +427,21 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingHorizontal: 20,
     alignItems: 'center', // 确保内容居中
+  },
+  actionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 3,
+    borderColor: '#8B4513',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
   },
   section: {
     marginTop: 20,

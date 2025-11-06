@@ -1026,7 +1026,7 @@ export default function LevelDetailScreen() {
           ]}
         >
           <Text style={styles.levelNameAnimationText}>
-            {displayLevelName}
+            Entering: {displayLevelName}
           </Text>
         </Animated.View>
       )}
@@ -1035,7 +1035,7 @@ export default function LevelDetailScreen() {
       <TopHUD
         progress={progress}
         gradeText={displayLevelName}
-        nextLevelText={STAGE_NAMES[level] ? extractLevelName(STAGE_NAMES[level]) : `Level ${level}`}
+        nextLevelText={`Now playing: ${STAGE_NAMES[level] ? extractLevelName(STAGE_NAMES[level]) : `Level ${level}`}`}
         onBack={handleBackPress}
         onFinished={handleLevelComplete}
       />
@@ -1211,7 +1211,7 @@ export default function LevelDetailScreen() {
                         setTextWidth(width);
                       }}
                     >
-                      {STAGE_NAMES[level + 1] ? extractLevelName(STAGE_NAMES[level + 1]) : `Level ${level + 1}`}!
+                      Next: {STAGE_NAMES[level + 1] ? extractLevelName(STAGE_NAMES[level + 1]) : `Level ${level + 1}`}!
                     </Text>
                     <View style={styles.doubleLines}>
                       <View style={[styles.line, { width: textWidth || 100 }]} />

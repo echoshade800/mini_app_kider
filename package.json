@@ -14,7 +14,7 @@
     "web": "npx expo start --web",
     "clean": "rm -rf node_modules package-lock.json .expo",
     "doctor": "npx expo doctor",
-    "build:ios": "npx react-native bundle --platform ios --dev false --entry-file index.tsx --bundle-output ios/rnbundle/main.jsbundle --assets-dest ios/rnbundle",
+    "build:ios": "npx react-native bundle --platform ios --dev false --entry-file index.tsx --bundle-output rnbundle/main.jsbundle --assets-dest rnbundle",
     "deploy:ios": "sh deploy_ios.sh"
   },
   "dependencies": {
